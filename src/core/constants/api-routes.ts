@@ -7,6 +7,7 @@ const AR_KEYS = {
   HUECOS: "huecos-nichos",
   INHUMACIONES: "inhumaciones",
   REQUISITOS_INHUMACION: "requisitos-inhumacion",
+  PAYMENTS: "payments",
 };
 
 export const API_ROUTES = {
@@ -99,5 +100,17 @@ export const API_ROUTES = {
       `${AR_KEYS.REQUISITOS_INHUMACION}/${id}/pdf`,
     SEARCH_FALLECIDOS: (busqueda: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/fallecidos/${busqueda}`,
+  },
+  PAYMENTS: {
+    LIST: AR_KEYS.PAYMENTS,
+    CREATE: AR_KEYS.PAYMENTS,
+    GET_BY_ID: (id: string) => `${AR_KEYS.PAYMENTS}/${id}`,
+    GET_BY_CODE: (code: string) => `${AR_KEYS.PAYMENTS}/code/${code}`,
+    GET_BY_PROCEDURE: (type: string, id: string) => `${AR_KEYS.PAYMENTS}/procedure/${type}/${id}`,
+    UPDATE: (id: string) => `${AR_KEYS.PAYMENTS}/${id}`,
+    CONFIRM: (id: string) => `${AR_KEYS.PAYMENTS}/${id}/confirm`,
+    DELETE: (id: string) => `${AR_KEYS.PAYMENTS}/${id}`,
+    UPLOAD_RECEIPT: (id: string) => `${AR_KEYS.PAYMENTS}/${id}/receipt`,
+    DOWNLOAD_RECEIPT: (id: string) => `${AR_KEYS.PAYMENTS}/${id}/receipt`,
   },
 };
