@@ -1,11 +1,11 @@
-export type ProcedureType = 
-  | 'burial' 
-  | 'exhumation' 
-  | 'niche_sale' 
-  | 'tomb_improvement' 
-  | 'hole_extension';
+export type ProcedureType =
+  | "burial"
+  | "exhumation"
+  | "niche_sale"
+  | "tomb_improvement"
+  | "hole_extension";
 
-export type PaymentStatus = 'pending' | 'paid';
+export type PaymentStatus = "pending" | "paid";
 
 export interface PaymentEntity {
   paymentId: string;
