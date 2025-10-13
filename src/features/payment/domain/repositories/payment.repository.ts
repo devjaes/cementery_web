@@ -1,5 +1,6 @@
 import {
   CreatePaymentEntity,
+  CreatePaymentResponse,
   PaymentEntity,
   ProcedureType,
   QueryPaymentEntity,
@@ -12,7 +13,7 @@ export interface PaymentRepository {
   findById(id: string): Promise<PaymentEntity>;
   findByCode(code: string): Promise<PaymentEntity>;
   findByProcedure(procedureType: ProcedureType, procedureId: string): Promise<PaymentEntity[]>;
-  create(payment: CreatePaymentEntity): Promise<PaymentEntity>;
+  create(payment: CreatePaymentEntity): Promise<CreatePaymentResponse>;
   update(payment: UpdatePaymentEntity): Promise<PaymentEntity>;
   confirmPayment(paymentId: string, validatedBy: string): Promise<PaymentEntity>;
   uploadReceipt(data: UploadReceiptEntity): Promise<PaymentEntity>;

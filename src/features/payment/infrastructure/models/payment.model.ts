@@ -11,6 +11,9 @@ export interface PaymentModel {
   observations: string | null;
   generatedBy: string;
   validatedBy: string | null;
+  buyerDocument: string;
+  buyerName: string;
+  buyerDirection: string | null;
   updatedDate: string;
 }
 
@@ -19,6 +22,9 @@ export interface CreatePaymentModel {
   procedureId: string;
   amount: number;
   generatedBy: string;
+  buyerDocument: string;
+  buyerName: string;
+  buyerDirection?: string;
   observations?: string;
 }
 

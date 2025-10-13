@@ -1,14 +1,25 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
 import { PaymentStatusBadge } from "./payment-status-badge";
 import { UploadReceiptDialog } from "./upload-receipt-dialog";
+import { PdfPreviewDialog } from "./pdf-preview-dialog";
 import { usePaymentsByProcedure } from "../hooks/use-payment-query";
 import { ProcedureType } from "../../domain/entities/payment.entity";
-import { Loader2, Download, AlertCircle } from "lucide-react";
+import { Loader2, Download, AlertCircle, Eye } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { useDownloadReceipt } from "../hooks/use-payment-mutation";
+import {
+  useDownloadReceipt,
+  useGetReceiptBlob,
+} from "../hooks/use-payment-mutation";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
+import { useState } from "react";
 
 interface PaymentStatusCardProps {
   procedureType: ProcedureType;
@@ -21,11 +32,16 @@ export const PaymentStatusCard = ({
   procedureId,
   validatedBy,
 }: PaymentStatusCardProps) => {
-  const { data: payments, isLoading, error } = usePaymentsByProcedure(
-    procedureType,
-    procedureId
-  );
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
+  const {
+    data: payments,
+    isLoading,
+    error,
+  } = usePaymentsByProcedure(procedureType, procedureId);
   const downloadReceipt = useDownloadReceipt();
+  const getReceiptBlob = useGetReceiptBlob();
 
   if (isLoading) {
     return (
@@ -62,74 +78,113 @@ export const PaymentStatusCard = ({
   const latestPayment = payments[0];
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Estado del Pago</CardTitle>
-            <CardDescription>Código: {latestPayment.paymentCode}</CardDescription>
-          </div>
-          <PaymentStatusBadge status={latestPayment.status} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Monto:</span>
-            <p className="font-semibold">${latestPayment.amount.toFixed(2)}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Fecha de generación:</span>
-            <p className="font-semibold">
-              {new Date(latestPayment.generatedDate).toLocaleDateString()}
-            </p>
-          </div>
-          {latestPayment.paidDate && (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <div>
-              <span className="text-muted-foreground">Fecha de pago:</span>
+              <CardTitle>Estado del Pago</CardTitle>
+              <CardDescription>
+                Código: {latestPayment.paymentCode}
+              </CardDescription>
+            </div>
+            <PaymentStatusBadge status={latestPayment.status} />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Monto:</span>
               <p className="font-semibold">
-                {new Date(latestPayment.paidDate).toLocaleDateString()}
+                ${latestPayment.amount.toFixed(2)}
               </p>
             </div>
-          )}
-          {latestPayment.validatedBy && (
             <div>
-              <span className="text-muted-foreground">Validado por:</span>
-              <p className="font-semibold">{latestPayment.validatedBy}</p>
+              <span className="text-muted-foreground">
+                Fecha de generación:
+              </span>
+              <p className="font-semibold">
+                {new Date(latestPayment.generatedDate).toLocaleDateString()}
+              </p>
+            </div>
+            {latestPayment.paidDate && (
+              <div>
+                <span className="text-muted-foreground">Fecha de pago:</span>
+                <p className="font-semibold">
+                  {new Date(latestPayment.paidDate).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+            {latestPayment.validatedBy && (
+              <div>
+                <span className="text-muted-foreground">Validado por:</span>
+                <p className="font-semibold">{latestPayment.validatedBy}</p>
+              </div>
+            )}
+          </div>
+
+          {latestPayment.observations && (
+            <div className="text-sm">
+              <span className="text-muted-foreground">Observaciones:</span>
+              <p className="mt-1">{latestPayment.observations}</p>
             </div>
           )}
-        </div>
 
-        {latestPayment.observations && (
-          <div className="text-sm">
-            <span className="text-muted-foreground">Observaciones:</span>
-            <p className="mt-1">{latestPayment.observations}</p>
-          </div>
-        )}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => downloadReceipt.mutate(latestPayment.paymentId)}
+              disabled={downloadReceipt.isPending}
+            >
+              {downloadReceipt.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Descargar Comprobante
+            </Button>
 
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => downloadReceipt.mutate(latestPayment.paymentId)}
-            disabled={downloadReceipt.isPending}
-          >
-            {downloadReceipt.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  const blob = await getReceiptBlob.mutateAsync(
+                    latestPayment.paymentId
+                  );
+                  setPdfBlob(blob);
+                  setShowPdfPreview(true);
+                } catch (error) {
+                  console.error("Error getting receipt:", error);
+                }
+              }}
+              disabled={getReceiptBlob.isPending}
+            >
+              {getReceiptBlob.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              Ver Comprobante
+            </Button>
+
+            {latestPayment.status === "pending" && (
+              <UploadReceiptDialog
+                paymentId={latestPayment.paymentId}
+                validatedBy={validatedBy}
+              />
             )}
-            Descargar Comprobante
-          </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-          {latestPayment.status === "pending" && (
-            <UploadReceiptDialog
-              paymentId={latestPayment.paymentId}
-              validatedBy={validatedBy}
-            />
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      <PdfPreviewDialog
+        open={showPdfPreview}
+        onOpenChange={setShowPdfPreview}
+        pdfBlob={pdfBlob}
+        payment={latestPayment}
+      />
+    </>
   );
 };
