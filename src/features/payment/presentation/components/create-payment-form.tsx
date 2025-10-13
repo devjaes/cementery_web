@@ -52,11 +52,9 @@ const paymentFormSchema = z.object({
   ]),
   procedureId: z.string().uuid({ message: "ID de trámite inválido" }),
   amount: z.number().min(0.01, { message: "El monto debe ser mayor a 0" }),
-  buyerDocument: z
-    .string()
-    .regex(/^\d{10}$/, {
-      message: "La cédula debe tener exactamente 10 dígitos",
-    }),
+  buyerDocument: z.string().regex(/^\d{10}$/, {
+    message: "La cédula debe tener exactamente 10 dígitos",
+  }),
   buyerName: z
     .string()
     .regex(
