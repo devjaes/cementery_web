@@ -1,317 +1,265 @@
-# Payment Module - Frontend
+# Módulo de Pagos - Frontend
 
-Módulo completo de pagos para el sistema de gestión del cementerio de Píllaro.
+## Cambios Implementados
 
-## Estructura del Módulo
+### 1. Actualización de Entidades
 
-```
-payment/
-├── domain/
-│   ├── entities/          # Entidades y tipos
-│   ├── repositories/      # Interfaces de repositorios
-│   └── constants/         # Query keys de React Query
-├── infrastructure/
-│   ├── models/            # Modelos de API
-│   ├── mappers/           # Transformadores de datos
-│   └── repositories/      # Implementación de repositorios
-└── presentation/
-    ├── hooks/             # Hooks de React Query
-    └── components/        # Componentes reutilizables
+Se agregaron los nuevos campos requeridos por el backend:
+
+```typescript
+interface PaymentEntity {
+  // ... campos existentes
+  buyerDocument: string;      // Cédula del comprador (10 dígitos)
+  buyerName: string;          // Nombre completo (2 nombres + 2 apellidos)
+  buyerDirection: string | null; // Dirección (opcional)
+}
 ```
 
-## Instalación
+### 2. Manejo de Respuesta PDF
 
-El módulo ya está creado en `src/features/payment/`. Asegúrate de tener instaladas las dependencias del proyecto.
+El endpoint `POST /payments` ahora devuelve:
+- **PDF**: Como archivo blob en el body de la respuesta
+- **Datos del Pago**: En el header `X-Payment-Data` como JSON
 
-## Componentes Principales
+El repositorio maneja automáticamente esta respuesta:
 
-### 1. GeneratePaymentButton
+```typescript
+interface CreatePaymentResponse {
+  payment: PaymentEntity;  // Datos extraídos del header
+  pdfBlob: Blob;          // PDF del comprobante
+}
+```
 
-Botón para generar un nuevo pago. Muestra un diálogo de confirmación y descarga automáticamente el comprobante.
+### 3. Nuevos Componentes
+
+#### `CreatePaymentForm`
+
+Formulario completo para crear pagos con:
+- Búsqueda automática de personas registradas por cédula
+- Validación de campos según reglas del backend
+- Generación automática de PDF al crear el pago
+- Vista previa del comprobante generado
+
+**Uso:**
 
 ```tsx
-import { GeneratePaymentButton } from '@/features/payment';
+import { CreatePaymentForm } from '@/features/payment';
 
-<GeneratePaymentButton
-  procedureType="burial" // 'burial' | 'exhumation' | 'niche_sale' | 'tomb_improvement' | 'hole_extension'
-  procedureId="uuid-del-tramite"
-  amount={150.50}
-  generatedBy="admin-user"
-  observations="Observaciones opcionales"
-  onSuccess={(paymentId) => {
-    console.log('Pago creado:', paymentId);
-  }}
-/>
+function MyComponent() {
+  return (
+    <CreatePaymentForm
+      procedureType="burial"
+      procedureId="uuid-del-tramite"
+      defaultAmount={150.00}
+      onSuccess={() => console.log('Pago creado')}
+    />
+  );
+}
 ```
 
-### 2. PaymentStatusCard
+#### `PdfPreviewDialog`
 
-Tarjeta que muestra el estado del pago con opciones para descargar y subir comprobante.
+Modal para visualizar y descargar el comprobante de pago:
+- Vista previa en iframe
+- Botón de descarga
+- Muestra información del pago (código y monto)
 
-```tsx
-import { PaymentStatusCard } from '@/features/payment';
-
-<PaymentStatusCard
-  procedureType="burial"
-  procedureId="uuid-del-tramite"
-  validatedBy="admin-user"
-/>
-```
-
-### 3. UploadReceiptDialog
-
-Diálogo para subir el comprobante de pago escaneado.
+**Uso:**
 
 ```tsx
-import { UploadReceiptDialog } from '@/features/payment';
+import { PdfPreviewDialog } from '@/features/payment';
 
-<UploadReceiptDialog
-  paymentId="uuid-del-pago"
-  validatedBy="admin-user"
-  onSuccess={() => {
-    console.log('Comprobante subido exitosamente');
-  }}
-/>
-```
-
-### 4. PaymentFlowComponent
-
-Componente completo que maneja todo el flujo de pago automáticamente.
-
-```tsx
-import { PaymentFlowComponent } from '@/features/payment';
-
-<PaymentFlowComponent
-  procedureType="burial"
-  procedureId="uuid-del-tramite"
-  amount={150.50}
-  generatedBy="admin-user"
-  validatedBy="admin-user"
-  observations="Observaciones"
-/>
-```
-
-## Hooks Disponibles
-
-### Queries
-
-```tsx
-import {
-  usePayments,
-  usePayment,
-  usePaymentByCode,
-  usePaymentsByProcedure
-} from '@/features/payment';
-
-// Obtener todos los pagos con filtros
-const { data: payments } = usePayments({
-  status: 'pending',
-  procedureType: 'burial'
-});
-
-// Obtener un pago por ID
-const { data: payment } = usePayment('payment-id');
-
-// Obtener un pago por código
-const { data: payment } = usePaymentByCode('PAY-250928-143022-75');
-
-// Obtener pagos de un trámite específico
-const { data: payments } = usePaymentsByProcedure('burial', 'procedure-id');
-```
-
-### Mutations
-
-```tsx
-import {
-  useCreatePayment,
-  useUpdatePayment,
-  useConfirmPayment,
-  useUploadReceipt,
-  useDeletePayment,
-  useDownloadReceipt
-} from '@/features/payment';
-
-// Crear un pago
-const createPayment = useCreatePayment();
-createPayment.mutate({
-  procedureType: 'burial',
-  procedureId: 'uuid',
-  amount: 150.50,
-  generatedBy: 'admin-user'
-});
-
-// Subir comprobante
-const uploadReceipt = useUploadReceipt();
-uploadReceipt.mutate({
-  paymentId: 'uuid',
-  file: fileObject,
-  validatedBy: 'admin-user'
-});
-
-// Confirmar pago manualmente
-const confirmPayment = useConfirmPayment();
-confirmPayment.mutate({
-  paymentId: 'uuid',
-  validatedBy: 'admin-user'
-});
-
-// Descargar comprobante
-const downloadReceipt = useDownloadReceipt();
-downloadReceipt.mutate('payment-id');
-
-// Eliminar pago (solo pendientes)
-const deletePayment = useDeletePayment();
-deletePayment.mutate('payment-id');
-```
-
-## Ejemplo de Integración en un Módulo
-
-### Paso 1: En el formulario de creación del trámite
-
-```tsx
-"use client";
-
-import { useState } from 'react';
-import { GeneratePaymentButton } from '@/features/payment';
-
-export const CreateBurialForm = () => {
-  const [burialId, setBurialId] = useState<string | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
-
-  const handleBurialCreated = (id: string) => {
-    setBurialId(id);
-    setShowPayment(true);
-  };
+function MyComponent() {
+  const [open, setOpen] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [payment, setPayment] = useState<PaymentEntity | null>(null);
 
   return (
+    <PdfPreviewDialog
+      open={open}
+      onOpenChange={setOpen}
+      pdfBlob={pdfBlob}
+      payment={payment}
+    />
+  );
+}
+```
+
+## Validaciones del Formulario
+
+### Cédula del Comprador
+- Debe tener exactamente 10 dígitos
+- Solo números
+- Campo obligatorio
+
+```typescript
+buyerDocument: z.string().regex(/^\d{10}$/)
+```
+
+### Nombre del Comprador
+- Debe contener 2 nombres y 2 apellidos
+- Separados por espacios
+- Solo letras, espacios y caracteres españoles (áéíóúñ)
+- Campo obligatorio
+
+```typescript
+buyerName: z.string().regex(
+  /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}$/
+)
+```
+
+**Ejemplo válido:** Juan Carlos Pérez López
+
+### Dirección
+- Campo opcional
+- Sin restricciones de formato
+
+## Funcionalidad de Búsqueda
+
+El formulario permite buscar personas registradas en el sistema:
+
+1. Usuario ingresa la cédula de 10 dígitos
+2. Presiona el botón de búsqueda (ícono de lupa)
+3. Si encuentra una persona viva registrada:
+   - Se autocompleta el nombre completo
+   - Se autocompleta la dirección (si existe)
+4. Si no encuentra: Usuario puede ingresar los datos manualmente
+
+**Nota:** Solo busca personas NO fallecidas (`fallecido: false`)
+
+## Flujo de Creación de Pago
+
+```mermaid
+graph TD
+    A[Usuario llena formulario] --> B[Valida datos]
+    B --> C[Hace POST /payments]
+    C --> D[Backend crea pago y genera PDF]
+    D --> E[Devuelve PDF + datos en header]
+    E --> F[Frontend extrae datos del header]
+    F --> G[Muestra preview del PDF]
+    G --> H{Usuario decide}
+    H -->|Descargar| I[Descarga PDF]
+    H -->|Cerrar| J[Cierra modal]
+```
+
+## Hooks Actualizados
+
+### `useCreatePayment`
+
+```typescript
+const createPayment = useCreatePayment();
+
+const handleCreate = async (data: CreatePaymentEntity) => {
+  const result = await createPayment.mutateAsync(data);
+  
+  // result.payment: Datos del pago creado
+  // result.pdfBlob: Blob del PDF para preview/descarga
+  
+  // Mostrar preview
+  setPdfBlob(result.pdfBlob);
+  setPayment(result.payment);
+  setShowPreview(true);
+};
+```
+
+## Integración con Otros Módulos
+
+Para integrar el módulo de pagos en otros módulos (inhumaciones, exhumaciones, etc.):
+
+```tsx
+import { CreatePaymentForm } from '@/features/payment';
+
+function InhumacionCreate() {
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  
+  return (
     <div>
-      {/* Tu formulario de inhumación aquí */}
+      {/* ... Formulario de inhumación ... */}
       
-      {showPayment && burialId && (
-        <div className="mt-6">
-          <GeneratePaymentButton
-            procedureType="burial"
-            procedureId={burialId}
-            amount={150.50}
-            generatedBy="current-user"
-            observations="Pago por servicio de inhumación"
-          />
-        </div>
+      {showPaymentForm && (
+        <CreatePaymentForm
+          procedureType="burial"
+          procedureId={inhumacionId}
+          defaultAmount={calculateAmount()}
+          onSuccess={() => {
+            // Actualizar estado del trámite
+            // Redirigir, cerrar modal, etc.
+          }}
+        />
       )}
     </div>
   );
-};
+}
 ```
 
-### Paso 2: En la vista de detalles del trámite
+## Tipos de Trámites Disponibles
+
+```typescript
+type ProcedureType = 
+  | 'burial'           // Inhumación
+  | 'exhumation'       // Exhumación
+  | 'niche_sale'       // Venta de Nicho
+  | 'tomb_improvement' // Mejora de Tumba
+  | 'hole_extension';  // Ampliación de Hueco
+```
+
+## Ejemplo Completo de Uso
 
 ```tsx
 "use client";
 
-import { PaymentStatusCard } from '@/features/payment';
+import { useState } from "react";
+import { CreatePaymentForm } from "@/features/payment";
+import { Button } from "@/shared/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/shared/components/ui/dialog";
 
-export const BurialDetails = ({ burialId }: { burialId: string }) => {
+export function MyProcedureComponent() {
+  const [open, setOpen] = useState(false);
+  
   return (
-    <div className="space-y-6">
-      {/* Otros detalles del trámite */}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>Generar Pago</Button>
+      </DialogTrigger>
       
-      <PaymentStatusCard
-        procedureType="burial"
-        procedureId={burialId}
-        validatedBy="current-user"
-      />
-    </div>
+      <DialogContent className="max-w-3xl">
+        <CreatePaymentForm
+          procedureType="burial"
+          procedureId="uuid-del-tramite"
+          defaultAmount={150.00}
+          onSuccess={() => {
+            setOpen(false);
+            // Lógica adicional después de crear el pago
+          }}
+        />
+      </DialogContent>
+    </Dialog>
   );
-};
+}
 ```
 
-## Flujo de Trabajo Completo
+## Notas Importantes
 
-1. **Usuario crea un trámite** (inhumación, exhumación, etc.)
-2. **Sistema genera el pago**:
-   - Se crea el registro de pago en estado "pending"
-   - Se genera automáticamente el comprobante PDF
-   - El PDF se descarga automáticamente
-3. **Usuario imprime y paga el comprobante**
-4. **Admin sube el comprobante pagado**:
-   - Se sube el archivo escaneado
-   - El pago cambia automáticamente a estado "paid"
-   - El trámite puede continuar
-
-## Tipos de Procedimientos
-
-```typescript
-type ProcedureType = 
-  | 'burial'             // Inhumación
-  | 'exhumation'         // Exhumación
-  | 'niche_sale'         // Venta de nicho
-  | 'tomb_improvement'   // Mejora de tumba
-  | 'hole_extension';    // Ampliación de hueco
-```
-
-## Estados de Pago
-
-```typescript
-type PaymentStatus = 
-  | 'pending'  // Pendiente de pago
-  | 'paid';    // Pagado y confirmado
-```
-
-## Archivos Aceptados para Comprobantes
-
-- **Formatos**: JPG, JPEG, PNG, PDF
-- **Tamaño máximo**: 5MB
-
-## Notificaciones (Toasts)
-
-El módulo usa `sonner` para mostrar notificaciones automáticas:
-
-- ✅ "Pago generado exitosamente"
-- ✅ "Comprobante subido y pago confirmado exitosamente"
-- ✅ "Comprobante descargado exitosamente"
-- ❌ "Error al generar el pago"
-- ❌ "Error al subir el comprobante"
-
-## Invalidación de Caché
-
-El módulo invalida automáticamente las queries de React Query cuando:
-- Se crea un nuevo pago
-- Se actualiza un pago
-- Se confirma un pago
-- Se sube un comprobante
-- Se elimina un pago
-
-Esto asegura que los datos siempre estén actualizados en toda la aplicación.
-
-## Consideraciones Importantes
-
-1. **No hay pasarela de pago**: El sistema solo genera PDFs para imprimir
-2. **Validación manual**: Los pagos se validan manualmente por el admin
-3. **Solo admin puede validar**: Asegúrate de pasar el usuario correcto
-4. **Estados simples**: Solo 'pending' y 'paid'
-5. **Eliminación**: Solo se pueden eliminar pagos pendientes
+1. **Vista Previa del PDF**: Se muestra automáticamente después de crear el pago
+2. **Descarga**: El usuario puede descargar el PDF desde el modal de preview
+3. **Validación**: Todas las validaciones se hacen antes de enviar al backend
+4. **Búsqueda de Personas**: Solo busca personas vivas (no fallecidas)
+5. **Header Custom**: El backend devuelve los datos del pago en `X-Payment-Data`
+6. **Formato de Respuesta**: El backend devuelve el PDF como blob con `Content-Type: application/pdf`
 
 ## Troubleshooting
 
-### Error: "API_ROUTES.PAYMENTS is undefined"
+### El PDF no se muestra
+- Verificar que el backend está devolviendo `Content-Type: application/pdf`
+- Verificar que el header `X-Payment-Data` existe
+- Revisar la consola del navegador para errores
 
-Asegúrate de haber actualizado el archivo `src/core/constants/api-routes.ts` con las rutas de pagos.
+### La búsqueda de personas no funciona
+- Verificar que el endpoint `/personas/search` esté funcionando
+- Verificar que la cédula tiene exactamente 10 dígitos
+- Verificar que la persona existe y no está marcada como fallecida
 
-### Error: "Cannot read property 'shared'"
-
-Verifica que las rutas de importación de los componentes UI sean correctas según tu estructura de proyecto.
-
-### Los PDFs no se descargan
-
-Verifica que el backend esté funcionando correctamente y que el endpoint de descarga de recibos esté implementado.
-
-## Próximos Pasos
-
-1. Integrar el módulo en las vistas de inhumaciones
-2. Integrar el módulo en las vistas de exhumaciones
-3. Crear vistas de gestión de pagos (lista, búsqueda, reportes)
-4. Implementar permisos basados en roles
-
-## Soporte
-
-Para preguntas o problemas, consulta la documentación del backend o contacta al equipo de desarrollo.
+### Error de validación en nombre
+- El nombre debe tener exactamente 4 palabras (2 nombres + 2 apellidos)
+- Separadas por un solo espacio
+- Solo letras y caracteres españoles permitidos

@@ -20,6 +20,9 @@ export interface PaymentEntity {
   observations: string | null;
   generatedBy: string;
   validatedBy: string | null;
+  buyerDocument: string;
+  buyerName: string;
+  buyerDirection: string | null;
   updatedDate: string;
 }
 
@@ -28,6 +31,9 @@ export interface CreatePaymentEntity {
   procedureId: string;
   amount: number;
   generatedBy: string;
+  buyerDocument: string;
+  buyerName: string;
+  buyerDirection?: string;
   observations?: string;
 }
 
@@ -49,4 +55,9 @@ export interface UploadReceiptEntity {
   paymentId: string;
   file: File;
   validatedBy: string;
+}
+
+export interface CreatePaymentResponse {
+  payment: PaymentEntity;
+  pdfBlob: Blob;
 }

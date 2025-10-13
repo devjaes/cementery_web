@@ -1,8 +1,10 @@
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { API_ROUTES } from "@/core/constants/api-routes";
+import axios from "axios";
 import { PaymentRepository } from "../../domain/repositories/payment.repository";
 import {
   CreatePaymentEntity,
+  CreatePaymentResponse,
   PaymentEntity,
   ProcedureType,
   QueryPaymentEntity,
@@ -64,13 +66,65 @@ export class PaymentRepositoryImpl implements PaymentRepository {
     return data.data.map(PaymentMapper.toEntity);
   }
 
-  async create(payment: CreatePaymentEntity): Promise<PaymentEntity> {
+  async create(payment: CreatePaymentEntity): Promise<CreatePaymentResponse> {
     const model = PaymentMapper.toCreateModel(payment);
-    const { data } = await this.httpClient.post<PaymentModel>(
-      API_ROUTES.PAYMENTS.CREATE,
-      model
-    );
-    return PaymentMapper.toEntity(data.data);
+
+    const baseURL =
+      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+      "https://backend-cementerio-pillaro.onrender.com";
+    const url = `${baseURL}${API_ROUTES.PAYMENTS.CREATE}`;
+
+    const token = await this.getAuthToken();
+    const response = await axios.post(url, model, {
+      responseType: "blob",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const paymentDataHeader =
+      response.headers["x-payment-data"] ||
+      response.headers["X-Payment-Data"] ||
+      response.headers["X-PAYMENT-DATA"];
+
+    if (!paymentDataHeader) {
+      throw new Error(
+        "No se recibieron los datos del pago en el header X-Payment-Data"
+      );
+    }
+
+    let paymentData: PaymentModel;
+    try {
+      paymentData =
+        typeof paymentDataHeader === "string"
+          ? JSON.parse(paymentDataHeader)
+          : paymentDataHeader;
+    } catch (error) {
+      console.error("Error parsing payment data:", error);
+      throw new Error("Error al parsear los datos del pago del header");
+    }
+
+    const paymentEntity = PaymentMapper.toEntity(paymentData);
+
+    return {
+      payment: paymentEntity,
+      pdfBlob: response.data,
+    };
+  }
+
+  private async getAuthToken(): Promise<string> {
+    if (typeof window !== "undefined") {
+      try {
+        const { useAuthStore } = await import(
+          "@/features/auth/presentation/context/auth.store"
+        );
+        return useAuthStore.getState().token || "";
+      } catch {
+        return "";
+      }
+    }
+    return "";
   }
 
   async update(payment: UpdatePaymentEntity): Promise<PaymentEntity> {
