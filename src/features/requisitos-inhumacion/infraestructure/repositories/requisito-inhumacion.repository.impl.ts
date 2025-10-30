@@ -6,6 +6,7 @@ import { API_ROUTES } from "@/core/constants/api-routes";
 import { RequisitoInhumacionRepository } from "../../domain/repositories/requisito-inhumacion.repository";
 import { AxiosResponse } from "axios";
 import { SearchFallecidosRequisitoInhumacionMapper } from "../mappers/requisito-inhumacion-fallecido.mapper";
+import { ResponseAPI } from "@/core/interfaces/api.interface";
 
 
 export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRepository {
@@ -61,5 +62,31 @@ export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRep
     async searchFallecidos(busqueda: string): Promise<SearchFallecidosRequisitoInhumacionEntity> {
         const { data } = await this.httpClient.get<SearchFallecidosRequisitoInhumacionModel>(API_ROUTES.REQUISITOS_INHUMACION.SEARCH_FALLECIDOS(busqueda));
         return SearchFallecidosRequisitoInhumacionMapper.toEntity(data.data);
+    }
+
+    async uploadDocuments(id: string, files: {
+        solicitud_firmada?: File;
+        cedula_solicitante?: File;
+        certificado_defuncion_civil?: File;
+        certificado_defuncion_medico?: File;
+        titulo_propiedad?: File;
+        comprobante_pago?: File;
+        autorizacion_movilizacion?: File;
+    }): Promise<AxiosResponse<ResponseAPI<unknown>>> {
+        const form = new FormData();
+        // Agregar solo las claves que tengan archivo
+        (Object.entries(files) as [string, File | undefined][]).forEach(([key, file]) => {
+            if (file) {
+                form.append(key, file);
+            }
+        });
+
+        return await this.httpClient.post(
+            API_ROUTES.REQUISITOS_INHUMACION.UPLOAD_DOCUMENTS(id),
+            form,
+            {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            }
+        );
     }
 }
