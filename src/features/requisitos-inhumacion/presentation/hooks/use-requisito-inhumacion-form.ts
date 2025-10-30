@@ -107,28 +107,47 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
         console.log("Submitting requisito inhumacion data:", data);
 
         if (requisitoInhumacion && requisitoInhumacion.idRequsitoInhumacion) {
-            update({
-                idRequisitoInhumacion: requisitoInhumacion.idRequsitoInhumacion,
-                ...data,
-            }, {
-                onSuccess: async () => {
-                    console.log("Actualización exitosa");
-                    await uploadSolicitudFirmadaIfNeeded(selectedDocument, data.idFallecido);
-                    const cedula = await getCedulaByFallecidoId(data.idFallecido);
-                    router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
+            update(
+                {
+                    idRequisitoInhumacion: requisitoInhumacion.idRequsitoInhumacion,
+                    ...data,
                 },
-                onError: (error) => {
-                    console.error("Error en actualización:", error);
-                },
-            });
+                {
+                    onSuccess: async (result) => {
+                        console.log("Actualización exitosa");
+                        await uploadSolicitudFirmadaIfNeeded(selectedDocument, data.idFallecido);
+                        const cedula = await getCedulaByFallecidoId(data.idFallecido);
+                        const downloadParam = result?.idRequsitoInhumacion
+                            ? `&autoDownloadId=${encodeURIComponent(result.idRequsitoInhumacion)}`
+                            : "";
+                        const qPart = cedula ? `?q=${encodeURIComponent(cedula)}` : (downloadParam ? "?" : "");
+                        router.push(
+                            `${
+                                qPart === "?" ? `/requisitos-inhumacion${qPart}${downloadParam.slice(1)}` : `/requisitos-inhumacion${qPart}${downloadParam}`
+                            }`
+                        );
+                    },
+                    onError: (error) => {
+                        console.error("Error en actualización:", error);
+                    },
+                }
+            );
         } else {
             create(data, {
-                onSuccess: async (result) => {
-                    console.log("Creación exitosa");
-                    await uploadSolicitudFirmadaIfNeeded(selectedDocument, data.idFallecido);
-                    const cedula = await getCedulaByFallecidoId(data.idFallecido);
-                    router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
-                },
+                    onSuccess: async (result) => {
+                        console.log("Creación exitosa");
+                        await uploadSolicitudFirmadaIfNeeded(selectedDocument, data.idFallecido);
+                        const cedula = await getCedulaByFallecidoId(data.idFallecido);
+                        const downloadParam = result?.idRequsitoInhumacion
+                            ? `&autoDownloadId=${encodeURIComponent(result.idRequsitoInhumacion)}`
+                            : "";
+                        const qPart = cedula ? `?q=${encodeURIComponent(cedula)}` : (downloadParam ? "?" : "");
+                        router.push(
+                            `${
+                                qPart === "?" ? `/requisitos-inhumacion${qPart}${downloadParam.slice(1)}` : `/requisitos-inhumacion${qPart}${downloadParam}`
+                            }`
+                        );
+                    },
                 onError: (error) => {
                     console.error("Error en creación:", error);
                 },

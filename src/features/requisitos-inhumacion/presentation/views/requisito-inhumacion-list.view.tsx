@@ -10,12 +10,16 @@ import { RequisitoInhumacionFallecidosEntity } from "../../domain/entities/requi
 import { useSearchRequisitoInhumacionFallecidosQuery } from "../hooks/use-requisito-inhumacion-queries";
 import { RequisitoInhumacionSearch } from "../components/requisito-inhumacion-search.component";
 import { RequisitoInhumacionSearchResults } from "../components/requisito-inhumacion-search-results.component";
+import { useDownloadRequisitoInhumacionPdfMutation } from "../hooks/use-requisito-inhumacion-mutation";
+import { useRouter } from "next/navigation";
 
 export default function InhumacionListView() {
  const [searchTerm, setSearchTerm] = useState<string>("");
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedFallecido, setSelectedFallecido] = useState<RequisitoInhumacionFallecidosEntity | null>(null);
   const params = useSearchParams();
+  const router = useRouter();
+  const { mutate: downloadRequisitoPdf, isPending: isDownloading } = useDownloadRequisitoInhumacionPdfMutation();
 
   const {
     data: searchResults,
@@ -28,6 +32,21 @@ export default function InhumacionListView() {
     if (q) {
       setSearchTerm(q);
       setHasSearched(true);
+    }
+    // Auto-download behavior: if autoDownloadId is present, trigger download and remove param
+    const autoId = params?.get("autoDownloadId");
+    if (autoId) {
+      // Trigger download
+      try {
+        downloadRequisitoPdf(autoId);
+      } catch (e) {
+        console.warn("Auto-download failed:", e);
+      }
+      // Remove autoDownloadId from URL without refreshing the page
+      const searchParams = new URLSearchParams(Array.from(params.entries()));
+      searchParams.delete("autoDownloadId");
+      const qPart = searchParams.toString();
+      router.replace(qPart ? `/requisitos-inhumacion?${qPart}` : `/requisitos-inhumacion`);
     }
   }, [params]);
 
