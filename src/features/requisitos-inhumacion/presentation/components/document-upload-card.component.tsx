@@ -18,6 +18,13 @@ export function DocumentUploadCard({ onFileSelect, selectedFile: externalSelecte
   const [fileError, setFileError] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
+  // Sync external selected file when parent updates it
+  useState(() => {
+    if (externalSelectedFile) {
+      setSelectedFile(externalSelectedFile);
+    }
+  });
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     if (!file) {
@@ -101,6 +108,22 @@ export function DocumentUploadCard({ onFileSelect, selectedFile: externalSelecte
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <span className="text-sm font-medium text-gray-900 truncate" title={selectedFile.name}>{selectedFile.name}</span>
+            </div>
+          </div>
+        )}
+        {/* Mostrar documento existente cuando no hay archivo seleccionado */}
+        {!selectedFile && existingDocument && (
+          <div className="relative bg-white border border-purple-200 rounded-lg p-3 mt-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-700" />
+                <div className="text-sm text-gray-800">Documento existente</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={existingDocument} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">
+                  Ver / Descargar
+                </a>
+              </div>
             </div>
           </div>
         )}

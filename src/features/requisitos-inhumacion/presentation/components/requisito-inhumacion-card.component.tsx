@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -39,14 +41,42 @@ export function RequisitoInhumacionCard({
   useEffect(() => {
     const loadExistingDocument = async () => {
       try {
+        const http = AxiosClient.getInstance();
+
+        // 1) Try to get the requisito details and check for 'documentos_consolidados'
+        // The backend model has inconsistent id property names across responses
+        // (sometimes `idRequsitoInhumacion` with a typo, sometimes `idRequisitoInhumacion`, or just `id`).
+        // Use a runtime-safe access with `any` to avoid TypeScript property errors here.
+        const requisitoId =
+          (requisitoInhumacion as any)?.idRequisitoInhumacion ??
+          (requisitoInhumacion as any)?.idRequsitoInhumacion ??
+          (requisitoInhumacion as any)?.id;
+        if (requisitoId) {
+          try {
+            const reqResp = await http.get<any>(API_ROUTES.REQUISITOS_INHUMACION.GET_BY_ID(requisitoId));
+            const documentoConsolidado: string | undefined = reqResp?.data?.data?.documentos_consolidados || reqResp?.data?.data?.documentosConsolidados || reqResp?.data?.data?.documentos_consolidado;
+            if (documentoConsolidado) {
+              // if backend returns a relative path, prefix with base URL
+              const base = (process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+              const url = documentoConsolidado.startsWith('http') ? documentoConsolidado : `${base}${documentoConsolidado}`;
+              setExistingDocumentUrl(url);
+              return;
+            }
+          } catch (e) {
+            // ignore and fallback to inhumaciones lookup
+            // eslint-disable-next-line no-console
+            console.warn('No se pudo obtener detalle del requisito para documentos:', e);
+          }
+        }
+
+        // Fallback: buscar documento en la inhumación (misma lógica anterior)
         const idFallecido = requisitoInhumacion?.idFallecido?.id_persona;
         if (!idFallecido) return;
-        const http = AxiosClient.getInstance();
-        // 1) Obtener cédula del fallecido
+        // 2) Obtener cédula del fallecido
         const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(idFallecido));
         const cedula: string | undefined = personaResp?.data?.data?.cedula;
         if (!cedula) return;
-        // 2) Buscar inhumaciones por cédula para obtener documentos
+        // 3) Buscar inhumaciones por cédula para obtener documentos
         const inhResp = await http.get<any>(API_ROUTES.INHUMACIONES.SEARCH_FALLECIDOS(cedula));
         const payload = inhResp?.data?.data;
         const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
