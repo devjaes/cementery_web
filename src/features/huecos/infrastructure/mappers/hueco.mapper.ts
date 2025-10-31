@@ -26,6 +26,9 @@ export class HuecoMapper {
 			fechaCreacion: model.fecha_creacion,
 			fechaActualizacion: model.fecha_actualizacion,
 			requisitosInhumacion: model.requisitos_inhumacion,
+			// nuevos campos
+			rutaArchivoAmpliacion: model.ruta_archivo_ampliacion,
+			observacionAmpliacion: model.observacion_ampliacion,
 		};
 	}
 

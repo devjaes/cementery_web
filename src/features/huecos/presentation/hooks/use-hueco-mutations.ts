@@ -2,28 +2,44 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { HuecoRepositoryImpl } from "@/features/huecos/infrastructure/repositories/hueco.repository.impl";
 import { HUECO_QUERY_KEYS } from "@/features/huecos/domain/constants/hueco-keys";
 import { NICHO_QUERY_KEYS } from "@/features/nichos/domain/constants/nicho-keys";
-import { HuecoEntity, CreateHuecoEntity, UpdateHuecoEntity } from "@/features/huecos/domain/entities/hueco.entity";
+import {
+  HuecoEntity,
+  CreateHuecoEntity,
+  UpdateHuecoEntity,
+} from "@/features/huecos/domain/entities/hueco.entity";
 import { toast } from "sonner";
 
+/**
+ * Crear hueco — acepta tanto un objeto CreateHuecoEntity como FormData.
+ */
 export const useCreateHuecoMutation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<HuecoEntity, Error, CreateHuecoEntity>({
+  return useMutation<HuecoEntity, Error, CreateHuecoEntity | FormData>({
     mutationFn: async (data) => {
       const repository = HuecoRepositoryImpl.getInstance();
-      return await repository.create(data);
+      return await repository.create(data as any); // 👈 permite ambos tipos sin conflicto
     },
     onSuccess: (_, variables) => {
+      // ⚙️ Determinar idNicho según el tipo recibido
+      const idNicho =
+        variables instanceof FormData
+          ? (variables.get("idNicho") as string)
+          : variables.idNicho;
+
+      // ✅ Invalidación de caché
+      if (idNicho) {
+        queryClient.invalidateQueries({ queryKey: HUECO_QUERY_KEYS.byNicho(idNicho) });
+        queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.byId(idNicho) });
+      }
+
       queryClient.invalidateQueries({ queryKey: HUECO_QUERY_KEYS.all() });
-      queryClient.invalidateQueries({
-        queryKey: HUECO_QUERY_KEYS.byNicho(variables.idNicho)
-      });
       queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
-      queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.byId(variables.idNicho) });
       queryClient.invalidateQueries({
         queryKey: ["huecos", "cementerio"],
-        exact: false
+        exact: false,
       });
+
       toast.success("Hueco creado exitosamente");
     },
     onError: (error) => {
@@ -34,6 +50,9 @@ export const useCreateHuecoMutation = () => {
   });
 };
 
+/**
+ * Actualizar hueco
+ */
 export const useUpdateHuecoMutation = () => {
   const queryClient = useQueryClient();
 
@@ -43,15 +62,21 @@ export const useUpdateHuecoMutation = () => {
       return await repository.update(data);
     },
     onSuccess: (data) => {
+      const idNicho = data.idNicho?.idNicho;
+
+      if (idNicho) {
+        queryClient.invalidateQueries({ queryKey: HUECO_QUERY_KEYS.byNicho(idNicho) });
+        queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.byId(idNicho) });
+      }
+
       queryClient.invalidateQueries({ queryKey: HUECO_QUERY_KEYS.all() });
       queryClient.invalidateQueries({ queryKey: HUECO_QUERY_KEYS.byId(data.idDetalleHueco) });
-      queryClient.invalidateQueries({ queryKey: HUECO_QUERY_KEYS.byNicho(data.idNicho!.idNicho!) });
       queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
-      queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.byId(data.idNicho!.idNicho!) });
       queryClient.invalidateQueries({
         queryKey: ["huecos", "cementerio"],
-        exact: false
+        exact: false,
       });
+
       toast.success("Hueco actualizado exitosamente");
     },
     onError: (error) => {
@@ -62,6 +87,9 @@ export const useUpdateHuecoMutation = () => {
   });
 };
 
+/**
+ * Eliminar hueco
+ */
 export const useDeleteHuecoMutation = () => {
   const queryClient = useQueryClient();
 
@@ -75,7 +103,7 @@ export const useDeleteHuecoMutation = () => {
       queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
       queryClient.invalidateQueries({
         queryKey: ["huecos", "cementerio"],
-        exact: false
+        exact: false,
       });
       toast.success("Hueco eliminado exitosamente");
     },
@@ -85,4 +113,4 @@ export const useDeleteHuecoMutation = () => {
       });
     },
   });
-}; 
+};
