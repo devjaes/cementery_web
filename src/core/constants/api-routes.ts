@@ -99,7 +99,5 @@ export const API_ROUTES = {
       `${AR_KEYS.REQUISITOS_INHUMACION}/${id}/pdf`,
     SEARCH_FALLECIDOS: (busqueda: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/fallecidos/${busqueda}`,
-    UPLOAD_DOCUMENTS: (id: string) =>
-      `${AR_KEYS.INHUMACIONES}/${id}/documentos`,
   },
 };

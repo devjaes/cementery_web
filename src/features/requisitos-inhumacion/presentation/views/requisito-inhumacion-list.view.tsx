@@ -3,8 +3,7 @@ import ContainerApp from "@/core/layout/container-app";
 import { Button } from "@/shared/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { RequisitoInhumacionFallecidosEntity } from "../../domain/entities/requisito-inhumacion.entity";
 import { useSearchRequisitoInhumacionFallecidosQuery } from "../hooks/use-requisito-inhumacion-queries";
@@ -15,7 +14,6 @@ export default function InhumacionListView() {
  const [searchTerm, setSearchTerm] = useState<string>("");
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedFallecido, setSelectedFallecido] = useState<RequisitoInhumacionFallecidosEntity | null>(null);
-  const params = useSearchParams();
 
   const {
     data: searchResults,
@@ -23,14 +21,7 @@ export default function InhumacionListView() {
     error
   } = useSearchRequisitoInhumacionFallecidosQuery(searchTerm);
 
-  useEffect(() => {
-    const q = params?.get("q");
-    if (q) {
-      setSearchTerm(q);
-      setHasSearched(true);
-    }
-  }, [params]);
-
+  
     const handleSearch = (busqueda: string) => {
       setSearchTerm(busqueda);
       setHasSearched(true);
