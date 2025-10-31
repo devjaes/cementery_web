@@ -13,10 +13,12 @@ import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-c
 interface NichoPropietarioFormProps {
   nichoId: string;
   onSuccess?: () => void;
+  initialPersonId?: string; // Pre-llenar con persona del comprador
+  paymentId?: string; // ID del pago para confirmar venta cuando se guarde propietario
 }
 
-export function NichoPropietarioForm({ nichoId, onSuccess }: NichoPropietarioFormProps) {
-  const { methods, onSubmit, isPending } = usePropietarioForm(nichoId, onSuccess);
+export function NichoPropietarioForm({ nichoId, onSuccess, initialPersonId, paymentId }: NichoPropietarioFormProps) {
+  const { methods, onSubmit, isPending } = usePropietarioForm(nichoId, onSuccess, initialPersonId, paymentId);
 
   return (
     <FormProvider {...methods}>

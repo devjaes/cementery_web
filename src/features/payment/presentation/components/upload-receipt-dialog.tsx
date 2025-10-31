@@ -20,12 +20,16 @@ interface UploadReceiptDialogProps {
   paymentId: string;
   validatedBy: string;
   onSuccess?: () => void;
+  triggerLabel?: string; // Texto del botón disparador (por defecto: "Subir Comprobante")
+  triggerVariant?: "default" | "secondary" | "destructive" | "outline"; // variante visual
 }
 
 export const UploadReceiptDialog = ({
   paymentId,
   validatedBy,
   onSuccess,
+  triggerLabel = "Subir Comprobante",
+  triggerVariant = "default",
 }: UploadReceiptDialogProps) => {
   const [open, setOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -59,9 +63,9 @@ export const UploadReceiptDialog = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" className="gap-2">
+        <Button variant={triggerVariant} className="gap-2">
           <Upload className="h-4 w-4" />
-          Subir Comprobante
+          {triggerLabel}
         </Button>
       </DialogTrigger>
 

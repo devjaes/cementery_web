@@ -5,22 +5,53 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { useFindNichoByIdQuery } from "../hooks/use-nicho-queries";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { NichoInfoCard } from "../components/nicho-info-card.component";
 import { NichoHuecosTab } from "../components/nicho-huecos-tab.component";
 import { NichoPropietariosTab } from "../components/nicho-propietarios-tab.component";
 import { PropietarioPanel } from "../components/propietario-panel.component";
+import { ReservationActions } from "../components/reservation-actions.component";
 
 interface NichoDetailViewProps {
   nichoId: string;
 }
 
 export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
-  const { data: nicho, isLoading } = useFindNichoByIdQuery(nichoId);
+  const searchParams = useSearchParams();
+  const { data: nicho, isLoading, refetch } = useFindNichoByIdQuery(nichoId);
   const [isPropietarioPanelOpen, setIsPropietarioPanelOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("huecos");
+  const [buyerPersonId, setBuyerPersonId] = useState<string | undefined>(undefined);
+    const [paymentId, setPaymentId] = useState<string | undefined>(undefined);
+
+  // Al cargar, verificar query params para abrir panel de propietarios automáticamente
+  useEffect(() => {
+    const openPropietarios = searchParams.get('openPropietarios');
+    const personId = searchParams.get('personId');
+      const payment = searchParams.get('paymentId');
+    
+    if (openPropietarios === 'true') {
+      setActiveTab("propietarios");
+      setBuyerPersonId(personId || undefined);
+        setPaymentId(payment || undefined);
+      setIsPropietarioPanelOpen(true);
+    }
+  }, [searchParams]);
 
   const handlePropietarioSuccess = () => {
     setIsPropietarioPanelOpen(false);
+    setBuyerPersonId(undefined);
+      setPaymentId(undefined);
+    refetch(); // Refrescar para ver el nuevo estado del nicho (debería ser Vendido)
+  };
+
+    const handleReceiptUploaded = (personId?: string, payId?: string) => {
+    // Cuando se suba el comprobante desde el detalle mismo, abrir el panel de propietarios y cambiar a la tab de propietarios
+    setActiveTab("propietarios");
+    setBuyerPersonId(personId);
+      setPaymentId(payId);
+    setIsPropietarioPanelOpen(true);
   };
 
   if (isLoading) {
@@ -51,9 +82,16 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
             </Link>
           </div>
 
-          <NichoInfoCard nicho={nicho} />
+          <div className="space-y-4">
+            <NichoInfoCard nicho={nicho} />
+            {nicho.estadoVenta === 'Reservado' && (
+              <div className="flex">
+                <ReservationActions nichoId={nichoId} onReceiptUploaded={handleReceiptUploaded} />
+              </div>
+            )}
+          </div>
 
-          <Tabs defaultValue="huecos" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="huecos">Huecos</TabsTrigger>
               <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
@@ -73,8 +111,14 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
         <PropietarioPanel
           nichoId={nichoId}
           isOpen={isPropietarioPanelOpen}
-          onClose={() => setIsPropietarioPanelOpen(false)}
+          onClose={() => {
+            setIsPropietarioPanelOpen(false);
+            setBuyerPersonId(undefined);
+              setPaymentId(undefined);
+          }}
           onSuccess={handlePropietarioSuccess}
+          initialPersonId={buyerPersonId}
+            paymentId={paymentId}
         />
       </div>
     </ContainerApp>

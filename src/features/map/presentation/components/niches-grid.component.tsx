@@ -6,43 +6,49 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { CementeryEntity } from '@/features/cementery/domain/entities/cementery.entity';
 import { useNichesWithHuecos, NichoWithHuecos } from '../hooks/use-niches-with-huecos';
+import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity';
 import { HuecoTooltip } from './hole-tooltip.component';
-import { getColorByHuecoOcupado } from '@/shared/lib/get-hueco-color';
 import { ColumnsSelector } from './column-selector';
+import { CreatePaymentForm } from '@/features/payment';
+import { ReservationActions } from '@/features/nichos/presentation/components/reservation-actions.component';
 
 interface NichesGridProps {
   cemetery: CementeryEntity;
 }
 
-// Colores según cantidad de huecos ocupados
-const holeCountConfig: Record<
-  number,
-  { color: string; hover: string; label: string }
-> = {
-  0: { color: 'bg-green-400', hover: 'hover:bg-green-500', label: 'Disponible' },
-  1: { color: 'bg-blue-400', hover: 'hover:bg-blue-500', label: 'Reservado' },
-  2: { color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', label: 'Uso moderado' },
-  3: { color: 'bg-orange-500', hover: 'hover:bg-orange-600', label: 'Uso alto' },
-  4: { color: 'bg-red-500', hover: 'hover:bg-red-600', label: 'Muy alto' },
-  5: { color: 'bg-red-600', hover: 'hover:bg-red-700', label: 'Lleno' },
+// Estados del nicho y sus colores
+const estadosNicho: Record<EstadoVentaNicho, { color: string; hover: string; label: string }> = {
+  'Disponible': { color: 'bg-green-400', hover: 'hover:bg-green-500', label: 'Disponible' },
+  'Reservado': { color: 'bg-yellow-400', hover: 'hover:bg-yellow-500', label: 'Reservado' },
+  'Vendido': { color: 'bg-red-500', hover: 'hover:bg-red-600', label: 'Vendido' }
 };
 
-const getNicheColorByHuecos = (nicho: NichoWithHuecos) => {
-  const ocupados = nicho.huecos?.filter(h => h.estado.toLowerCase() === 'ocupado')?.length || 0;
-  const reservados = nicho.huecos?.filter(h => h.estado.toLowerCase() === 'reservado')?.length || 0;
-  const total = nicho.huecos?.length || nicho.numHuecos || 0;
-  return getColorByHuecoOcupado(ocupados, reservados, total);
+  const getNicheColorByEstado = (nicho: NichoWithHuecos) => {
+    const estado = (nicho.estadoVenta || 'Disponible') as EstadoVentaNicho;
+  return estadosNicho[estado as keyof typeof estadosNicho] || estadosNicho['Disponible'];
 };
 
 export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery }) => {
   const router = useRouter();
-  const { niches, loading, error } = useNichesWithHuecos(cemetery.idCementerio);
+  const { niches, loading, error, refetch } = useNichesWithHuecos(cemetery.idCementerio);
   const [gridColumns, setGridColumns] = useState<number>(10);
+  const [sellDialogOpen, setSellDialogOpen] = useState<boolean>(false);
+  const [selectedForSale, setSelectedForSale] = useState<NichoWithHuecos | null>(null);
+  // Estado para ver reserva sin depender del Tooltip
+  const [viewReservationOpen, setViewReservationOpen] = useState<boolean>(false);
+  const [reservationNichoId, setReservationNichoId] = useState<string | null>(null);
 
   const handleNicheClick = (nicheId: string) => {
     router.push(`/nichos/${nicheId}`);
+  };
+
+  const openSellDialog = (nicho: NichoWithHuecos) => {
+    setSelectedForSale(nicho);
+    setSellDialogOpen(true);
   };
 
   if (loading) return <div>Cargando nichos...</div>;
@@ -65,8 +71,8 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery }) => {
 
       {/* Leyenda de colores */}
       <div className="flex justify-center flex-wrap gap-4 mb-6">
-        {Object.entries(holeCountConfig).map(([count, { color, label }]) => (
-          <div key={count} className="flex items-center gap-2">
+        {Object.entries(estadosNicho).map(([estado, { color, label }]) => (
+          <div key={estado} className="flex items-center gap-2">
             <div className={`w-4 h-4 rounded ${color}`}></div>
             <span className="text-sm">{label}</span>
           </div>
@@ -80,7 +86,7 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery }) => {
       >
         <TooltipProvider>
           {niches.map((niche) => {
-            const colorStatus = getNicheColorByHuecos(niche);
+            const colorStatus = getNicheColorByEstado(niche);
             return (
               <Tooltip key={niche.idNicho}>
                 <TooltipTrigger asChild>
@@ -114,6 +120,29 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery }) => {
                     </p>
                   </div>
                   <HuecoTooltip nicho={niche} />
+                  {(niche.estadoVenta === 'Disponible' || !niche.estadoVenta) && (
+                    <div className="mt-3 flex justify-center">
+                      <Button size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openSellDialog(niche); }}>
+                        Vender
+                      </Button>
+                    </div>
+                  )}
+                  {niche.estadoVenta === 'Reservado' && (
+                    <div className="mt-3 flex justify-center">
+                      {/* Botón Ver Reserva en el mismo lugar que Vender */}
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setReservationNichoId(niche.idNicho!);
+                          setViewReservationOpen(true);
+                        }}
+                      >
+                        Ver Reserva
+                      </Button>
+                    </div>
+                  )}
                 </TooltipContent>
               </Tooltip>
             );
@@ -130,6 +159,48 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery }) => {
           )}
         </p>
       </div>
+
+      {/* Modal de venta de nicho */}
+      <Dialog open={sellDialogOpen} onOpenChange={(open) => { setSellDialogOpen(open); if (!open) setSelectedForSale(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedForSale ? `Vender Nicho ${selectedForSale.numero}` : 'Vender Nicho'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedForSale && (
+            <CreatePaymentForm
+              procedureType="niche_sale"
+              procedureId={selectedForSale.idNicho!}
+              onSuccess={() => {
+                setSellDialogOpen(false);
+                setSelectedForSale(null);
+                refetch();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Ver Reserva, fuera del Tooltip para evitar cierre al mover el mouse */}
+      {reservationNichoId && (
+        <ReservationActions
+          nichoId={reservationNichoId}
+          open={viewReservationOpen}
+          onOpenChange={(open) => {
+            setViewReservationOpen(open);
+            if (!open) setReservationNichoId(null);
+          }}
+          hideTrigger
+            onReceiptUploaded={(buyerPersonId, paymentId) => {
+            // Al subir comprobante, cerrar diálogo y navegar al detalle del nicho con panel abierto
+            setViewReservationOpen(false);
+            setReservationNichoId(null);
+              router.push(`/nichos/${reservationNichoId}?openPropietarios=true&personId=${buyerPersonId || ''}&paymentId=${paymentId || ''}`);
+          }}
+        />
+      )}
     </div>
   );
 };

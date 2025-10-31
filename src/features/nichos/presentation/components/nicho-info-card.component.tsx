@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { NichoEntity } from "../../domain/entities/nicho.entity";
+import { Badge } from "@/shared/components/ui/badge";
 
 interface NichoInfoCardProps {
   nicho: NichoEntity;
@@ -21,6 +22,14 @@ export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
               <p><span className="font-medium">Sector:</span> {nicho.sector}</p>
               <p><span className="font-medium">Fila:</span> {nicho.fila}</p>
               <p><span className="font-medium">Número:</span> {nicho.numero}</p>
+              {nicho.estadoVenta && (
+                <p className="flex items-center gap-2">
+                  <span className="font-medium">Estado de venta:</span>
+                  <Badge variant={nicho.estadoVenta === 'Vendido' ? 'destructive' : nicho.estadoVenta === 'Reservado' ? 'secondary' : 'default'}>
+                    {nicho.estadoVenta}
+                  </Badge>
+                </p>
+              )}
             </div>
           </div>
           <div>

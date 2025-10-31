@@ -12,6 +12,7 @@ export interface NichoModel {
   numero: string;
   tipo: string;
   estado: string;
+  estadoVenta: 'Disponible' | 'Reservado' | 'Vendido';
   num_huecos: number;
   fecha_construccion: string;
   observaciones?: string;
