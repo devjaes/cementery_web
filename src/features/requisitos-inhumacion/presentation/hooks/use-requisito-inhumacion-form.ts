@@ -81,9 +81,27 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
         }
     };
 
-    const uploadSolicitudFirmadaIfNeeded = async (selectedDocument: File | undefined, idFallecido?: string): Promise<boolean> => {
+    const uploadSolicitudFirmadaIfNeeded = async (selectedDocument: File | undefined, requisitoIdOrIdFallecido?: string, maybeIdFallecido?: string): Promise<boolean> => {
         try {
             if (!selectedDocument) return false;
+            const repo = RequisitoInhumacionRepositoryImpl.getInstance();
+
+            // If caller passed a requisitoId (result from create/update), upload directly to requisitos-inhumacion endpoint
+            if (requisitoIdOrIdFallecido) {
+                try {
+                    console.log("[upload] Intentando subir documento consolidado al requisitoId=", requisitoIdOrIdFallecido);
+                    const resp = await repo.uploadConsolidatedDocumentForRequisito(requisitoIdOrIdFallecido, selectedDocument);
+                    console.log("[upload] Respuesta subida documento consolidado:", resp?.status, resp?.data);
+                    toast.success("Documento subido correctamente");
+                    return true;
+                } catch (err) {
+                    console.warn("[upload] Fallback: no se pudo subir al endpoint de requisito:", err);
+                    // continue to fallback below
+                }
+            }
+
+            // Fallback: try resolving inhumacion id by fallecido
+            const idFallecido = maybeIdFallecido || requisitoIdOrIdFallecido;
             const inhumacionId = await resolveInhumacionIdByFallecido(idFallecido);
             console.log("[upload] idFallecido=", idFallecido, " -> inhumacionId=", inhumacionId);
             if (!inhumacionId) {
@@ -91,7 +109,6 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
                 toast.warning("No se pudo resolver la inhumación para subir el documento");
                 return false;
             }
-            const repo = RequisitoInhumacionRepositoryImpl.getInstance();
             const resp = await repo.uploadDocuments(inhumacionId, { solicitud_firmada: selectedDocument });
             console.log("[upload] Respuesta subida documentos:", resp?.status, resp?.data);
             toast.success("Documento subido correctamente");
@@ -106,11 +123,26 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
     const onSubmit = (data: CreateRequisitoInhumacionDTO, selectedDocument?: File) => {        
         console.log("Submitting requisito inhumacion data:", data);
 
-        if (requisitoInhumacion && requisitoInhumacion.idRequsitoInhumacion) {
-            update(
-                {
-                    idRequisitoInhumacion: requisitoInhumacion.idRequsitoInhumacion,
-                    ...data,
+        // Decide whether we are updating or creating. Accept both possible id property names.
+        const requisitoAny = requisitoInhumacion as any;
+        const hasExistingId = !!(requisitoAny && (requisitoAny.idRequsitoInhumacion || requisitoAny.idRequisitoInhumacion));
+
+        if (hasExistingId) {
+            // prefer the existing id value (support both spellings)
+            const existingId = requisitoAny?.idRequsitoInhumacion ?? requisitoAny?.idRequisitoInhumacion;
+            update({
+                idRequisitoInhumacion: existingId as string,
+                ...data,
+            }, {
+                onSuccess: async (result) => {
+                    console.log("Actualización exitosa - result:", result);
+                    // normalize id returned by backend: try multiple fields
+                    const resultAny = result as any;
+                    const requisitoId = resultAny?.idRequsitoInhumacion ?? resultAny?.idRequisitoInhumacion ?? resultAny?.id;
+                    console.log("[upload] resolved requisitoId:", requisitoId);
+                    await uploadSolicitudFirmadaIfNeeded(selectedDocument, requisitoId, data.idFallecido);
+                    const cedula = await getCedulaByFallecidoId(data.idFallecido);
+                    router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
                 },
                 {
                     onSuccess: async (result) => {
@@ -134,20 +166,16 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
             );
         } else {
             create(data, {
-                    onSuccess: async (result) => {
-                        console.log("Creación exitosa");
-                        await uploadSolicitudFirmadaIfNeeded(selectedDocument, data.idFallecido);
-                        const cedula = await getCedulaByFallecidoId(data.idFallecido);
-                        const downloadParam = result?.idRequsitoInhumacion
-                            ? `&autoDownloadId=${encodeURIComponent(result.idRequsitoInhumacion)}`
-                            : "";
-                        const qPart = cedula ? `?q=${encodeURIComponent(cedula)}` : (downloadParam ? "?" : "");
-                        router.push(
-                            `${
-                                qPart === "?" ? `/requisitos-inhumacion${qPart}${downloadParam.slice(1)}` : `/requisitos-inhumacion${qPart}${downloadParam}`
-                            }`
-                        );
-                    },
+                onSuccess: async (result) => {
+                    console.log("Creación exitosa - result:", result);
+                    // normalize id returned by backend: try multiple fields
+                    const resultAny = result as any;
+                    const requisitoId = resultAny?.idRequsitoInhumacion ?? resultAny?.idRequisitoInhumacion ?? resultAny?.id;
+                    console.log("[upload] resolved requisitoId:", requisitoId);
+                    await uploadSolicitudFirmadaIfNeeded(selectedDocument, requisitoId, data.idFallecido);
+                    const cedula = await getCedulaByFallecidoId(data.idFallecido);
+                    router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
+                },
                 onError: (error) => {
                     console.error("Error en creación:", error);
                 },

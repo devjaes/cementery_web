@@ -81,12 +81,28 @@ export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRep
             }
         });
 
-        return await this.httpClient.post(
+        // Use postForm so Axios handles the multipart/form-data headers and boundary correctly
+        return await this.httpClient.postForm(
             API_ROUTES.REQUISITOS_INHUMACION.UPLOAD_DOCUMENTS(id),
-            form,
-            {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            }
+            form
         );
+    }
+
+    /**
+     * Subir documento consolidado para un requisito de inhumación
+     * Endpoint backend: POST /requisitos-inhumacion/:id/documentos (campo: documento_consolidado)
+     */
+    async uploadConsolidatedDocumentForRequisito(id: string, file?: File): Promise<AxiosResponse<ResponseAPI<unknown>>> {
+        const form = new FormData();
+        if (file) {
+            form.append('documento_consolidado', file);
+        }
+
+        // Post to requisitos-inhumacion/:id/documentos
+        const url = `requisitos-inhumacion/${id}/documentos`;
+        // debug: show the final URL used by AxiosClient (useful in devtools)
+        console.log("[repo] uploadConsolidatedDocumentForRequisito -> POST", this.httpClient.getUri ? this.httpClient.getUri({ url }) : url);
+        // use postForm so Axios sets the correct multipart/form-data headers
+        return await this.httpClient.postForm(url, form);
     }
 }
