@@ -3,7 +3,11 @@ import { RequisitoInhumacionEntity } from "../../domain/entities/requisito-inhum
 import { useForm } from "react-hook-form";
 import { CreateRequisitoInhumacionDTO, CreateRequisitoInhumacionSchema } from "../../domain/schemas/requisito-inhumacion.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCreateRequisitoInhumacionMutation, useUpdateRequisitoInhumacionMutation } from "./use-requisito-inhumacion-mutation";
+import {
+    useCreateRequisitoInhumacionMutation,
+    useUpdateRequisitoInhumacionMutation,
+    useDownloadRequisitoInhumacionPdfMutation,
+} from "./use-requisito-inhumacion-mutation";
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { API_ROUTES } from "@/core/constants/api-routes";
 import { RequisitoInhumacionRepositoryImpl } from "../../infraestructure/repositories/requisito-inhumacion.repository.impl";
@@ -44,6 +48,7 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
 
     const { mutate: create, isPending: isCreating } = useCreateRequisitoInhumacionMutation();
     const { mutate: update, isPending: isUpdating } = useUpdateRequisitoInhumacionMutation();
+    const { mutateAsync: downloadPdfAsync } = useDownloadRequisitoInhumacionPdfMutation();
 
     const http = AxiosClient.getInstance();
 
@@ -141,6 +146,21 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
                     const requisitoId = resultAny?.idRequsitoInhumacion ?? resultAny?.idRequisitoInhumacion ?? resultAny?.id;
                     console.log("[upload] resolved requisitoId:", requisitoId);
                     await uploadSolicitudFirmadaIfNeeded(selectedDocument, requisitoId, data.idFallecido);
+                    // intentar descargar automáticamente el PDF generado antes de redirigir
+                    try {
+                        if (requisitoId) await downloadPdfAsync(requisitoId);
+                    } catch (err) {
+                        console.warn("No se pudo descargar automáticamente el PDF:", err);
+                        // Fallback: abrir la URL directa del endpoint en una nueva pestaña para que el usuario pueda descargar/manualmente
+                        try {
+                            const base = (process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+                            const url = `${base}/${API_ROUTES.REQUISITOS_INHUMACION.DOWNLOAD_PDF(requisitoId)}`;
+                            // abrir en nueva pestaña
+                            window.open(url, '_blank');
+                        } catch (e) {
+                            console.warn('Fallback de descarga falló:', e);
+                        }
+                    }
                     const cedula = await getCedulaByFallecidoId(data.idFallecido);
                     router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
                 },
@@ -173,6 +193,12 @@ export function useRequisitoInhumacionForm(requisitoInhumacion?: RequisitoInhuma
                     const requisitoId = resultAny?.idRequsitoInhumacion ?? resultAny?.idRequisitoInhumacion ?? resultAny?.id;
                     console.log("[upload] resolved requisitoId:", requisitoId);
                     await uploadSolicitudFirmadaIfNeeded(selectedDocument, requisitoId, data.idFallecido);
+                    // intentar descargar automáticamente el PDF generado antes de redirigir
+                    try {
+                        if (requisitoId) await downloadPdfAsync(requisitoId);
+                    } catch (err) {
+                        console.warn("No se pudo descargar automáticamente el PDF:", err);
+                    }
                     const cedula = await getCedulaByFallecidoId(data.idFallecido);
                     router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
                 },
