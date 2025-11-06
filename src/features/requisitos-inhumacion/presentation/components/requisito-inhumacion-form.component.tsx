@@ -12,6 +12,7 @@ import RHFTextarea from "@/shared/components/form/rhf/rhf-text-area";
 import RHFCheckbox from "@/shared/components/form/rhf/rhf-chechbox";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
 import RHFAutocompleteHuecoNicho from "@/shared/components/form/rhf/rhf-autocomplete-hueco-nicho";
+import { DocumentUploadCard } from "./document-upload-card.component";
 
 interface RequisitoInhumacionFormProps {
   requistoInhumacion?: RequisitoInhumacionEntity;
@@ -97,6 +98,7 @@ export function RequisitoInhumacionForm({
   const { methods, onSubmit, isPending } =
     useRequisitoInhumacionForm(requistoInhumacion);
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
   const [expandedObservations, setExpandedObservations] = useState<{
     [key: string]: boolean;
   }>({});
@@ -176,7 +178,7 @@ export function RequisitoInhumacionForm({
     
     // Si todas las validaciones pasan, obtener los datos y enviar
     const formData = methods.getValues();
-    onSubmit(formData);
+    onSubmit(formData, selectedDocument || undefined);
   };
 
   const currentStepData = steps.find((step) => step.id === currentStep);
@@ -634,8 +636,16 @@ export function RequisitoInhumacionForm({
                   </div>
                 </div>
 
+                {/* Carga de documento (compacto) */}
+                <div className="mt-2">
+                  <DocumentUploadCard 
+                    onFileSelect={setSelectedDocument}
+                    selectedFile={selectedDocument}
+                  />
+                </div>
+
                 {/* Resumen y botón de guardado en el paso de documentos */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                   <h4 className="font-semibold text-blue-800 mb-2">
                     Resumen de la Solicitud
                   </h4>
