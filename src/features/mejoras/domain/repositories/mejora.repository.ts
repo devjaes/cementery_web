@@ -8,7 +8,8 @@ export interface MejoraRepository {
   update(id: string, data: Partial<CreateMejoraEntity>): Promise<MejoraEntity>;
   delete(id: string): Promise<void>;
   uploadFiles(id: string, files: File[]): Promise<void>;
-  downloadPdf(id: string): Promise<Blob>;
+  downloadPdf(id: string): Promise<{ blob: Blob; filename?: string; contentType?: string }>;
+  approve(id: string, payload: { aprobadoPorId: string }): Promise<MejoraEntity>;
   search(query: string): Promise<SearchFallecidosRequisitoInhumacionEntity>;
 }
 

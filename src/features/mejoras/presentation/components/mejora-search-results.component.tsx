@@ -11,7 +11,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
-import { CheckCircle, Loader2, MapPin, User, Users } from "lucide-react";
+import { Badge } from "@/shared/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/shared/components/ui/alert-dialog";
+import { Check, CheckCircle, Download, Eye, Loader2, MapPin, Pencil, User, Users } from "lucide-react";
+import { useState } from "react";
+import { useApproveMejoraMutation, useDownloadMejoraPdfMutation } from "../hooks/use-mejora-mutation";
+
+const DEFAULT_APPROVER_ID = "11657f06-85d6-42bb-84f6-7e3ffe06965d";
 
 interface MejoraSearchResultsProps {
   results: SearchFallecidosRequisitoInhumacionEntity;
@@ -35,12 +51,38 @@ const fullName = (person?: { nombres?: string; apellidos?: string }) => {
 const RelatedMejorasPanel = ({
   mejoras,
   isLoading,
-  searchTerm,
+  searchTerm: _searchTerm,
 }: {
   mejoras: MejoraEntity[];
   isLoading?: boolean;
   searchTerm: string;
 }) => {
+  const approveMutation = useApproveMejoraMutation();
+  const downloadMutation = useDownloadMejoraPdfMutation();
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleApprove = (mejora: MejoraEntity) => {
+    setApprovingId(mejora.idMejora);
+    approveMutation.mutate(
+      { id: mejora.idMejora, aprobadoPorId: DEFAULT_APPROVER_ID },
+      {
+        onSettled: () => setApprovingId(null),
+      },
+    );
+  };
+
+  const handleDownload = (mejora: MejoraEntity) => {
+    if (downloadMutation.isPending) return;
+    setDownloadingId(mejora.idMejora);
+    downloadMutation.mutate(
+      { id: mejora.idMejora },
+      {
+        onSettled: () => setDownloadingId(null),
+      },
+    );
+  };
+
   if (!isLoading && mejoras.length === 0) {
     return null;
   }
@@ -64,30 +106,108 @@ const RelatedMejorasPanel = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Código / ID</TableHead>
                   <TableHead>Solicitante</TableHead>
                   <TableHead>Fallecido</TableHead>
                   <TableHead>Cementerio</TableHead>
                   <TableHead>Tipo servicio</TableHead>
                   <TableHead>Fecha inicio</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableHead className="w-[180px]">Estado</TableHead>
+                  <TableHead className="w-[140px] text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {mejoras.map((mejora) => (
-                  <TableRow key={mejora.idMejora}>
-                    <TableCell className="font-medium">{mejora.codigoAutorizacion ?? mejora.idMejora}</TableCell>
+                    <TableRow key={mejora.idMejora}>
                     <TableCell>{fullName(mejora.solicitante)}</TableCell>
                     <TableCell>{fullName(mejora.fallecido)}</TableCell>
                     <TableCell>{mejora.idCementerio?.nombre ?? "Sin cementerio"}</TableCell>
                     <TableCell>{mejora.tipoServicio}</TableCell>
                     <TableCell>{formatDate(mejora.fechaInicio ?? mejora.fechaSolicitud)}</TableCell>
-                    <TableCell>{mejora.estado ?? "Sin estado"}</TableCell>
-                    <TableCell>
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/mejoras/${mejora.idMejora}`}>Ver detalle</Link>
-                      </Button>
+                    <TableCell className="align-top">
+                      <div className="inline-flex min-w-[170px] flex-col gap-2 rounded-md border bg-muted/40 p-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div>
+                            <p className="text-[11px] font-medium uppercase text-muted-foreground tracking-wide">
+                              Estado actual
+                            </p>
+                            <Badge className="mt-1" variant={mejora.estado === "Aprobado" ? "default" : "secondary"}>
+                              {mejora.estado ?? "Sin estado"}
+                            </Badge>
+                          </div>
+                          {mejora.estado === "Solicitado" ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="xs"
+                                  className="gap-1.5"
+                                  disabled={approveMutation.isPending}
+                                >
+                                  {approveMutation.isPending && approvingId === mejora.idMejora ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                  {approveMutation.isPending && approvingId === mejora.idMejora
+                                    ? "Registrando…"
+                                    : "Aprobar"}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel size="sm" disabled={approveMutation.isPending}>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    size="sm"
+                                    disabled={approveMutation.isPending}
+                                    onClick={() => handleApprove(mejora)}
+                                    className="gap-1.5"
+                                  >
+                                    {approveMutation.isPending && approvingId === mejora.idMejora ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Check className="h-4 w-4" />
+                                    )}
+                                    Confirmar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : null}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {mejora.estado === "Solicitado" ? (
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        {mejora.estado === "Aprobado" ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            disabled={downloadMutation.isPending && downloadingId === mejora.idMejora}
+                            onClick={() => handleDownload(mejora)}
+                          >
+                            {downloadMutation.isPending && downloadingId === mejora.idMejora ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </Button>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

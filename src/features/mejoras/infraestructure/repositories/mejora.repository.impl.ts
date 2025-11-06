@@ -1,6 +1,7 @@
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { API_ROUTES } from "@/core/constants/api-routes";
 import { ResponseAPI } from "@/core/interfaces/api.interface";
+import type { AxiosResponse } from "axios";
 import { CreateMejoraEntity, MejoraEntity } from "../../domain/entities/mejora.entity";
 import { MejoraRepository } from "../../domain/repositories/mejora.repository";
 import { MejoraMapper } from "../mappers/mejora.mapper";
@@ -83,6 +84,12 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     return MejoraMapper.toEntity(updated);
   }
 
+  async approve(id: string, payload: { aprobadoPorId: string }): Promise<MejoraEntity> {
+    const { data } = await this.httpClient.patch<MejoraModel>(API_ROUTES.MEJORAS.APPROVE(id), payload);
+    const updated = this.unwrapResponse<MejoraModel>(data);
+    return MejoraMapper.toEntity(updated);
+  }
+
   async delete(id: string): Promise<void> {
     await this.httpClient.delete(API_ROUTES.MEJORAS.DELETE(id));
   }
@@ -95,12 +102,53 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     });
   }
 
-  async downloadPdf(id: string): Promise<Blob> {
-    const res = await this.httpClient.get<Blob>(API_ROUTES.MEJORAS.DOWNLOAD_PDF(id), {
-      responseType: "blob",
-    });
-  const payload = this.unwrapResponse<Blob>(res.data as ResponseAPI<Blob> | Blob);
-    return payload;
+  async downloadPdf(id: string): Promise<{ blob: Blob; filename?: string; contentType?: string }> {
+    const response = await this.httpClient.get<Blob, AxiosResponse<Blob>>(
+      API_ROUTES.MEJORAS.DOWNLOAD_PDF(id),
+      {
+        responseType: "blob",
+        headers: {
+          Accept: "application/pdf",
+        },
+      },
+    );
+
+    let blobData = response.data;
+
+    let disposition: string | undefined;
+    if (typeof response.headers?.get === "function") {
+      disposition = response.headers.get("content-disposition") ?? response.headers.get("Content-Disposition") ?? undefined;
+    } else if (response.headers) {
+      disposition = (response.headers as unknown as Record<string, string | undefined>)["content-disposition"]
+        ?? (response.headers as unknown as Record<string, string | undefined>)["Content-Disposition"];
+    }
+    let contentType: string | undefined;
+    if (typeof response.headers?.get === "function") {
+      contentType = response.headers.get("content-type") ?? response.headers.get("Content-Type") ?? undefined;
+    } else if (response.headers) {
+      contentType = (response.headers as unknown as Record<string, string | undefined>)["content-type"]
+        ?? (response.headers as unknown as Record<string, string | undefined>)["Content-Type"];
+    }
+
+    let filename: string | undefined;
+
+    if (disposition) {
+      const match = /filename\*=UTF-8''([^;\n]+)|filename="?([^";]+)"?/i.exec(disposition);
+      const raw = match?.[1] ?? match?.[2];
+      if (raw) {
+        try {
+          filename = decodeURIComponent(raw);
+        } catch (_error) {
+          filename = raw;
+        }
+      }
+    }
+
+    if (contentType && (!blobData.type || blobData.type === "application/octet-stream")) {
+      blobData = blobData.slice(0, blobData.size, contentType);
+    }
+
+    return { blob: blobData, filename, contentType };
   }
 
   async search(query: string): Promise<SearchFallecidosRequisitoInhumacionEntity> {

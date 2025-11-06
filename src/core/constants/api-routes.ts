@@ -109,8 +109,9 @@ export const API_ROUTES = {
     UPDATE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     UPLOAD_FILE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/files`,
-    DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/pdf`,
+  DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
     SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
+    APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
   },
   PAYMENTS: {
     LIST: AR_KEYS.PAYMENTS,
