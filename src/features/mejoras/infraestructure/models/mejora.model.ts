@@ -1,5 +1,4 @@
 import { CementeryModel } from "@/features/cementery/infrastructure/models/cementery.model";
-import { NichoModel } from "@/features/nichos/infrastructure/models/nicho.model";
 import { PersonModel } from "@/features/person/infraestrcture/models/person.model";
 
 export interface MejoraModel {
@@ -7,14 +6,23 @@ export interface MejoraModel {
   fechaSolicitud: string;
   codigoAutorizacion?: string;
 
-  id_cementerio: CementeryModel;
-  pantoneroACargo: string;
+  id_cementerio?: CementeryModel;
+  panteoneroACargo: string;
+  pantoneroACargo?: string; // compatibilidad con respuestas anteriores
   metodoSolicitud: string;
+
+  nicho?: {
+    id_nicho: string;
+    id_cementerio: CementeryModel;
+  };
 
   solicitante: PersonModel;
   direccionSolicitante?: string;
   celularSolicitante?: string;
+  solicitanteTelefono?: string;
   correoSolicitante?: string;
+  observacionSolicitante?: string;
+  entidad?: string;
 
   fallecido?: PersonModel;
   fechaFallecimiento?: string;
@@ -28,26 +36,34 @@ export interface MejoraModel {
   observacionNicho?: string;
 
   tipoServicio: "ARREGLOS" | "CONSTRUCCION" | "LAPIDA";
-  observacionAccion?: string;
+  observacionServicio?: string;
+  observacionAccion?: string; // compatibilidad con respuestas anteriores
   fechaInicio?: string;
   fechaFin?: string;
-  horario?: string;
+  horarioTrabajo?: string;
+  horario?: string; // compatibilidad con respuestas anteriores
+  estado?: string;
 }
 
 export interface CreateMejoraModel {
   id_cementerio: string;
-  pantoneroACargo: string;
+  id_nicho?: string;
+  panteoneroACargo: string;
   metodoSolicitud: string;
 
-  solicitanteId: string;
-  direccionSolicitante?: string;
-  celularSolicitante?: string;
-  correoSolicitante?: string;
+  id_solicitante: string;
+  solicitanteDireccion?: string;
+  solicitanteTelefono?: string;
+  solicitanteCorreo?: string;
+  observacionSolicitante?: string;
 
-  fallecidoId?: string;
+  id_fallecido?: string;
   fechaFallecimiento?: string;
 
   propietarioNicho?: string;
+  propietarioNombre?: string;
+  propietarioFechaAdquisicion?: string;
+  propietarioTipoTenencia?: string;
   numeroNichos?: number;
   lugarNicho?: string;
   codigoSitio?: string;
@@ -56,10 +72,18 @@ export interface CreateMejoraModel {
   observacionNicho?: string;
 
   tipoServicio: "ARREGLOS" | "CONSTRUCCION" | "LAPIDA";
-  observacionAccion?: string;
+  observacionServicio?: string;
   fechaInicio?: string;
   fechaFin?: string;
-  horario?: string;
+  horarioTrabajo?: string;
+  entidad: string;
+  codigoAutorizacion?: string;
+  condicion?: string;
+  autorizacionTexto?: string;
+  normativaAplicable?: string;
+  obligacionesPostObra?: string;
+  escombreraMunicipal?: string;
+  direccionEntidad?: string;
 }
 
 

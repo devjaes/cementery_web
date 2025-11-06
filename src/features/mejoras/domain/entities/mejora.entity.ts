@@ -1,5 +1,4 @@
 import { CementeryEntity } from "@/features/cementery/domain/entities/cementery.entity";
-import { NichoEntity } from "@/features/nichos/domain/entities/nicho.entity";
 import { PersonEntity } from "@/features/person/domain/entities/person.entity";
 
 export interface MejoraEntity {
@@ -8,13 +7,16 @@ export interface MejoraEntity {
   codigoAutorizacion?: string;
 
   idCementerio: CementeryEntity;
-  pantoneroACargo: string;
-  metodoSolicitud: string; // Escrita | Verbal
+  panteoneroACargo: string;
+  metodoSolicitud: string; // escrito | verbal
+  estado?: string;
 
   solicitante: PersonEntity;
   direccionSolicitante?: string;
-  celularSolicitante?: string;
+  solicitanteTelefono?: string;
   correoSolicitante?: string;
+  observacionSolicitante?: string;
+  entidad?: string;
 
   fallecido?: PersonEntity;
   fechaFallecimiento?: string;
@@ -30,10 +32,10 @@ export interface MejoraEntity {
 
   // Acción
   tipoServicio: "ARREGLOS" | "CONSTRUCCION" | "LAPIDA";
-  observacionAccion?: string;
+  observacionServicio?: string;
   fechaInicio?: string;
   fechaFin?: string;
-  horario?: string;
+  horarioTrabajo?: string;
 
   // Archivos (nombres/ids retornados por API)
   archivos?: Array<{ id: string; nombre: string; tipo: string }>;
@@ -41,15 +43,17 @@ export interface MejoraEntity {
 
 export interface CreateMejoraEntity {
   idCementerio: string;
-  pantoneroACargo: string;
-  metodoSolicitud: string;
+  id_nicho?: string;
+  panteoneroACargo: string;
+  metodoSolicitud: "escrito" | "verbal";
 
-  solicitanteId: string;
-  direccionSolicitante?: string;
-  celularSolicitante?: string;
-  correoSolicitante?: string;
+  id_solicitante: string;
+  solicitanteDireccion?: string;
+  solicitanteTelefono?: string;
+  solicitanteCorreo?: string;
+  observacionSolicitante?: string;
 
-  fallecidoId?: string;
+  id_fallecido?: string;
   fechaFallecimiento?: string;
 
   propietarioNicho?: string;
@@ -61,10 +65,22 @@ export interface CreateMejoraEntity {
   observacionNicho?: string;
 
   tipoServicio: "ARREGLOS" | "CONSTRUCCION" | "LAPIDA";
-  observacionAccion?: string;
+  observacionServicio?: string;
   fechaInicio?: string;
   fechaFin?: string;
-  horario?: string;
+  horarioTrabajo?: string;
+
+  entidad: string;
+  codigoAutorizacion?: string;
+  condicion?: string;
+  autorizacionTexto?: string;
+  normativaAplicable?: string;
+  obligacionesPostObra?: string;
+  escombreraMunicipal?: string;
+  propietarioFechaAdquisicion?: string;
+  propietarioTipoTenencia?: string;
+  direccionEntidad?: string;
+  propietarioNombre?: string;
 }
 
 

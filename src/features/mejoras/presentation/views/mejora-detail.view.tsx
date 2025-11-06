@@ -22,7 +22,7 @@ export default function MejoraDetailView({ id }: { id: string }) {
       </div>
       <div className="bg-white border rounded-lg p-6 space-y-2">
         <p><strong>Cementerio:</strong> {data.idCementerio?.nombre}</p>
-        <p><strong>Panteonero:</strong> {data.pantoneroACargo}</p>
+  <p><strong>Panteonero:</strong> {data.panteoneroACargo}</p>
         <p><strong>Tipo de servicio:</strong> {data.tipoServicio}</p>
         <p><strong>Solicitante:</strong> {data.solicitante?.nombres} {data.solicitante?.apellidos}</p>
         <p><strong>Fecha solicitud:</strong> {new Date(data.fechaSolicitud).toLocaleDateString()}</p>

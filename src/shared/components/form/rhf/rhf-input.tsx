@@ -11,9 +11,11 @@ type RHFInputProps = {
   disabled?: boolean;
   min?: number;
   max?: number;
+  maxLength?: number;
+  readOnly?: boolean;
 };
 
-function RHFInput({ name, label, type = "text", placeholder, disabled, min, max }: RHFInputProps) {
+function RHFInput({ name, label, type = "text", placeholder, disabled, min, max, maxLength, readOnly }: RHFInputProps) {
   const { control, formState } = useFormContext();
 
   const getErrorMessage = (name: string) => {
@@ -29,7 +31,17 @@ function RHFInput({ name, label, type = "text", placeholder, disabled, min, max 
         name={name}
         control={control}
         render={({ field }) => (
-          <Input type={type} placeholder={placeholder} disabled={disabled} {...field} value={field.value ?? ''} min={min} max={max} />
+          <Input
+            type={type}
+            placeholder={placeholder}
+            disabled={disabled}
+            readOnly={readOnly}
+            min={min}
+            max={max}
+            maxLength={maxLength}
+            {...field}
+            value={field.value ?? ""}
+          />
         )}
       />
       <p className="text-sm text-destructive mt-1">{getErrorMessage(name)}</p>

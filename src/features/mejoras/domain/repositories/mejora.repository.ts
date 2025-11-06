@@ -1,4 +1,5 @@
 import { CreateMejoraEntity, MejoraEntity } from "../entities/mejora.entity";
+import { SearchFallecidosRequisitoInhumacionEntity } from "@/features/requisitos-inhumacion/domain/entities/requisito-inhumacion.entity";
 
 export interface MejoraRepository {
   findAll(): Promise<MejoraEntity[]>;
@@ -8,7 +9,7 @@ export interface MejoraRepository {
   delete(id: string): Promise<void>;
   uploadFiles(id: string, files: File[]): Promise<void>;
   downloadPdf(id: string): Promise<Blob>;
-  search(query: string): Promise<MejoraEntity[]>;
+  search(query: string): Promise<SearchFallecidosRequisitoInhumacionEntity>;
 }
 
 
