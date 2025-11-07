@@ -71,7 +71,7 @@ export function usePropietarioForm(
           }
         } else {
           // Si no hay paymentId, solo llamar onSuccess
-          toast.message?.("Propietario guardado.", { description: "No se encontró el pago para confirmar la venta automáticamente." });
+          toast.info("Propietario guardado.", { description: "No se encontró el pago para confirmar la venta automáticamente." });
           onSuccess?.();
         }
       },
