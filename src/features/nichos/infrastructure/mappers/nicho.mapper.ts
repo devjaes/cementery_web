@@ -14,7 +14,6 @@ import { PropietarioNichoMapper } from "@/features/propietarios-nichos/infrastru
 
 export class NichoMapper {
   static toEntity(model: NichoModel): NichoEntity {
-    console.log('Modelo de nicho:', model); // Temporal para debug
     return {
       idNicho: model.id_nicho ? model.id_nicho : undefined,
       idCementerio: model.id_cementerio
