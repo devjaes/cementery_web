@@ -75,7 +75,7 @@ export const UploadReceiptDialog = ({
           <DialogDescription>
             Sube el comprobante de pago escaneado. Al subirlo, el pago será confirmado automáticamente.
           </DialogDescription>
-        </DialogHeader>
+        </DialogHeader> 
 
         <div className="space-y-4">
           <div className="space-y-2">
