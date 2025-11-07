@@ -12,11 +12,12 @@ import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-c
 import { CreateMejoraDTO, CreateMejoraSchema } from "../../domain/schemas/mejora.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useCreateMejoraMutation, useUploadMejoraFilesMutation } from "../hooks/use-mejora-mutation";
+import { useUploadMejoraFilesMutation, useUpdateMejoraMutation } from "../hooks/use-mejora-mutation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Button } from "@/shared/components/ui/button";
 
-type MejoraFormProps = {
+type MejoraFormEditProps = {
+  mejoraId: string;
   defaultValues?: Partial<CreateMejoraDTO>;
   isPrefillLoading?: boolean;
   searchTerm?: string;
@@ -39,27 +40,28 @@ const baseDefaultValues: Partial<CreateMejoraDTO> = {
   observacionSolicitante: "Sin observaciones",
 };
 
-export default function MejoraForm({ 
+export default function MejoraFormEdit({ 
+  mejoraId,
   defaultValues, 
   isPrefillLoading = false,
-  searchTerm = "" 
-}: MejoraFormProps) {
+  searchTerm = ""
+}: MejoraFormEditProps) {
   const router = useRouter();
   
   // Combinar valores base con los valores por defecto proporcionados
   const initialValues = useMemo(() => {
     const combined = { ...baseDefaultValues, ...defaultValues };
-    console.log("📝 Valores iniciales del formulario de CREACIÓN:", combined);
+    console.log("📝 Valores iniciales del formulario de EDICIÓN:", combined);
     return combined;
   }, [defaultValues]);
   
   const methods = useForm<CreateMejoraDTO>({
-    // @ts-expect-error - Incompatibilidad de versiones de react-hook-form en node_modules
+    // @ts-expect-error - Type compatibility issue with react-hook-form types from duplicate node_modules
     resolver: zodResolver(CreateMejoraSchema),
     defaultValues: initialValues,
   });
   
-  const { mutate: create, isPending } = useCreateMejoraMutation();
+  const { mutate: update, isPending: isUpdating } = useUpdateMejoraMutation();
   const { mutate: uploadFiles } = useUploadMejoraFilesMutation();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeTab, setActiveTab] = useState("general");
@@ -69,7 +71,6 @@ export default function MejoraForm({
       { value: "general", label: "General", description: "Datos institucionales y de solicitud" },
       { value: "solicitante", label: "Solicitante", description: "Información de contacto del solicitante" },
       { value: "fallecido", label: "Fallecido", description: "Referencias de la persona fallecida" },
-      { value: "nicho", label: "Nicho", description: "Detalle del nicho o sitio autorizado" },
       { value: "accion", label: "Acción", description: "Programación de la intervención" },
       { value: "documentos", label: "Documentos", description: "Archivos requeridos para la solicitud" },
     ],
@@ -98,7 +99,7 @@ export default function MejoraForm({
     setActiveTab("general");
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       const combined = { ...baseDefaultValues, ...defaultValues };
-      console.log("🔄 Reseteando formulario de CREACIÓN con valores:", combined);
+      console.log("🔄 Reseteando formulario de EDICIÓN con valores:", combined);
       methods.reset(combined);
       setSelectedFiles([]);
     }
@@ -107,27 +108,30 @@ export default function MejoraForm({
   const handleSubmit = (data: CreateMejoraDTO) => {
     const redirectUrl = searchTerm ? `/mejoras?q=${encodeURIComponent(searchTerm)}` : "/mejoras";
     
-    create(data, {
-      onSuccess: (created) => {
-        if (selectedFiles.length > 0) {
-          uploadFiles(
-            { id: created.idMejora, files: selectedFiles },
-            {
-              onSettled: () => {
-                router.push(redirectUrl);
+    update(
+      { id: mejoraId, data },
+      {
+        onSuccess: (updated) => {
+          if (selectedFiles.length > 0) {
+            uploadFiles(
+              { id: updated.idMejora, files: selectedFiles },
+              {
+                onSettled: () => {
+                  router.push(redirectUrl);
+                },
               },
-            },
-          );
-        } else {
-          router.push(redirectUrl);
-        }
-      },
-    });
+            );
+          } else {
+            router.push(redirectUrl);
+          }
+        },
+      }
+    );
   };
 
   return (
     <FormProvider {...methods}>
-      {/* @ts-expect-error - Incompatibilidad de tipos entre react-hook-form y el DTO */}
+      {/* @ts-expect-error - Type compatibility issue with react-hook-form types from duplicate node_modules */}
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="space-y-2">
@@ -181,20 +185,6 @@ export default function MejoraForm({
                 disabled={isPrefillLoading}
                 maxLength={30}
               />
-              <RHFInput
-                name="solicitanteDireccion"
-                label="Dirección"
-                placeholder="Dirección"
-                disabled={isPrefillLoading}
-                maxLength={200}
-              />
-              <RHFInput
-                name="solicitanteCorreo"
-                label="Correo electrónico"
-                placeholder="correo@dominio.com"
-                disabled={isPrefillLoading}
-                maxLength={100}
-              />
             </div>
             <RHFTextarea
               name="observacionSolicitante"
@@ -211,48 +201,9 @@ export default function MejoraForm({
               <h3 className="text-lg font-semibold">Datos de la persona fallecida</h3>
               <p className="text-sm text-muted-foreground">Asocia la mejora con la persona fallecida correspondiente.</p>
             </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6">
               <RHFAutocompletePerson name="id_fallecido" label="Fallecido" placeholder="Selecciona fallecido" vivos={false} disabled={isPrefillLoading} />
-              <RHFDatePickerCalendar name="fechaFallecimiento" label="Fecha de fallecimiento" />
             </div>
-          </TabsContent>
-
-          <TabsContent value="nicho" className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">Detalle del nicho o sitio</h3>
-              <p className="text-sm text-muted-foreground">Describe la ubicación física y los responsables del nicho.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <RHFInput name="propietarioNicho" label="Nombre del propietario" disabled={isPrefillLoading} maxLength={200} />
-              <RHFInput name="numeroNichos" label="Número de nichos" type="number" disabled={isPrefillLoading} />
-              <RHFInput
-                name="lugarNicho"
-                label="Lugar del nicho"
-                placeholder="Cementerio Central"
-                disabled={isPrefillLoading}
-                maxLength={100}
-              />
-              <RHFInput
-                name="codigoSitio"
-                label="Lugar del sitio / código"
-                disabled={isPrefillLoading}
-                maxLength={120}
-              />
-              <RHFInput
-                name="administradorNicho"
-                label="Nombre del administrador"
-                disabled={isPrefillLoading}
-                maxLength={120}
-              />
-              <RHFSelect
-                name="esPropio"
-                label="Propiedad"
-                options={[{ value: "true", label: "Propio" }, { value: "false", label: "Arrendado" }]}
-                placeholder="Selecciona"
-                disabled={isPrefillLoading}
-              />
-            </div>
-            <RHFTextarea name="observacionNicho" label="Observación" rows={3} maxLength={200} />
           </TabsContent>
 
           <TabsContent value="accion" className="space-y-4">
@@ -305,18 +256,28 @@ export default function MejoraForm({
                   Siguiente
                 </Button>
               )}
-              <Button type="submit" disabled={isPending || isPrefillLoading}>
-                {isPending ? "Guardando..." : "Guardar solicitud"}
+              <Button type="submit" disabled={isUpdating || isPrefillLoading}>
+                {isUpdating ? "Actualizando..." : "Actualizar mejora"}
               </Button>
             </div>
           </div>
         </Tabs>
 
-    {/* Campos ocultos para valores informativos que siguen el flujo */}
+    {/* Campos ocultos para valores que se mantienen pero no se muestran en edición */}
     <input type="hidden" {...methods.register("id_nicho")} />
+    <input type="hidden" {...methods.register("solicitanteDireccion")} />
+    <input type="hidden" {...methods.register("solicitanteCorreo")} />
+    <input type="hidden" {...methods.register("fechaFallecimiento")} />
+    <input type="hidden" {...methods.register("propietarioNicho")} />
     <input type="hidden" {...methods.register("propietarioNombre")} />
     <input type="hidden" {...methods.register("propietarioFechaAdquisicion")} />
     <input type="hidden" {...methods.register("propietarioTipoTenencia")} />
+    <input type="hidden" {...methods.register("numeroNichos")} />
+    <input type="hidden" {...methods.register("lugarNicho")} />
+    <input type="hidden" {...methods.register("codigoSitio")} />
+    <input type="hidden" {...methods.register("administradorNicho")} />
+    <input type="hidden" {...methods.register("esPropio")} />
+    <input type="hidden" {...methods.register("observacionNicho")} />
     <input type="hidden" {...methods.register("codigoAutorizacion")} />
     <input type="hidden" {...methods.register("condicion")} />
     <input type="hidden" {...methods.register("autorizacionTexto")} />
@@ -328,5 +289,3 @@ export default function MejoraForm({
     </FormProvider>
   );
 }
-
-

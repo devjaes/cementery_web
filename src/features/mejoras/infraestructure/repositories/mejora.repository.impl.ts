@@ -117,17 +117,21 @@ export class MejoraRepositoryImpl implements MejoraRepository {
 
     let disposition: string | undefined;
     if (typeof response.headers?.get === "function") {
-      disposition = response.headers.get("content-disposition") ?? response.headers.get("Content-Disposition") ?? undefined;
+      const disp = response.headers.get("content-disposition") ?? response.headers.get("Content-Disposition");
+      disposition = typeof disp === "string" ? disp : undefined;
     } else if (response.headers) {
-      disposition = (response.headers as unknown as Record<string, string | undefined>)["content-disposition"]
-        ?? (response.headers as unknown as Record<string, string | undefined>)["Content-Disposition"];
+      const dispHeader = (response.headers as unknown as Record<string, string | number | boolean | string[] | undefined>)["content-disposition"]
+        ?? (response.headers as unknown as Record<string, string | number | boolean | string[] | undefined>)["Content-Disposition"];
+      disposition = typeof dispHeader === "string" ? dispHeader : undefined;
     }
     let contentType: string | undefined;
     if (typeof response.headers?.get === "function") {
-      contentType = response.headers.get("content-type") ?? response.headers.get("Content-Type") ?? undefined;
+      const ct = response.headers.get("content-type") ?? response.headers.get("Content-Type");
+      contentType = typeof ct === "string" ? ct : undefined;
     } else if (response.headers) {
-      contentType = (response.headers as unknown as Record<string, string | undefined>)["content-type"]
-        ?? (response.headers as unknown as Record<string, string | undefined>)["Content-Type"];
+      const ctHeader = (response.headers as unknown as Record<string, string | number | boolean | string[] | undefined>)["content-type"]
+        ?? (response.headers as unknown as Record<string, string | number | boolean | string[] | undefined>)["Content-Type"];
+      contentType = typeof ctHeader === "string" ? ctHeader : undefined;
     }
 
     let filename: string | undefined;
@@ -138,7 +142,7 @@ export class MejoraRepositoryImpl implements MejoraRepository {
       if (raw) {
         try {
           filename = decodeURIComponent(raw);
-        } catch (_error) {
+        } catch {
           filename = raw;
         }
       }

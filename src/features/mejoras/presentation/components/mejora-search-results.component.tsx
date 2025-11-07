@@ -23,9 +23,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog";
-import { Check, CheckCircle, Download, Eye, Loader2, MapPin, Pencil, User, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shared/components/ui/dialog";
+import { Check, CheckCircle, Download, Eye, Loader2, MapPin, Pencil, User, Users, Calendar, FileText, Building, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { useApproveMejoraMutation, useDownloadMejoraPdfMutation } from "../hooks/use-mejora-mutation";
+import { Separator } from "@/shared/components/ui/separator";
 
 const DEFAULT_APPROVER_ID = "11657f06-85d6-42bb-84f6-7e3ffe06965d";
 
@@ -48,10 +57,217 @@ const fullName = (person?: { nombres?: string; apellidos?: string }) => {
   return parts.length ? parts.join(" ") : "Sin información";
 };
 
+const MejoraDetailDialog = ({ mejora }: { mejora: MejoraEntity }) => {
+  return (
+    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Detalle de la Mejora
+        </DialogTitle>
+        <DialogDescription>
+          Código de autorización: {mejora.codigoAutorizacion ?? "N/A"}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4">
+        {/* Estado y tipo de servicio */}
+        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Estado:</span>
+            <Badge 
+              className={mejora.estado === "Aprobado" ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""} 
+              variant={mejora.estado === "Aprobado" ? "default" : "secondary"}
+            >
+              {mejora.estado ?? "Sin estado"}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Tipo:</span>
+            <Badge variant="outline">{mejora.tipoServicio}</Badge>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Información general */}
+        <div className="space-y-3">
+          <h4 className="font-semibold flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Información General
+          </h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">Cementerio:</span>
+              <p className="font-medium">{mejora.idCementerio?.nombre ?? "N/A"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Panteonero:</span>
+              <p className="font-medium">{mejora.panteoneroACargo}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Método solicitud:</span>
+              <p className="font-medium capitalize">{mejora.metodoSolicitud}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Entidad:</span>
+              <p className="font-medium">{mejora.entidad ?? "N/A"}</p>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Solicitante */}
+        <div className="space-y-3">
+          <h4 className="font-semibold flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Solicitante
+          </h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="col-span-2">
+              <span className="text-muted-foreground">Nombre:</span>
+              <p className="font-medium">{fullName(mejora.solicitante)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Teléfono:</span>
+              <p className="font-medium">{mejora.solicitanteTelefono ?? "N/A"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Correo:</span>
+              <p className="font-medium">{mejora.correoSolicitante ?? "N/A"}</p>
+            </div>
+            {mejora.direccionSolicitante && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Dirección:</span>
+                <p className="font-medium">{mejora.direccionSolicitante}</p>
+              </div>
+            )}
+            {mejora.observacionSolicitante && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Observaciones:</span>
+                <p className="font-medium">{mejora.observacionSolicitante}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fallecido */}
+        {mejora.fallecido && (
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <UserCheck className="h-4 w-4" />
+                Fallecido
+              </h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Nombre:</span>
+                  <p className="font-medium">{fullName(mejora.fallecido)}</p>
+                </div>
+                {mejora.fechaFallecimiento && (
+                  <div>
+                    <span className="text-muted-foreground">Fecha fallecimiento:</span>
+                    <p className="font-medium">{formatDate(mejora.fechaFallecimiento)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        <Separator />
+
+        {/* Programación */}
+        <div className="space-y-3">
+          <h4 className="font-semibold flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Programación de la Intervención
+          </h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">Fecha inicio:</span>
+              <p className="font-medium">{formatDate(mejora.fechaInicio)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Fecha fin:</span>
+              <p className="font-medium">{formatDate(mejora.fechaFin)}</p>
+            </div>
+            {mejora.horarioTrabajo && (
+              <div>
+                <span className="text-muted-foreground">Horario:</span>
+                <p className="font-medium">{mejora.horarioTrabajo}</p>
+              </div>
+            )}
+            {mejora.observacionServicio && (
+              <div className="col-span-2">
+                <span className="text-muted-foreground">Observaciones:</span>
+                <p className="font-medium">{mejora.observacionServicio}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Información del nicho si existe */}
+        {(mejora.propietarioNicho || mejora.lugarNicho || mejora.administradorNicho) && (
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Información del Nicho
+              </h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {mejora.propietarioNicho && (
+                  <div>
+                    <span className="text-muted-foreground">Propietario:</span>
+                    <p className="font-medium">{mejora.propietarioNicho}</p>
+                  </div>
+                )}
+                {mejora.administradorNicho && (
+                  <div>
+                    <span className="text-muted-foreground">Administrador:</span>
+                    <p className="font-medium">{mejora.administradorNicho}</p>
+                  </div>
+                )}
+                {mejora.lugarNicho && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Ubicación:</span>
+                    <p className="font-medium">{mejora.lugarNicho}</p>
+                  </div>
+                )}
+                {mejora.codigoSitio && (
+                  <div>
+                    <span className="text-muted-foreground">Código sitio:</span>
+                    <p className="font-medium">{mejora.codigoSitio}</p>
+                  </div>
+                )}
+                {mejora.numeroNichos !== undefined && (
+                  <div>
+                    <span className="text-muted-foreground">Número de nichos:</span>
+                    <p className="font-medium">{mejora.numeroNichos}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Fecha de solicitud */}
+        <Separator />
+        <div className="text-xs text-muted-foreground text-center">
+          Fecha de solicitud: {formatDate(mejora.fechaSolicitud)}
+        </div>
+      </div>
+    </DialogContent>
+  );
+};
+
 const RelatedMejorasPanel = ({
   mejoras,
   isLoading,
-  searchTerm: _searchTerm,
+  searchTerm,
 }: {
   mejoras: MejoraEntity[];
   isLoading?: boolean;
@@ -124,72 +340,74 @@ const RelatedMejorasPanel = ({
                     <TableCell>{mejora.tipoServicio}</TableCell>
                     <TableCell>{formatDate(mejora.fechaInicio ?? mejora.fechaSolicitud)}</TableCell>
                     <TableCell className="align-top">
-                      <div className="inline-flex min-w-[170px] flex-col gap-2 rounded-md border bg-muted/40 p-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div>
-                            <p className="text-[11px] font-medium uppercase text-muted-foreground tracking-wide">
-                              Estado actual
-                            </p>
-                            <Badge className="mt-1" variant={mejora.estado === "Aprobado" ? "default" : "secondary"}>
-                              {mejora.estado ?? "Sin estado"}
-                            </Badge>
-                          </div>
-                          {mejora.estado === "Solicitado" ? (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="xs"
-                                  className="gap-1.5"
+                      <div className="flex flex-col gap-2">
+                        <Badge 
+                          className={mejora.estado === "Aprobado" ? "bg-emerald-500 hover:bg-emerald-600 text-white w-fit" : "w-fit"} 
+                          variant={mejora.estado === "Aprobado" ? "default" : "secondary"}
+                        >
+                          {mejora.estado ?? "Sin estado"}
+                        </Badge>
+                        {mejora.estado === "Solicitado" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
+                                disabled={approveMutation.isPending}
+                              >
+                                {approveMutation.isPending && approvingId === mejora.idMejora ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Check className="h-4 w-4" />
+                                )}
+                                {approveMutation.isPending && approvingId === mejora.idMejora
+                                  ? "Aprobando…"
+                                  : "Aprobar"}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={approveMutation.isPending}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
                                   disabled={approveMutation.isPending}
+                                  onClick={() => handleApprove(mejora)}
+                                  className="gap-1.5 bg-emerald-500 hover:bg-emerald-600"
                                 >
                                   {approveMutation.isPending && approvingId === mejora.idMejora ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     <Check className="h-4 w-4" />
                                   )}
-                                  {approveMutation.isPending && approvingId === mejora.idMejora
-                                    ? "Registrando…"
-                                    : "Aprobar"}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel size="sm" disabled={approveMutation.isPending}>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    size="sm"
-                                    disabled={approveMutation.isPending}
-                                    onClick={() => handleApprove(mejora)}
-                                    className="gap-1.5"
-                                  >
-                                    {approveMutation.isPending && approvingId === mejora.idMejora ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Check className="h-4 w-4" />
-                                    )}
-                                    Confirmar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          ) : null}
-                        </div>
+                                  Confirmar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="px-4">
                       <div className="flex items-center justify-center gap-2">
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Ver detalle">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <MejoraDetailDialog mejora={mejora} />
+                        </Dialog>
                         {mejora.estado === "Solicitado" ? (
-                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <Link href={`/mejoras/${mejora.idMejora}/editar${searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : ""}`}>
+                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Editar">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
                         ) : null}
                         {mejora.estado === "Aprobado" ? (
                           <Button
@@ -197,6 +415,7 @@ const RelatedMejorasPanel = ({
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8"
+                            title="Descargar formulario PDF"
                             disabled={downloadMutation.isPending && downloadingId === mejora.idMejora}
                             onClick={() => handleDownload(mejora)}
                           >
@@ -323,8 +542,8 @@ const SingleResultView = ({
                       <TableCell>{formatDate(req.fechaInhumacion)}</TableCell>
                       <TableCell>
                         <Link
-                          href={`/mejoras/nuevo?requisito=${req.idRequsitoInhumacion}`}
-                          className="inline-flex px-3 py-2 border rounded-md bg-emerald-500 text-white hover:bg-emerald-600"
+                          href={`/mejoras/nuevo?requisito=${req.idRequsitoInhumacion}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`}
+                          className="inline-flex px-3 py-2 border rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
                         >
                           Crear mejora
                         </Link>
@@ -343,8 +562,10 @@ const SingleResultView = ({
 
 const MultipleResultsView = ({
   fallecidos,
+  searchTerm,
 }: {
   fallecidos: RequisitoInhumacionFallecidosEntity[];
+  searchTerm: string;
 }) => {
   return (
     <div className="space-y-4">
@@ -406,8 +627,8 @@ const MultipleResultsView = ({
                           <TableCell>{formatDate(req.fechaInhumacion)}</TableCell>
                           <TableCell>
                             <Link
-                              href={`/mejoras/nuevo?requisito=${req.idRequsitoInhumacion}`}
-                              className="inline-flex px-3 py-2 border rounded-md bg-emerald-500 text-white hover:bg-emerald-600"
+                              href={`/mejoras/nuevo?requisito=${req.idRequsitoInhumacion}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`}
+                              className="inline-flex px-3 py-2 border rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
                             >
                               Crear mejora
                             </Link>
@@ -448,7 +669,7 @@ const MejoraSearchResults: React.FC<MejoraSearchResultsProps> = ({ results, sear
       <SingleResultView fallecido={unico} requisitos={unico.requisitos} searchTerm={searchTerm} />
     );
   } else {
-    mainContent = <MultipleResultsView fallecidos={results.fallecidos} />;
+    mainContent = <MultipleResultsView fallecidos={results.fallecidos} searchTerm={searchTerm} />;
   }
 
   return (

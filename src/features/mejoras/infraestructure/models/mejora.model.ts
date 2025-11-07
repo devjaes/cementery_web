@@ -28,6 +28,9 @@ export interface MejoraModel {
   fechaFallecimiento?: string;
 
   propietarioNicho?: string;
+  propietarioNombre?: string;
+  propietarioFechaAdquisicion?: string;
+  propietarioTipoTenencia?: string;
   numeroNichos?: number;
   lugarNicho?: string;
   codigoSitio?: string;
@@ -43,6 +46,14 @@ export interface MejoraModel {
   horarioTrabajo?: string;
   horario?: string; // compatibilidad con respuestas anteriores
   estado?: string;
+  
+  // Campos de autorización (pueden venir del backend)
+  condicion?: string;
+  autorizacionTexto?: string;
+  normativaAplicable?: string;
+  obligacionesPostObra?: string;
+  escombreraMunicipal?: string;
+  direccionEntidad?: string;
 }
 
 export interface CreateMejoraModel {

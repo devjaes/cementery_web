@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import ContainerApp from "@/core/layout/container-app";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
@@ -13,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/shared/components/ui/alert-dialog";
-import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Edit } from "lucide-react";
 import Link from "next/link";
 import { useFindMejoraByIdQuery } from "../hooks/use-mejora-queries";
 import { useApproveMejoraMutation } from "../hooks/use-mejora-mutation";
@@ -21,6 +22,7 @@ import { useApproveMejoraMutation } from "../hooks/use-mejora-mutation";
 const DEFAULT_APPROVER_ID = "11657f06-85d6-42bb-84f6-7e3ffe06965d";
 
 export default function MejoraDetailView({ id }: { id: string }) {
+  const router = useRouter();
   const { data, isLoading } = useFindMejoraByIdQuery(id);
   const approveMutation = useApproveMejoraMutation();
 
@@ -37,12 +39,21 @@ export default function MejoraDetailView({ id }: { id: string }) {
 
   return (
     <ContainerApp title={`Mejora - ${data.codigoAutorizacion ?? data.idMejora}`}>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <Link href="/mejoras">
           <Button variant="ghost" className="gap-2">
             <ArrowLeft className="w-4 h-4" /> Volver a la lista
           </Button>
         </Link>
+        
+        <Button 
+          onClick={() => router.push(`/mejoras/${id}/editar`)}
+          variant="outline"
+          className="gap-2"
+        >
+          <Edit className="w-4 h-4" />
+          Editar
+        </Button>
       </div>
       <div className="bg-white border rounded-lg p-6 space-y-4">
         <div className="inline-flex flex-col gap-2 rounded-md border bg-muted/40 p-3">
@@ -56,9 +67,9 @@ export default function MejoraDetailView({ id }: { id: string }) {
             {canApprove ? (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button className="gap-1.5" size="xs" disabled={isApproving}>
+                  <Button className="gap-1.5" size="sm" disabled={isApproving}>
                     {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    {isApproving ? "Registrando…" : "Aprobar"}
+                    {isApproving ? "Aprobando…" : "Aprobar"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -69,8 +80,8 @@ export default function MejoraDetailView({ id }: { id: string }) {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel size="sm" disabled={isApproving}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleApprove} disabled={isApproving} className="gap-1.5" size="sm">
+                    <AlertDialogCancel disabled={isApproving}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleApprove} disabled={isApproving} className="gap-1.5 bg-emerald-500 hover:bg-emerald-600">
                       {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                       Confirmar
                     </AlertDialogAction>

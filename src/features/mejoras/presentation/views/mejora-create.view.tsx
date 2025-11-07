@@ -26,15 +26,6 @@ const buildFullName = (person?: { nombres?: string | null; apellidos?: string | 
   return parts.length ? parts.join(" ") : undefined;
 };
 
-const buildFullNameWithId = (person?: { nombres?: string | null; apellidos?: string | null; cedula?: string | null }) => {
-  const name = buildFullName(person);
-  if (!name && !person?.cedula) return undefined;
-  if (name && person?.cedula) {
-    return `${name} • C.I. ${person.cedula}`;
-  }
-  return name ?? (person?.cedula ? `C.I. ${person.cedula}` : undefined);
-};
-
 const buildHuecoDescripcion = (requisito: RequisitoInhumacionEntity) => {
   const hueco = requisito.idHuecoNicho;
   const nicho = hueco?.idNicho;
@@ -150,24 +141,10 @@ const mapRequisitoToMejoraDefaults = (requisito: RequisitoInhumacionEntity): Par
   return result;
 };
 
-const mapRequisitoToResumen = (requisito: RequisitoInhumacionEntity) => {
-  const cementerio = requisito.idCementerio?.nombre;
-  const ubicacion = buildHuecoDescripcion(requisito);
-  let nicho = ubicacion;
-  if (cementerio && nicho?.startsWith(`${cementerio} • `)) {
-    nicho = nicho.slice(cementerio.length + 3);
-  }
-  return {
-    solicitante: buildFullNameWithId(requisito.idSolicitante),
-    fallecido: buildFullNameWithId(requisito.idFallecido),
-    cementerio,
-    nicho,
-  };
-};
-
 export default function MejoraCreateView() {
   const searchParams = useSearchParams();
   const requisitoIdParam = searchParams.get("requisito") ?? "";
+  const searchTermParam = searchParams.get("q") ?? "";
   const hasRequisitoParam = requisitoIdParam.length > 0;
   const { data, isLoading, isError, error } = useFindRequisitoInhumacionByIdQuery(requisitoIdParam);
 
@@ -176,16 +153,11 @@ export default function MejoraCreateView() {
     return mapRequisitoToMejoraDefaults(data);
   }, [data, hasRequisitoParam]);
 
-  const requisitoResumen = useMemo(() => {
-    if (!data || !hasRequisitoParam) return undefined;
-    return mapRequisitoToResumen(data);
-  }, [data, hasRequisitoParam]);
-
   return (
     <ContainerApp title="Nueva Solicitud de Mejoras">
       <div className="min-w-3xl mx-auto">
         <div className="mb-4">
-          <Link href="/mejoras">
+          <Link href={searchTermParam ? `/mejoras?q=${encodeURIComponent(searchTermParam)}` : "/mejoras"}>
             <Button variant="ghost" className="gap-2">
               <ArrowLeft className="w-4 h-4" /> Volver a la lista
             </Button>
@@ -204,7 +176,7 @@ export default function MejoraCreateView() {
             <MejoraForm
               defaultValues={defaultValues}
               isPrefillLoading={hasRequisitoParam && isLoading}
-              requisitoResumen={requisitoResumen}
+              searchTerm={searchTermParam}
             />
           </CardContent>
         </Card>

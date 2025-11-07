@@ -46,6 +46,21 @@ export const useApproveMejoraMutation = () => {
   });
 };
 
+export const useUpdateMejoraMutation = () => {
+  const qc = useQueryClient();
+  return useMutation<MejoraEntity, Error, { id: string; data: Partial<CreateMejoraEntity> }>({
+    mutationFn: ({ id, data }) => MejoraRepositoryImpl.getInstance().update(id, data),
+    onSuccess: (_result, variables) => {
+      qc.invalidateQueries({ queryKey: KEYS.all() });
+      qc.invalidateQueries({ queryKey: KEYS.byId(variables.id) });
+      toast.success("Mejora actualizada correctamente", {
+        description: "Los cambios se guardaron exitosamente.",
+      });
+    },
+    onError: (e) => toast.error("Error al actualizar la mejora", { description: e.message }),
+  });
+};
+
 export const useDownloadMejoraPdfMutation = () => {
   const qc = useQueryClient();
   return useMutation<{ blob: Blob; filename?: string; contentType?: string }, Error, { id: string }>(

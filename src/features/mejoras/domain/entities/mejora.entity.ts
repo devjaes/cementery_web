@@ -7,6 +7,7 @@ export interface MejoraEntity {
   codigoAutorizacion?: string;
 
   idCementerio: CementeryEntity;
+  idNicho?: string;
   panteoneroACargo: string;
   metodoSolicitud: string; // escrito | verbal
   estado?: string;
@@ -23,6 +24,9 @@ export interface MejoraEntity {
 
   // Datos del nicho/sitio
   propietarioNicho?: string;
+  propietarioNombre?: string;
+  propietarioFechaAdquisicion?: string;
+  propietarioTipoTenencia?: string;
   numeroNichos?: number;
   lugarNicho?: string; // Cementerio Central, etc.
   codigoSitio?: string; // lugar del sitio/codigo
@@ -36,6 +40,14 @@ export interface MejoraEntity {
   fechaInicio?: string;
   fechaFin?: string;
   horarioTrabajo?: string;
+
+  // Campos de autorización (usados en formularios PDF)
+  condicion?: string;
+  autorizacionTexto?: string;
+  normativaAplicable?: string;
+  obligacionesPostObra?: string;
+  escombreraMunicipal?: string;
+  direccionEntidad?: string;
 
   // Archivos (nombres/ids retornados por API)
   archivos?: Array<{ id: string; nombre: string; tipo: string }>;

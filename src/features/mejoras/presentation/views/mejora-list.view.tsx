@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import Link from "next/link";
+import React, { useMemo, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ContainerApp from "../../../../core/layout/container-app";
 import MejoraSearch from "../components/mejora-search.component";
 import MejoraSearchResults from "../components/mejora-search-results.component";
@@ -15,8 +15,19 @@ import { MejoraEntity } from "../../domain/entities/mejora.entity";
 const normalize = (value?: string | null) => (value ?? "").trim().toUpperCase();
 
 const MejoraListView: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [hasSearched, setHasSearched] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryParam = searchParams.get("q") ?? "";
+  
+  const [searchTerm, setSearchTerm] = useState<string>(queryParam);
+  const [hasSearched, setHasSearched] = useState(!!queryParam);
+  
+  // Sincronizar con query params cuando cambian
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    setSearchTerm(q);
+    setHasSearched(!!q);
+  }, [searchParams]);
 
   const {
     data: searchResults,
@@ -33,13 +44,18 @@ const MejoraListView: React.FC = () => {
   } = useFindAllMejorasQuery({ enabled: hasSearched });
 
   const handleSearch = (q: string) => {
-    setSearchTerm(q);
+    const trimmedQuery = q.trim();
+    setSearchTerm(trimmedQuery);
     setHasSearched(true);
+    // Actualizar URL con query parameter
+    router.push(`/mejoras?q=${encodeURIComponent(trimmedQuery)}`);
   };
 
   const handleNewSearch = () => {
     setSearchTerm("");
     setHasSearched(false);
+    // Limpiar query parameter de la URL
+    router.push("/mejoras");
   };
 
   const isSearching = hasSearched && (isLoading || isFetching);
@@ -121,9 +137,6 @@ const MejoraListView: React.FC = () => {
             <h2 className="text-2xl font-bold">Mejoras en Tumbas</h2>
             <p className="text-gray-600 mt-1">Registra y gestiona autorizaciones de arreglos, construcción y lápidas.</p>
           </div>
-          <Link href="/mejoras/nuevo" className="inline-flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600">
-            + Nueva Solicitud
-          </Link>
         </div>
 
         {/* Pantalla de Búsqueda Inicial */}

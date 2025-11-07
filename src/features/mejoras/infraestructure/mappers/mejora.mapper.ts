@@ -15,6 +15,7 @@ export class MejoraMapper {
       fechaSolicitud: model.fechaSolicitud,
       codigoAutorizacion: model.codigoAutorizacion,
       idCementerio: CementeryMapper.toEntity(cementeryModel),
+      idNicho: model.nicho?.id_nicho,
       panteoneroACargo: model.panteoneroACargo ?? model.pantoneroACargo ?? "",
       metodoSolicitud: model.metodoSolicitud,
       estado: model.estado,
@@ -27,6 +28,9 @@ export class MejoraMapper {
       fallecido: model.fallecido ? PersonMapper.toEntity(model.fallecido) : undefined,
       fechaFallecimiento: model.fechaFallecimiento,
       propietarioNicho: model.propietarioNicho,
+      propietarioNombre: model.propietarioNombre,
+      propietarioFechaAdquisicion: model.propietarioFechaAdquisicion,
+      propietarioTipoTenencia: model.propietarioTipoTenencia,
       numeroNichos: model.numeroNichos,
       lugarNicho: model.lugarNicho,
       codigoSitio: model.codigoSitio,
@@ -38,6 +42,12 @@ export class MejoraMapper {
       fechaInicio: model.fechaInicio,
       fechaFin: model.fechaFin,
       horarioTrabajo: model.horarioTrabajo ?? model.horario,
+      condicion: model.condicion,
+      autorizacionTexto: model.autorizacionTexto,
+      normativaAplicable: model.normativaAplicable,
+      obligacionesPostObra: model.obligacionesPostObra,
+      escombreraMunicipal: model.escombreraMunicipal,
+      direccionEntidad: model.direccionEntidad,
     };
   }
 
