@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui/dialog";
-import { Eye, UploadCloud, FileText } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import { usePaymentsByProcedure } from "@/features/payment/presentation/hooks/use-payment-query";
 import { useGetReceiptBlob } from "@/features/payment/presentation/hooks/use-payment-mutation";
 import { PdfPreviewDialog } from "@/features/payment/presentation/components/pdf-preview-dialog";
