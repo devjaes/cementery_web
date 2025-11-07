@@ -1,34 +1,38 @@
 import React from 'react';
 import { NichoWithHuecos } from '../hooks/use-niches-with-huecos';
-import { getColorByHuecoOcupado } from '@/shared/lib/get-hueco-color';
+import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity';
 
 interface HuecoTooltipProps {
   nicho: NichoWithHuecos;
 }
 
 export const HuecoTooltip: React.FC<HuecoTooltipProps> = ({ nicho }) => {
-  const ocupados = nicho.huecos?.filter(h => h.estado.toLowerCase() === 'ocupado').length || 0;
-  const reservados = nicho.huecos?.filter(h => h.estado.toLowerCase() === 'reservado').length || 0;
-  const total = nicho.huecos?.length || nicho.numHuecos || 0;
-  const disponibles = Math.max(total - ocupados - reservados, 0);
-  const { color } = getColorByHuecoOcupado(ocupados, reservados, total);
+  const estado = (nicho.estadoVenta || 'Disponible') as EstadoVentaNicho;
 
-  const getEstadoDescripcion = () => {
-    if (ocupados + reservados === 0) return 'Disponible';
-    if (ocupados + reservados === total) return 'Lleno';
-    return `Disponible (${disponibles}/${total})`;
+  // Colores según el estado
+  const getColor = (estado: EstadoVentaNicho) => {
+    switch (estado) {
+      case 'Vendido':
+        return 'bg-red-500';
+      case 'Reservado':
+        return 'bg-yellow-400';
+      case 'Disponible':
+        return 'bg-green-400';
+      default:
+        return 'bg-gray-400';
+    }
   };
 
   return (
     <div className="text-sm text-center space-y-1">
       <p className="font-semibold">Nicho {nicho.numero}</p>
-      <p className="text-muted-foreground">Estado: {getEstadoDescripcion()}</p>
-      <div className={`w-full h-2 rounded ${color}`} />
+      <p className="text-muted-foreground">Estado: {estado}</p>
+      <div className={`w-full h-2 rounded ${getColor(estado)}`} />
       <div className="text-xs text-muted-foreground mt-2">
-        <p>Huecos: {total}</p>
-        <p>Ocupados: {ocupados}</p>
-        <p>Reservados: {reservados}</p>
-        <p>Disponibles: {disponibles}</p>
+        <p>Sector: {nicho.sector}</p>
+        <p>Fila: {nicho.fila}</p>
+        <p>Número: {nicho.numero}</p>
+        <p>Total Huecos: {nicho.numHuecos}</p>
       </div>
     </div>
   );
