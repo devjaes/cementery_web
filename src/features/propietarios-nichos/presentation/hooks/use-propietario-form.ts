@@ -39,23 +39,36 @@ export function usePropietarioForm(
         const idPagoToUse = paymentId || fallbackPaymentId;
         if (idPagoToUse) {
           const validadoPor = user?.email || user?.nombre || "Sistema";
-          confirmarVenta(
-            { 
-              idPago: idPagoToUse, 
-              validadoPor 
-            },
-            {
-              onSuccess: () => {
-                toast.success("Venta confirmada. El nicho ahora está en estado Vendido.");
-                onSuccess?.();
+
+          // Buscar el payment completo para validar su estado antes de confirmar
+          const selectedPayment = payments?.find(p => p.paymentId === idPagoToUse);
+
+          // Si el pago ya está en 'paid' asumimos que el backend ya realizó
+          // la confirmación (subida de comprobante o proceso previo) y por tanto
+          // no volvemos a llamar a confirmarVenta para evitar 400 por "pago ya confirmado".
+          if (selectedPayment?.status === 'paid') {
+            toast.success('Pago ya confirmado. El nicho ha sido marcado como VENDIDO.');
+            onSuccess?.();
+          } else {
+            // Llamar al endpoint para confirmar la venta (backend hará la transición a paid y marcará el nicho)
+            confirmarVenta(
+              {
+                idPago: idPagoToUse,
+                validadoPor,
               },
-              onError: (error) => {
-                console.error("Error al confirmar venta:", error);
-                toast.error("Propietario guardado, pero no se pudo confirmar la venta.");
-                onSuccess?.(); // Igual llamar onSuccess porque el propietario sí se creó
+              {
+                onSuccess: () => {
+                  toast.success('Venta confirmada. El nicho ahora está en estado Vendido.');
+                  onSuccess?.();
+                },
+                onError: (error) => {
+                  console.error("Error al confirmar venta:", error);
+                  toast.error("Propietario guardado, pero no se pudo confirmar la venta.");
+                  onSuccess?.(); // Igual llamar onSuccess porque el propietario sí se creó
+                }
               }
-            }
-          );
+            );
+          }
         } else {
           // Si no hay paymentId, solo llamar onSuccess
           toast.message?.("Propietario guardado.", { description: "No se encontró el pago para confirmar la venta automáticamente." });
