@@ -41,6 +41,12 @@ const features = [
     href: "/inhumaciones",
     accent: "border-lime-500 bg-lime-50 hover:bg-lime-100",
   },
+  {
+    title: "Exhumaciones",
+    description: "Gestiona las exhumaciones basadas en inhumaciones existentes.",
+    href: "/exhumaciones",
+    accent: "border-orange-500 bg-orange-50 hover:bg-orange-100",
+  },
 ];
 
 export default function MainPage() {

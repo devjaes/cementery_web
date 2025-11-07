@@ -9,6 +9,7 @@ import {
   BoxIcon,
   UsersRound,
   FileText,
+  RotateCcw,
 } from "lucide-react";
 
 import {
@@ -73,6 +74,12 @@ const data = {
       url: "/inhumaciones",
       icon: FileText,
       isActive: (pathname: string) => pathname.startsWith("/inhumaciones"),
+    },
+    {
+      title: "Exhumaciones",
+      url: "/exhumaciones",
+      icon: RotateCcw,
+      isActive: (pathname: string) => pathname.startsWith("/exhumaciones"),
     },
    
     
