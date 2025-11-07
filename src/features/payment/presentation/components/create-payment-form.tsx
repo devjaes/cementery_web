@@ -56,15 +56,7 @@ const paymentFormSchema = z.object({
   buyerDocument: z.string().regex(/^\d{10}$/, {
     message: "La cédula debe tener exactamente 10 dígitos",
   }),
-  buyerName: z
-    .string()
-    .regex(
-      /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}$/,
-      {
-        message:
-          "El nombre debe contener 2 nombres y 2 apellidos separados por espacios",
-      }
-    ),
+  buyerName: z.string().min(1, { message: "El nombre es requerido" }),
   buyerDirection: z.string().optional(),
   observations: z.string().optional(),
   generatedBy: z.string().min(1, { message: "Campo requerido" }),
@@ -344,7 +336,7 @@ export function CreatePaymentForm({
                     <FormLabel>Nombre Completo del Comprador</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="2 nombres y 2 apellidos separados por espacios"
+                        placeholder="Nombre completo"
                         {...field}
                       />
                     </FormControl>
