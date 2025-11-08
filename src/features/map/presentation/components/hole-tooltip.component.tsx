@@ -7,33 +7,36 @@ interface HuecoTooltipProps {
 }
 
 export const HuecoTooltip: React.FC<HuecoTooltipProps> = ({ nicho }) => {
-  const estado = (nicho.estadoVenta || 'Disponible') as EstadoVentaNicho;
-
-  // Colores según el estado
-  const getColor = (estado: EstadoVentaNicho) => {
-    switch (estado) {
-      case 'Vendido':
-        return 'bg-red-500';
-      case 'Reservado':
-        return 'bg-yellow-400';
-      case 'Disponible':
-        return 'bg-green-400';
-      default:
-        return 'bg-gray-400';
-    }
-  };
+  const huecosOcupados = nicho.huecos?.filter(h => h.ocupado).length || 0;
+  const huecosDisponibles = (nicho.numHuecos || 0) - huecosOcupados;
 
   return (
-    <div className="text-sm text-center space-y-1">
-      <p className="font-semibold">Nicho {nicho.numero}</p>
-      <p className="text-muted-foreground">Estado: {estado}</p>
-      <div className={`w-full h-2 rounded ${getColor(estado)}`} />
-      <div className="text-xs text-muted-foreground mt-2">
-        <p>Sector: {nicho.sector}</p>
-        <p>Fila: {nicho.fila}</p>
-        <p>Número: {nicho.numero}</p>
-        <p>Total Huecos: {nicho.numHuecos}</p>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Total de huecos:</span>
+        <span className="font-semibold text-foreground">{nicho.numHuecos || 0}</span>
       </div>
+      
+      {nicho.numHuecos > 0 && (
+        <>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Ocupados:</span>
+            <span className="font-semibold text-rose-600">{huecosOcupados}</span>
+          </div>
+          
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Disponibles:</span>
+            <span className="font-semibold text-emerald-600">{huecosDisponibles}</span>
+          </div>
+
+          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-rose-500 h-full transition-all"
+              style={{ width: `${(huecosOcupados / nicho.numHuecos) * 100}%` }}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };
