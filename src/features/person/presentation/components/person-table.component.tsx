@@ -9,8 +9,8 @@ import {
 import {
   AlertCircle,
   Pencil,
+  Eye,
 } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
 import { PersonEntity } from "../../domain/entities/person.entity";
 import clsx from "clsx";
@@ -20,15 +20,17 @@ interface PersonListTableProps {
   isLoading?: boolean;
   hasError?: boolean;
   searchTerm?: string;
-  onSelectPerson?: (person: PersonEntity) => void;
+  onViewPerson?: (id: string) => void;
+  onEditPerson?: (id: string) => void;
 }
 
-export function PersonListTable({
-  persons,
-  isLoading,
+export function PersonListTable({ 
+  persons, 
+  isLoading, 
   hasError,
   searchTerm,
-  onSelectPerson
+  onViewPerson,
+  onEditPerson
 }: PersonListTableProps) {
 
   return (
@@ -92,11 +94,7 @@ export function PersonListTable({
             {!isLoading &&
               !hasError &&
               persons?.map((person) => (
-                <TableRow
-                  key={person.id_persona}
-                  className={onSelectPerson ? "cursor-pointer hover:bg-muted/50" : ""}
-                  onClick={() => onSelectPerson?.(person)}
-                >
+                <TableRow key={person.id_persona}>
                   <TableCell>{person.cedula}</TableCell>
                   <TableCell>{person.nombres}</TableCell>
                   <TableCell>{person.apellidos}</TableCell>
@@ -117,13 +115,26 @@ export function PersonListTable({
                       {person.fallecido ? "Fallecido" : "Propietario"}
                     </span>
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell>
                     <div className="flex gap-2">
-                      <Link href={`/persons/${person.id_persona}/editar`}>
-                        <Button size="icon" variant="ghost">
+                      {onViewPerson && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onViewPerson(person.id_persona)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {onEditPerson && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onEditPerson(person.id_persona)}
+                        >
                           <Pencil className="w-4 h-4" />
                         </Button>
-                      </Link>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

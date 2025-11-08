@@ -1,6 +1,18 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { NichoEntity } from "../../domain/entities/nicho.entity";
 import { Badge } from "@/shared/components/ui/badge";
+import { Card, CardContent } from "@/shared/components/ui/card";
+import { DateFormatter } from "@/shared/lib/date-formatter";
+import {
+  Building2,
+  Layers,
+  Hash,
+  Calendar,
+  FileText,
+  Grid3x3,
+  ShoppingCart,
+  Package
+} from "lucide-react";
+import clsx from "clsx";
 
 interface NichoInfoCardProps {
   nicho: NichoEntity;
@@ -8,44 +20,118 @@ interface NichoInfoCardProps {
 
 export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
   return (
-    <Card className="p-2 md:p-8 mb-6">
-      <CardHeader>
-        <CardTitle className="text-2xl">Información del Nicho</CardTitle>
-      </CardHeader>
+    <Card>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold mb-2">Datos Básicos</h3>
-            <div className="space-y-2">
-              <p><span className="font-medium">ID:</span> {nicho.idNicho}</p>
-              <p><span className="font-medium">Cementerio:</span> {nicho.idCementerio?.nombre}</p>
-              <p><span className="font-medium">Sector:</span> {nicho.sector}</p>
-              <p><span className="font-medium">Fila:</span> {nicho.fila}</p>
-              <p><span className="font-medium">Número:</span> {nicho.numero}</p>
-              {nicho.estadoVenta && (
-                <p className="flex items-center gap-2">
-                  <span className="font-medium">Estado de venta:</span>
-                  <Badge variant={nicho.estadoVenta === 'Vendido' ? 'destructive' : nicho.estadoVenta === 'Reservado' ? 'secondary' : 'default'}>
-                    {nicho.estadoVenta}
-                  </Badge>
-                </p>
-              )}
-            </div>
-          </div>
-          <div>
-            <h3 className="font-semibold mb-2">Detalles Adicionales</h3>
-            <div className="space-y-2">
-              <p><span className="font-medium">Tipo:</span> {nicho.tipo}</p>
-              <p><span className="font-medium">Estado:</span> {nicho.estado}</p>
-              <p><span className="font-medium">Número de Huecos:</span> {nicho.numHuecos}</p>
-              <p><span className="font-medium">Fecha de Adquisición:</span> {new Date(nicho.fechaConstruccion).toLocaleDateString()}</p>
-              {nicho.observaciones && (
-                <p><span className="font-medium">Observaciones:</span> {nicho.observaciones}</p>
-              )}
-            </div>
-          </div>
+        {/* Header */}
+        <div className="pb-4 border-b mb-6">
+          <h3 className="text-xl font-bold text-foreground">
+            Detalle de Nicho
+          </h3>
         </div>
+
+        {/* Main Information - Grid Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <InfoItem
+            icon={<Building2 className="w-4 h-4" />}
+            label="Cementerio"
+            value={nicho.idCementerio?.nombre || "No especificado"}
+          />
+          <InfoItem
+            icon={<Layers className="w-4 h-4" />}
+            label="Sector"
+            value={nicho.sector}
+          />
+          <InfoItem
+            icon={<Hash className="w-4 h-4" />}
+            label="Fila"
+            value={nicho.fila.toString()}
+          />
+          <InfoItem
+            icon={<Hash className="w-4 h-4" />}
+            label="Número"
+            value={nicho.numero.toString()}
+          />
+          <InfoItem
+            icon={<Package className="w-4 h-4" />}
+            label="Tipo"
+            value={nicho.tipo}
+          />
+          <InfoItem
+            icon={<ShoppingCart className="w-4 h-4" />}
+            label="Estado de Venta"
+            value={nicho.estadoVenta}
+            badge={true}
+            badgeVariant={
+              nicho.estadoVenta === 'Vendido'
+                ? 'destructive'
+                : nicho.estadoVenta === 'Reservado'
+                  ? 'secondary'
+                  : 'default'
+            }
+          />
+          <InfoItem
+            icon={<Grid3x3 className="w-4 h-4" />}
+            label="Número de Huecos"
+            value={nicho.numHuecos.toString()}
+          />
+          <InfoItem
+            icon={<Calendar className="w-4 h-4" />}
+            label="Fecha de Adquisición"
+            value={DateFormatter.toLocaleDateString(nicho.fechaConstruccion)}
+          />
+        </div>
+
+        {/* Observaciones */}
+        {nicho.observaciones && (
+          <div className="mt-6 pt-6 border-t">
+            <InfoItem
+              icon={<FileText className="w-4 h-4" />}
+              label="Observaciones"
+              value={nicho.observaciones}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function InfoItem({
+  icon,
+  label,
+  value,
+  badge = false,
+  badgeVariant = "default",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  badge?: boolean;
+  badgeVariant?: "default" | "secondary" | "destructive" | "outline";
+}) {
+  return (
+    <div className="flex items-start gap-3 py-1">
+      <div className="text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">
+          {label}
+        </p>
+        {badge ? (
+          <Badge
+            variant={badgeVariant}
+            className={clsx(
+              "w-fit",
+              badgeVariant === 'destructive' && 'bg-destructive/10 text-destructive',
+              badgeVariant === 'secondary' && 'bg-secondary/10 text-secondary-foreground',
+              badgeVariant === 'default' && 'bg-primary/10 text-primary'
+            )}
+          >
+            {value}
+          </Badge>
+        ) : (
+          <p className="text-sm text-foreground break-words leading-relaxed">{value}</p>
+        )}
+      </div>
+    </div>
   );
 } 

@@ -13,7 +13,17 @@ const months = [
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
 ];
 
-export default function RHFDatePickerCalendar({ name, label, placeholder }: { name: string; label?: string; placeholder?: string }) {
+export default function RHFDatePickerCalendar({
+  name,
+  label,
+  placeholder,
+  required = false
+}: {
+  name: string;
+  label?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
   const { control, formState } = useFormContext();
   const { field } = useController({ name, control });
 
@@ -36,9 +46,17 @@ export default function RHFDatePickerCalendar({ name, label, placeholder }: { na
     setViewMonth(newDate);
   };
 
+  const getErrorMessage = (name: string) => {
+    return formState.errors[name]?.message as string | undefined;
+  };
+
   return (
-    <div className="w-full">
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+    <div className="w-full space-y-2">
+      {label && (
+        <label className="block text-sm font-medium text-foreground">
+          {label} {required && <span className="text-destructive">*</span>}
+        </label>
+      )}
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -66,7 +84,7 @@ export default function RHFDatePickerCalendar({ name, label, placeholder }: { na
                   ))}
                 </SelectContent>
               </Select>
-              
+
               <Select value={currentYear.toString()} onValueChange={handleYearChange}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
@@ -80,7 +98,7 @@ export default function RHFDatePickerCalendar({ name, label, placeholder }: { na
                 </SelectContent>
               </Select>
             </div>
-            
+
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -101,9 +119,8 @@ export default function RHFDatePickerCalendar({ name, label, placeholder }: { na
           </div>
         </PopoverContent>
       </Popover>
-      {formState.errors[name] && (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <span className="text-xs text-red-500">{(formState.errors as any)[name]?.message as string}</span>
+      {getErrorMessage(name) && (
+        <p className="text-sm text-destructive mt-1">{getErrorMessage(name)}</p>
       )}
     </div>
   );

@@ -20,10 +20,11 @@ const tipoOptions = [
 
 interface NichoFormProps {
   nicho?: NichoEntity;
+  onSuccess?: () => void;
 }
 
-export function NichoForm({ nicho }: NichoFormProps) {
-  const { methods, onSubmit, isPending } = useNichoForm(nicho);
+export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
+  const { methods, onSubmit, isPending } = useNichoForm({ nicho, onSuccess });
 
   const tipo = useWatch({ control: methods.control, name: "tipo" });
 
