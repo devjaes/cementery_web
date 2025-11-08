@@ -1,8 +1,11 @@
 import { Button } from "@/shared/components/ui/button";
 import { Plus } from "lucide-react";
-import Link from "next/link";
 
-export function PersonViewHeader() {
+interface PersonViewHeaderProps {
+  onNewPersonClick?: () => void;
+}
+
+export function PersonViewHeader({ onNewPersonClick }: PersonViewHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
@@ -13,12 +16,10 @@ export function PersonViewHeader() {
           Busca y administra todas las personas registradas en el sistema
         </p>
       </div>
-      <Link href="/persons/nuevo">
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Nueva Persona
-        </Button>
-      </Link>
+      <Button onClick={onNewPersonClick} className="gap-2">
+        <Plus className="w-4 h-4" />
+        Nueva Persona
+      </Button>
     </div>
   );
 }
