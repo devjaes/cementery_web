@@ -11,7 +11,12 @@ import {
 } from "./use-nicho-mutations";
 import { useRouter } from "next/navigation";
 
-export function useNichoForm(nicho?: NichoEntity) {
+interface UseNichoFormOptions {
+  nicho?: NichoEntity;
+  onSuccess?: () => void;
+}
+
+export function useNichoForm({ nicho, onSuccess }: UseNichoFormOptions = {}) {
   const router = useRouter();
   const methods = useForm<CreateNichoDTO>({
     resolver: zodResolver(CreateNichoSchema),
@@ -40,14 +45,22 @@ export function useNichoForm(nicho?: NichoEntity) {
         },
         {
           onSuccess: () => {
-            router.push("/nichos");
+            if (onSuccess) {
+              onSuccess();
+            } else {
+              router.push("/nichos");
+            }
           },
         }
       );
     } else {
       create(data, {
         onSuccess: (response) => {
-          router.push(`/nichos/${response.idNicho}`);
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.push(`/nichos/${response.idNicho}`);
+          }
         },
       });
     }
