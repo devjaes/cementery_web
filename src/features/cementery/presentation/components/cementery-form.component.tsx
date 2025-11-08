@@ -20,7 +20,7 @@ export function CementeryForm({ cementery, onSuccess }: CementeryFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <RHFInput name="nombre" label="Nombre" placeholder="Nombre del cementerio" required />
           <RHFInput name="direccion" label="Dirección" placeholder="Dirección del cementerio" required />
-          <RHFInput name="telefono" label="Teléfono" placeholder="Teléfono del cementerio" required type="number" />
+          <RHFInput name="telefono" label="Teléfono" placeholder="Teléfono del cementerio" required type="tel" />
           <RHFInput name="responsable" label="Responsable" placeholder="Responsable del cementerio" required />
         </div>
         <div className="flex justify-end">
