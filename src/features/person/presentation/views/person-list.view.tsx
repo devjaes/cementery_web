@@ -1,25 +1,28 @@
 "use client";
 import { useState } from "react";
 import ContainerApp from "@/core/layout/container-app";
-import { PersonSearchSection } from "../components/person-search-section.component";
 import { PersonViewHeader } from "../components/person-view-header.component";
 import { PersonListTable } from "../components/person-table.component";
-import { useSearchPersonsQuery } from "../hooks/use-person-queries";
+import { PersonSearchBar } from "../components/person-search-bar.component";
+import { PersonDetails } from "../components/person-details.component";
+import { useSearchPersonsQuery, useFindAllPersonsQuery } from "../hooks/use-person-queries";
 import { PersonEntity } from "../../domain/entities/person.entity";
 
-type ViewMode = "search" | "table";
-
 export default function PersonListView() {
-  const [viewMode, setViewMode] = useState<ViewMode>("search");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonEntity | null>(null);
 
-  const { 
-    data: searchResults, 
-    isLoading: isSearching, 
-    error
+  const {
+    data: searchResults,
+    isLoading: isSearching,
+    error: searchError
   } = useSearchPersonsQuery(searchTerm);
+
+  const {
+    data: allPersons,
+    isLoading: isLoadingAll
+  } = useFindAllPersonsQuery();
 
   const handleSearch = (busqueda: string) => {
     setSearchTerm(busqueda);
@@ -27,7 +30,7 @@ export default function PersonListView() {
     setSelectedPerson(null);
   };
 
-  const handleNewSearch = () => {
+  const handleClearSearch = () => {
     setSearchTerm("");
     setHasSearched(false);
     setSelectedPerson(null);
@@ -37,51 +40,48 @@ export default function PersonListView() {
     setSelectedPerson(person);
   };
 
-  const handleBackToResults = () => {
+  const handleBackToTable = () => {
     setSelectedPerson(null);
   };
 
-  const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    if (mode === "table") {
-      setSearchTerm("");
-      setHasSearched(false);
-      setSelectedPerson(null);
-    }
-  };
-
   const handlePersonDeleted = () => {
-    // Volver a la búsqueda después de eliminar
     setSelectedPerson(null);
     setHasSearched(false);
     setSearchTerm("");
   };
 
+  const displayData = hasSearched && searchTerm ? searchResults : allPersons;
+  const isLoading = hasSearched && searchTerm ? isSearching : isLoadingAll;
+  const hasError = hasSearched && searchTerm ? !!searchError : false;
+
   return (
     <ContainerApp title="Gestión de Personas">
       <div className="space-y-6">
-        <PersonViewHeader 
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
+        <PersonViewHeader />
+
+        <PersonSearchBar
+          onSearch={handleSearch}
+          onClear={handleClearSearch}
+          isSearching={isSearching}
+          searchTerm={searchTerm}
         />
 
-        {/* Contenido según el modo */}
-        {viewMode === "search" ? (
-          <PersonSearchSection
-            searchTerm={searchTerm}
-            hasSearched={hasSearched}
-            selectedPerson={selectedPerson}
-            searchResults={searchResults}
-            isSearching={isSearching}
-            error={error}
-            onSearch={handleSearch}
-            onNewSearch={handleNewSearch}
-            onSelectPerson={handleSelectPerson}
-            onBackToResults={handleBackToResults}
-            onPersonDeleted={handlePersonDeleted}
-          />
+        {selectedPerson ? (
+          <div className="space-y-4">
+            <PersonDetails
+              person={selectedPerson}
+              onDeleted={handlePersonDeleted}
+              onBack={handleBackToTable}
+            />
+          </div>
         ) : (
-          <PersonListTable />
+          <PersonListTable
+            persons={displayData}
+            isLoading={isLoading}
+            hasError={hasError}
+            searchTerm={hasSearched ? searchTerm : undefined}
+            onSelectPerson={handleSelectPerson}
+          />
         )}
       </div>
     </ContainerApp>

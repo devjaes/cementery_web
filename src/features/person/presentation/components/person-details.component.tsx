@@ -1,23 +1,31 @@
 import { PersonEntity } from "../../domain/entities/person.entity";
 import { Button } from "@/shared/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 interface PersonDetailsProps {
   person: PersonEntity;
   onDeleted?: () => void;
+  onBack?: () => void;
 }
 
-export function PersonDetails({ person }: PersonDetailsProps) {
+export function PersonDetails({ person, onBack }: PersonDetailsProps) {
   return (
-    <div className="bg-white border rounded-xl p-6 space-y-6 shadow-sm">
+    <div className="bg-card border rounded-xl p-6 space-y-6 shadow-sm">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-4 gap-2">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900">
-            {person.nombres} {person.apellidos}
-          </h3>
-          <p className="text-sm text-gray-500">Detalles de la persona</p>
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          )}
+          <div>
+            <h3 className="text-2xl font-bold text-foreground">
+              {person.nombres} {person.apellidos}
+            </h3>
+            <p className="text-sm text-muted-foreground">Detalles de la persona</p>
+          </div>
         </div>
         <Link href={`/persons/${person.id_persona}/editar`}>
           <Button variant="outline" className="gap-2">
@@ -34,12 +42,12 @@ export function PersonDetails({ person }: PersonDetailsProps) {
           value={person.fecha_nacimiento}
         />
         <div>
-          <span className="font-semibold text-gray-700 block mb-1">Estado:</span>
+          <span className="font-semibold text-foreground block mb-1">Estado:</span>
           <span
             className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
               person.fallecido
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
+                ? "bg-destructive/10 text-destructive"
+                : "bg-primary/10 text-primary"
             }`}
           >
             {person.fallecido ? "Fallecido" : "Propietario"}
@@ -90,8 +98,8 @@ function Info({
 }) {
   return (
     <div className={full ? "md:col-span-2" : ""}>
-      <span className="font-semibold text-gray-700 block mb-1">{label}:</span>
-      <p className="text-gray-900">{value}</p>
+      <span className="font-semibold text-foreground block mb-1">{label}:</span>
+      <p className="text-muted-foreground">{value}</p>
     </div>
   );
 }
@@ -100,7 +108,7 @@ function Info({
 function Divider({ label }: { label: string }) {
   return (
     <div className="md:col-span-2 border-t pt-4 mt-2">
-      <p className="text-sm text-gray-500 font-medium uppercase tracking-wide">
+      <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">
         {label}
       </p>
     </div>

@@ -6,86 +6,97 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import { useFindAllPersonsQuery } from "../hooks/use-person-queries";
 import {
   AlertCircle,
-  Columns4,
-  House,
-  IdCard,
   Pencil,
-  User,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
-
+import { PersonEntity } from "../../domain/entities/person.entity";
 import clsx from "clsx";
 
-export function PersonListTable() {
-  const { data: persons, isLoading } = useFindAllPersonsQuery();
+interface PersonListTableProps {
+  persons?: PersonEntity[];
+  isLoading?: boolean;
+  hasError?: boolean;
+  searchTerm?: string;
+  onSelectPerson?: (person: PersonEntity) => void;
+}
+
+export function PersonListTable({
+  persons,
+  isLoading,
+  hasError,
+  searchTerm,
+  onSelectPerson
+}: PersonListTableProps) {
 
   return (
-    <div className="rounded-lg border bg-white p-6 mt-4">
-      <h3 className="text-lg font-semibold mb-4">
-        Resultados ({persons?.length ?? 0})
-      </h3>
+    <div className="rounded-lg border bg-card p-6">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-foreground">
+          {searchTerm ? (
+            <>Resultados de búsqueda ({persons?.length ?? 0})</>
+          ) : (
+            <>Personas ({persons?.length ?? 0})</>
+          )}
+        </h3>
+        {searchTerm && (
+          <p className="text-sm text-muted-foreground mt-1">
+            Búsqueda: &quot;{searchTerm}&quot;
+          </p>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  <IdCard className="w-4 h-4" />
-                  Cédula
-                </span>
-              </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  <User className="w-4 h-4" /> Nombres
-                </span>
-              </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  <User className="w-4 h-4" /> Apellidos
-                </span>
-              </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  <House className="w-4 h-4" />
-                  Fecha de Nacimiento
-                </span>
-              </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  <Columns4 className="w-4 h-4" />
-                  Tipo
-                </span>
-              </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">Acciones</span>
-              </TableHead>
+              <TableHead>Cédula</TableHead>
+              <TableHead>Nombres</TableHead>
+              <TableHead>Apellidos</TableHead>
+              <TableHead>Fecha de Nacimiento</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={13}>Cargando...</TableCell>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  Cargando...
+                </TableCell>
               </TableRow>
             )}
-            {!isLoading && persons && persons.length === 0 && (
+            {hasError && (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center">
+                <TableCell colSpan={6} className="text-center text-destructive">
+                  Error al cargar los datos
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading && !hasError && persons && persons.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <AlertCircle className="w-12 h-12 mb-1 text-gray-400" />
-                    <span className="text-base md:text-lg font-medium">
-                      No existen personas registradas aún.
+                    <AlertCircle className="text-muted-foreground/50" />
+                    <span className="text-base">
+                      {searchTerm
+                        ? `No se encontraron resultados para "${searchTerm}"`
+                        : "No existen registros para mostrar"
+                      }
                     </span>
                   </div>
                 </TableCell>
               </TableRow>
             )}
             {!isLoading &&
+              !hasError &&
               persons?.map((person) => (
-                <TableRow key={person.id_persona}>
+                <TableRow
+                  key={person.id_persona}
+                  className={onSelectPerson ? "cursor-pointer hover:bg-muted/50" : ""}
+                  onClick={() => onSelectPerson?.(person)}
+                >
                   <TableCell>{person.cedula}</TableCell>
                   <TableCell>{person.nombres}</TableCell>
                   <TableCell>{person.apellidos}</TableCell>
@@ -99,15 +110,14 @@ export function PersonListTable() {
                       className={clsx(
                         "px-3 py-1 rounded-full text-xs font-semibold",
                         person.fallecido
-                          ? "bg-red-100 text-red-700"
-                          : "bg-green-100 text-green-700"
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-primary/10 text-primary"
                       )}
                     >
                       {person.fallecido ? "Fallecido" : "Propietario"}
                     </span>
                   </TableCell>
-
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2">
                       <Link href={`/persons/${person.id_persona}/editar`}>
                         <Button size="icon" variant="ghost">
