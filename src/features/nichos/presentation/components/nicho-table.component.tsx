@@ -9,11 +9,6 @@ import {
 } from "@/shared/components/ui/table";
 import {
   AlertCircle,
-  Landmark,
-  Layers,
-  ListOrdered,
-  User2,
-  BadgeCheck,
   Pencil,
   Trash2,
   Eye,
@@ -55,37 +50,31 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
             <TableRow>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Landmark className="w-4 h-4" />
                   Cementerio
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Layers className="w-4 h-4" />
                   Sector
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <ListOrdered className="w-4 h-4" />
                   Fila
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <ListOrdered className="w-4 h-4" />
                   Número
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <User2 className="w-4 h-4" />
                   Tipo
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <BadgeCheck className="w-4 h-4" />
                   Estado
                 </span>
               </TableHead>
