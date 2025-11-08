@@ -5,7 +5,12 @@ import { CementeryEntity } from "../../domain/entities/cementery.entity";
 import { useCreateCementeryMutation, useUpdateCementeryMutation } from "../hooks/use-cementery-mutations";
 import { useRouter } from "next/navigation";
 
-export function useCementeryForm(cementery?: CementeryEntity) {
+interface UseCementeryFormOptions {
+  cementery?: CementeryEntity;
+  onSuccess?: () => void;
+}
+
+export function useCementeryForm({ cementery, onSuccess }: UseCementeryFormOptions = {}) {
   const router = useRouter();
   const methods = useForm<CreateCementeryDTO>({
     resolver: zodResolver(CreateCementerySchema),
@@ -26,13 +31,21 @@ export function useCementeryForm(cementery?: CementeryEntity) {
         ...data,
       }, {
         onSuccess: () => {
-          router.push("/cementerio");
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.push("/cementerio");
+          }
         },
       });
     } else {
       create(data, {
         onSuccess: () => {
-          router.push("/cementerio");
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            router.push("/cementerio");
+          }
         },
       });
     }
