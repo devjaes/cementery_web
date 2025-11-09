@@ -12,6 +12,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/aler
 import { useFindRequisitoInhumacionByIdQuery } from "@/features/requisitos-inhumacion/presentation/hooks/use-requisito-inhumacion-queries";
 import type { RequisitoInhumacionEntity } from "@/features/requisitos-inhumacion/domain/entities/requisito-inhumacion.entity";
 import type { CreateMejoraDTO } from "../../domain/schemas/mejora.schema";
+import { useFindNichoByIdQuery } from "@/features/nichos/presentation/hooks/use-nicho-queries";
+import { useFindPersonByIdQuery } from "@/features/person/presentation/hooks/use-person-queries";
+import type { NichoEntity } from "@/features/nichos/domain/entities/nicho.entity";
+import type { PersonEntity } from "@/features/person/domain/entities/person.entity";
 
 const DEFAULT_ENTIDAD = "GADM Santiago de Pillaro";
 
@@ -141,17 +145,104 @@ const mapRequisitoToMejoraDefaults = (requisito: RequisitoInhumacionEntity): Par
   return result;
 };
 
+const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity): Partial<CreateMejoraDTO> => {
+  const propietarioNombre = buildFullName(propietario);
+  const ubicacion = buildNichoDescripcion(nicho);
+  const codigoSitio = buildNichoCodigoSitio(nicho);
+  const direccionEntidad = nicho.idCementerio?.direccion ?? undefined;
+  
+  const propietarioActivo = nicho.propietarios?.find((prop) => prop.activo);
+
+  const result: Partial<CreateMejoraDTO> = {
+    idCementerio: nicho.idCementerio?.idCementerio,
+    id_nicho: nicho.idNicho,
+    metodoSolicitud: "escrito",
+    id_solicitante: propietario?.id_persona,
+    solicitanteDireccion: truncate(propietario?.direccion, 200),
+    solicitanteTelefono: truncate(propietario?.telefono, 30),
+    solicitanteCorreo: truncate(propietario?.correo, 100),
+    propietarioNicho: truncate(propietarioNombre, 200),
+    propietarioNombre: truncate(propietarioNombre, 200),
+    propietarioFechaAdquisicion: propietarioActivo?.fechaAdquisicion ?? undefined,
+    propietarioTipoTenencia: truncate(propietarioActivo?.tipo, 50),
+    numeroNichos: nicho.numHuecos ?? undefined,
+    lugarNicho: truncate(ubicacion, 100),
+    codigoSitio: truncate(codigoSitio, 120),
+    administradorNicho: truncate(propietarioNombre, 120),
+    esPropio: propietarioActivo ? propietarioActivo.tipo === "Dueño" : undefined,
+    entidad: DEFAULT_ENTIDAD,
+    direccionEntidad: truncate(direccionEntidad, 200),
+  };
+
+  return result;
+};
+
+const buildNichoDescripcion = (nicho: NichoEntity) => {
+  const fragments: string[] = [];
+  if (nicho.idCementerio?.nombre) fragments.push(nicho.idCementerio.nombre);
+  if (nicho.sector) fragments.push(`Sector ${nicho.sector}`);
+  if (nicho.fila) fragments.push(`Fila ${nicho.fila}`);
+  if (nicho.numero) fragments.push(`Nicho ${nicho.numero}`);
+  return fragments.length ? fragments.join(" • ") : undefined;
+};
+
+const buildNichoCodigoSitio = (nicho: NichoEntity) => {
+  const segments: string[] = [];
+  if (nicho.sector) segments.push(`SEC-${nicho.sector}`);
+  if (nicho.fila) segments.push(`FILA-${nicho.fila}`);
+  if (nicho.numero) segments.push(`NICHO-${nicho.numero}`);
+  return segments.length ? segments.join("-") : undefined;
+};
+
 export default function MejoraCreateView() {
   const searchParams = useSearchParams();
   const requisitoIdParam = searchParams.get("requisito") ?? "";
+  const nichoIdParam = searchParams.get("nicho") ?? "";
+  const propietarioIdParam = searchParams.get("propietario") ?? "";
   const searchTermParam = searchParams.get("q") ?? "";
+  
   const hasRequisitoParam = requisitoIdParam.length > 0;
-  const { data, isLoading, isError, error } = useFindRequisitoInhumacionByIdQuery(requisitoIdParam);
+  const hasNichoParam = nichoIdParam.length > 0;
+
+  // Query para requisito (flujo existente)
+  const { 
+    data: requisitoData, 
+    isLoading: isLoadingRequisito, 
+    isError: isErrorRequisito, 
+    error: errorRequisito 
+  } = useFindRequisitoInhumacionByIdQuery(requisitoIdParam);
+
+  // Query para nicho (flujo nuevo)
+  const { 
+    data: nichoData, 
+    isLoading: isLoadingNicho 
+  } = useFindNichoByIdQuery(nichoIdParam);
+
+  // Query para propietario (flujo nuevo)
+  const { 
+    data: propietarioData, 
+    isLoading: isLoadingPropietario 
+  } = useFindPersonByIdQuery(propietarioIdParam);
 
   const defaultValues = useMemo(() => {
-    if (!data || !hasRequisitoParam) return undefined;
-    return mapRequisitoToMejoraDefaults(data);
-  }, [data, hasRequisitoParam]);
+    // Prioridad 1: Datos desde requisito
+    if (requisitoData && hasRequisitoParam) {
+      return mapRequisitoToMejoraDefaults(requisitoData);
+    }
+
+    // Prioridad 2: Datos desde nicho + propietario
+    if (nichoData && hasNichoParam) {
+      return mapNichoToMejoraDefaults(nichoData, propietarioData);
+    }
+
+    return undefined;
+  }, [requisitoData, hasRequisitoParam, nichoData, hasNichoParam, propietarioData]);
+
+  const isPrefillLoading = 
+    (hasRequisitoParam && isLoadingRequisito) ||
+    (hasNichoParam && (isLoadingNicho || isLoadingPropietario));
+
+  const hasError = hasRequisitoParam && isErrorRequisito;
 
   return (
     <ContainerApp title="Nueva Solicitud de Mejoras">
@@ -165,17 +256,17 @@ export default function MejoraCreateView() {
         </div>
         <Card className="p-2 md:p-8">
           <CardContent className="space-y-6">
-            {hasRequisitoParam && isError ? (
+            {hasError ? (
               <Alert variant="destructive">
                 <AlertTitle>Error al precargar datos</AlertTitle>
                 <AlertDescription>
-                  {error instanceof Error ? error.message : "No se pudo cargar la información del requisito seleccionado. Puedes continuar completando el formulario manualmente."}
+                  {errorRequisito instanceof Error ? errorRequisito.message : "No se pudo cargar la información del requisito seleccionado. Puedes continuar completando el formulario manualmente."}
                 </AlertDescription>
               </Alert>
             ) : null}
             <MejoraForm
               defaultValues={defaultValues}
-              isPrefillLoading={hasRequisitoParam && isLoading}
+              isPrefillLoading={isPrefillLoading}
               searchTerm={searchTermParam}
             />
           </CardContent>

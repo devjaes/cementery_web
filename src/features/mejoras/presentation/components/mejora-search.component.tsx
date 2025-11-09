@@ -32,7 +32,7 @@ export const MejoraSearch: React.FC<MejoraSearchProps> = ({ onSearch, isSearchin
             </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Búsqueda de Mejoras en Tumbas</h2>
-          <p className="text-gray-600">Busca por cédula, nombres o apellidos del titular o del fallecido</p>
+          <p className="text-gray-600">Busca por cédula, nombres o apellidos del propietario del nicho o del fallecido</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,6 +68,7 @@ export const MejoraSearch: React.FC<MejoraSearchProps> = ({ onSearch, isSearchin
                 <li>• <strong>Por cédula:</strong> Ingresa números completos o parciales (ej: 1724727225)</li>
                 <li>• <strong>Por nombres:</strong> Escribe el nombre completo o parte de él (ej: Mónica)</li>
                 <li>• <strong>Por apellidos:</strong> Ingresa apellidos completos o parciales (ej: Álvarez)</li>
+                <li className="mt-2 text-xs italic">Busca tanto en propietarios de nichos como en fallecidos</li>
               </ul>
             </div>
           </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -5,11 +7,14 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import { RequisitoInhumacionEntity } from "../../domain/entities/requisito-inhumacion.entity";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider } from "react-hook-form"; // Importar FormProvider
 import RHFCheckbox from "@/shared/components/form/rhf/rhf-chechbox"; // Ajusta la ruta según tu estructura
 import RHFTextarea from "@/shared/components/form/rhf/rhf-text-area"; // Importar el componente textarea
 import { useRequisitoInhumacionForm } from "../hooks/use-requisito-inhumacion-form"; // Ajusta la ruta
+import { DocumentUploadCard } from "./document-upload-card.component";
+import AxiosClient from "@/core/infrastructure/axios-client";
+import { API_ROUTES } from "@/core/constants/api-routes";
 
 interface RequisitoInhumacionCardProps {
   requisitoInhumacion: RequisitoInhumacionEntity;
@@ -30,6 +35,64 @@ export function RequisitoInhumacionCard({
 
   const { methods, onSubmit, isPending } =
     useRequisitoInhumacionForm(requisitoInhumacion);
+  const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
+  const [existingDocumentUrl, setExistingDocumentUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const loadExistingDocument = async () => {
+      try {
+        const http = AxiosClient.getInstance();
+
+        // 1) Try to get the requisito details and check for 'documentos_consolidados'
+        // The backend model has inconsistent id property names across responses
+        // (sometimes `idRequsitoInhumacion` with a typo, sometimes `idRequisitoInhumacion`, or just `id`).
+        // Use a runtime-safe access with `any` to avoid TypeScript property errors here.
+        const requisitoId =
+          (requisitoInhumacion as any)?.idRequisitoInhumacion ??
+          (requisitoInhumacion as any)?.idRequsitoInhumacion ??
+          (requisitoInhumacion as any)?.id;
+        if (requisitoId) {
+          try {
+            const reqResp = await http.get<any>(API_ROUTES.REQUISITOS_INHUMACION.GET_BY_ID(requisitoId));
+            const documentoConsolidado: string | undefined = reqResp?.data?.data?.documentos_consolidados || reqResp?.data?.data?.documentosConsolidados || reqResp?.data?.data?.documentos_consolidado;
+            if (documentoConsolidado) {
+              // if backend returns a relative path, prefix with base URL
+              const base = (process.env.NEXT_PUBLIC_BACKEND_API_URL || '').replace(/\/$/, '');
+              const url = documentoConsolidado.startsWith('http') ? documentoConsolidado : `${base}${documentoConsolidado}`;
+              setExistingDocumentUrl(url);
+              return;
+            }
+          } catch (e) {
+            // ignore and fallback to inhumaciones lookup
+            // eslint-disable-next-line no-console
+            console.warn('No se pudo obtener detalle del requisito para documentos:', e);
+          }
+        }
+
+        // Fallback: buscar documento en la inhumación (misma lógica anterior)
+        const idFallecido = requisitoInhumacion?.idFallecido?.id_persona;
+        if (!idFallecido) return;
+        // 2) Obtener cédula del fallecido
+        const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(idFallecido));
+        const cedula: string | undefined = personaResp?.data?.data?.cedula;
+        if (!cedula) return;
+        // 3) Buscar inhumaciones por cédula para obtener documentos
+        const inhResp = await http.get<any>(API_ROUTES.INHUMACIONES.SEARCH_FALLECIDOS(cedula));
+        const payload = inhResp?.data?.data;
+        const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
+        const inhs = first?.inhumaciones || first?.persona?.inhumaciones || payload?.inhumaciones || [];
+        if (Array.isArray(inhs) && inhs.length > 0) {
+          const doc = inhs[0]?.documentos?.solicitud_firmada as string | undefined;
+          if (doc) setExistingDocumentUrl(doc);
+        }
+      } catch (e) {
+        // No bloquear edición por esto
+        // eslint-disable-next-line no-console
+        console.warn("No se pudo cargar documento existente:", e);
+      }
+    };
+    loadExistingDocument();
+  }, [requisitoInhumacion?.idFallecido?.id_persona]);
 
    
   const toggleSection = (sectionKey: string) => {
@@ -99,9 +162,14 @@ export function RequisitoInhumacionCard({
     </div>
   );
 
+  const handleSubmitWithFile = (data: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onSubmit(data as any, selectedDocument || undefined);
+  };
+
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)}>
+      <form onSubmit={methods.handleSubmit(handleSubmitWithFile)}>
         
         <Card className="p-2 md:p-6 mb-6 border-gray-200">
           <CardHeader>
@@ -678,6 +746,15 @@ export function RequisitoInhumacionCard({
                           )}
                         </div>
                       </div>
+                    </div>
+
+                    {/* Carga de documento (compacto) antes de los botones */}
+                    <div className="mt-2">
+                      <DocumentUploadCard
+                        onFileSelect={setSelectedDocument}
+                        selectedFile={selectedDocument}
+                        existingDocument={existingDocumentUrl}
+                      />
                     </div>
 
                     {/* Botones de acción */}

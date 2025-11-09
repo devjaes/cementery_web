@@ -11,6 +11,11 @@ import {
   SearchFallecidosRequisitoInhumacionModel,
 } from "@/features/requisitos-inhumacion/infraestructure/models/requisito-inhumacion.model";
 import { SearchFallecidosRequisitoInhumacionMapper } from "@/features/requisitos-inhumacion/infraestructure/mappers/requisito-inhumacion-fallecido.mapper";
+import { MejoraSearchAllResultsEntity, PropietarioNichoSearchResult } from "../../domain/entities/mejora-search.entity";
+import { PersonModel } from "@/features/person/infraestrcture/models/person.model";
+import { PersonMapper } from "@/features/person/infraestrcture/mappers/person.mapper";
+import { PropietarioNichoModel } from "@/features/propietarios-nichos/infrastructure/models/propietario-nicho.model";
+import { PropietarioNichoMapper } from "@/features/propietarios-nichos/infrastructure/mappers/propietario-nicho.mapper";
 
 export class MejoraRepositoryImpl implements MejoraRepository {
   private httpClient: AxiosClient;
@@ -161,6 +166,113 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     );
     const payload = this.unwrapResponse<SearchFallecidosRequisitoInhumacionModel>(data);
     return SearchFallecidosRequisitoInhumacionMapper.toEntity(payload);
+  }
+
+  async searchAll(query: string): Promise<MejoraSearchAllResultsEntity> {
+    try {
+      // 1. Búsqueda en paralelo: fallecidos y personas (propietarios potenciales)
+      const [fallecidosResponse, personasResponse] = await Promise.allSettled([
+        this.httpClient.get<SearchFallecidosRequisitoInhumacionModel>(
+          API_ROUTES.REQUISITOS_INHUMACION.SEARCH_FALLECIDOS(query)
+        ).catch((error) => {
+          // Silenciar errores 404 ya que son esperados cuando no hay resultados
+          if (error?.response?.status === 404) {
+            return { data: { termino_busqueda: query, total_encontrados: 0, fallecidos: [] } };
+          }
+          throw error;
+        }),
+        this.httpClient.get<PersonModel[]>(
+          API_ROUTES.PERSONS.SEARCH(query, true) // vivos=true para buscar propietarios
+        ).catch((error) => {
+          // Silenciar errores 404 ya que son esperados cuando no hay resultados
+          if (error?.response?.status === 404) {
+            return { data: [] };
+          }
+          throw error;
+        }),
+      ]);
+
+      // 2. Procesar resultado de fallecidos
+      let fallecidosEntity: SearchFallecidosRequisitoInhumacionEntity;
+      if (fallecidosResponse.status === "fulfilled") {
+        const fallecidosPayload = this.unwrapResponse<SearchFallecidosRequisitoInhumacionModel>(fallecidosResponse.value.data);
+        fallecidosEntity = SearchFallecidosRequisitoInhumacionMapper.toEntity(fallecidosPayload);
+      } else {
+        // Si falla por otra razón, crear entidad vacía
+        fallecidosEntity = {
+          terminoBusqueda: query,
+          totalEncontrados: 0,
+          fallecidos: [],
+        };
+      }
+
+      // 3. Procesar resultado de personas
+      let personas: PersonModel[] = [];
+      if (personasResponse.status === "fulfilled") {
+        const personasPayload = this.unwrapResponse<PersonModel[]>(personasResponse.value.data);
+        personas = Array.isArray(personasPayload) ? personasPayload : [];
+      }
+
+      // 4. Para cada persona encontrada, buscar sus nichos
+      const propietariosPromises = personas.map(async (persona): Promise<PropietarioNichoSearchResult | null> => {
+        try {
+          if (!persona.cedula) {
+            return null;
+          }
+
+          const { data: nichosData } = await this.httpClient.get<PropietarioNichoModel[]>(
+            API_ROUTES.PROPIETARIOS_NICHOS.GET_BY_PERSONA_CEDULA(persona.cedula)
+          ).catch((error) => {
+            // Silenciar errores 404 - persona sin nichos es válido
+            if (error?.response?.status === 404) {
+              return { data: [] };
+            }
+            throw error;
+          });
+
+          const nichosPayload = this.unwrapResponse<PropietarioNichoModel[]>(nichosData);
+          const nichos = Array.isArray(nichosPayload) ? nichosPayload : [];
+
+          // Solo retornar si tiene nichos
+          if (nichos.length === 0) {
+            return null;
+          }
+
+          return {
+            propietario: PersonMapper.toEntity(persona),
+            nichos: nichos.map(PropietarioNichoMapper.toEntity),
+          };
+        } catch {
+          // No registrar error en consola, es esperado que algunas personas no tengan nichos
+          return null;
+        }
+      });
+
+      const propietariosResults = await Promise.all(propietariosPromises);
+
+      // 5. Filtrar resultados nulos
+      const propietariosValidos = propietariosResults.filter(
+        (resultado): resultado is PropietarioNichoSearchResult => resultado !== null
+      );
+
+      return {
+        terminoBusqueda: query,
+        fallecidos: fallecidosEntity,
+        propietarios: propietariosValidos,
+      };
+    } catch (error) {
+      console.error("Error in searchAll:", error);
+      // En caso de error general, retornar estructura vacía
+      return {
+        terminoBusqueda: query,
+        fallecidos: {
+          terminoBusqueda: query,
+          totalEncontrados: 0,
+          fallecidos: [],
+        },
+        propietarios: [],
+      };
+    }
   }
 }
 

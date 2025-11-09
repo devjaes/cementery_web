@@ -4,9 +4,9 @@ import Link from "next/link";
 import {
   RequisitoInhumacionFallecidosEntity,
   RequisitoInhumacionEntity,
-  SearchFallecidosRequisitoInhumacionEntity,
 } from "@/features/requisitos-inhumacion/domain/entities/requisito-inhumacion.entity";
 import { MejoraEntity } from "../../domain/entities/mejora.entity";
+import { MejoraSearchAllResultsEntity } from "../../domain/entities/mejora-search.entity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
@@ -31,7 +31,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/shared/components/ui/dialog";
-import { Check, CheckCircle, Download, Eye, Loader2, MapPin, Pencil, User, Users, Calendar, FileText, Building, UserCheck } from "lucide-react";
+import { Check, CheckCircle, Download, Eye, Loader2, MapPin, Pencil, User, Users, Calendar, FileText, Building, UserCheck, Home } from "lucide-react";
 import { useState } from "react";
 import { useApproveMejoraMutation, useDownloadMejoraPdfMutation } from "../hooks/use-mejora-mutation";
 import { Separator } from "@/shared/components/ui/separator";
@@ -39,7 +39,7 @@ import { Separator } from "@/shared/components/ui/separator";
 const DEFAULT_APPROVER_ID = "11657f06-85d6-42bb-84f6-7e3ffe06965d";
 
 interface MejoraSearchResultsProps {
-  results: SearchFallecidosRequisitoInhumacionEntity;
+  results: MejoraSearchAllResultsEntity;
   searchTerm: string;
   relatedMejoras: MejoraEntity[];
   isLoadingRelated?: boolean;
@@ -647,34 +647,179 @@ const MultipleResultsView = ({
   );
 };
 
-const MejoraSearchResults: React.FC<MejoraSearchResultsProps> = ({ results, searchTerm, relatedMejoras, isLoadingRelated }) => {
-  let mainContent: React.ReactNode;
+const PropietariosResultsView = ({
+  propietarios,
+  searchTerm,
+}: {
+  propietarios: MejoraSearchAllResultsEntity["propietarios"];
+  searchTerm: string;
+}) => {
+  if (propietarios.length === 0) return null;
 
-  if (!results || results.totalEncontrados === 0) {
-    mainContent = (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-gray-800">Sin coincidencias</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600">
-            No se encontraron inhumaciones que coincidan con &quot;{searchTerm}&quot;. Intenta con otros términos de búsqueda o verifica la información ingresada.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  } else if (results.totalEncontrados === 1) {
-    const unico = results.fallecidos[0];
-    mainContent = (
-      <SingleResultView fallecido={unico} requisitos={unico.requisitos} searchTerm={searchTerm} />
-    );
-  } else {
-    mainContent = <MultipleResultsView fallecidos={results.fallecidos} searchTerm={searchTerm} />;
-  }
+  const formatNichoLocation = (nicho?: { sector?: string; fila?: string; numero?: string; idCementerio?: { nombre?: string } }) => {
+    if (!nicho) return "Sin información";
+    const parts = [];
+    if (nicho.sector) parts.push(`Sector ${nicho.sector}`);
+    if (nicho.fila) parts.push(`Fila ${nicho.fila}`);
+    if (nicho.numero) parts.push(`Nicho ${nicho.numero}`);
+    return parts.length > 0 ? parts.join(" • ") : "Sin ubicación";
+  };
+
+  return (
+    <Card className="border-blue-200 bg-blue-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-blue-800">
+          <Home className="w-5 h-5" />
+          Propietarios de nichos encontrados ({propietarios.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {propietarios.map((resultado) => {
+          const { propietario, nichos } = resultado;
+          const nichosActivos = nichos.filter((n) => n.activo);
+          const nichosInactivos = nichos.filter((n) => !n.activo);
+
+          return (
+            <Card key={propietario.id_persona} className="bg-white">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{fullName(propietario)}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Cédula: {propietario.cedula ?? "Sin cédula"} • {nichosActivos.length} nicho(s) activo(s)
+                      {nichosInactivos.length > 0 && ` • ${nichosInactivos.length} inactivo(s)`}
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {nichos.length === 0 ? (
+                  <Alert>
+                    <AlertDescription>
+                      No hay nichos registrados para este propietario. Comunícate con administración para validar la información.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Cementerio</TableHead>
+                          <TableHead>Ubicación</TableHead>
+                          <TableHead>Tipo propietario</TableHead>
+                          <TableHead>Fecha adquisición</TableHead>
+                          <TableHead>Documento</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {nichos.map((prop) => (
+                          <TableRow key={prop.idPropietarioNicho} className={!prop.activo ? "opacity-60 bg-gray-50" : ""}>
+                            <TableCell>
+                              <Badge 
+                                variant={prop.activo ? "default" : "secondary"}
+                                className={prop.activo ? "bg-emerald-500 hover:bg-emerald-600" : "bg-gray-400"}
+                              >
+                                {prop.activo ? "Activo" : "Inactivo"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {prop.idNicho?.idCementerio?.nombre ?? "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {formatNichoLocation(prop.idNicho)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{prop.tipo}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {formatDate(prop.fechaAdquisicion)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-xs">
+                                <p className="font-medium">{prop.tipoDocumento}</p>
+                                <p className="text-muted-foreground">{prop.numeroDocumento}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {prop.activo ? (
+                                <Link
+                                  href={`/mejoras/nuevo?nicho=${prop.idNicho?.idNicho}&propietario=${propietario.id_persona}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`}
+                                  className="inline-flex px-3 py-2 border rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition-colors text-sm"
+                                >
+                                  Crear mejora
+                                </Link>
+                              ) : (
+                                <Button
+                                  disabled
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs cursor-not-allowed"
+                                  title="No se pueden crear mejoras en nichos inactivos"
+                                >
+                                  No disponible
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+};
+
+const MejoraSearchResults: React.FC<MejoraSearchResultsProps> = ({ results, searchTerm, relatedMejoras, isLoadingRelated }) => {
+  const totalFallecidos = results.fallecidos.totalEncontrados;
+  const totalPropietarios = results.propietarios.length;
 
   return (
     <div className="space-y-6">
-      {mainContent}
+      {/* Resultados de fallecidos */}
+      {totalFallecidos > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-gray-600" />
+            <h3 className="text-lg font-semibold">Fallecidos encontrados ({totalFallecidos})</h3>
+          </div>
+          {totalFallecidos === 1 ? (
+            <SingleResultView 
+              fallecido={results.fallecidos.fallecidos[0]} 
+              requisitos={results.fallecidos.fallecidos[0].requisitos} 
+              searchTerm={searchTerm} 
+            />
+          ) : (
+            <MultipleResultsView 
+              fallecidos={results.fallecidos.fallecidos} 
+              searchTerm={searchTerm} 
+            />
+          )}
+        </div>
+      )}
+
+      {/* Resultados de propietarios */}
+      {totalPropietarios > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Home className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-blue-800">Propietarios de nichos</h3>
+          </div>
+          <PropietariosResultsView 
+            propietarios={results.propietarios} 
+            searchTerm={searchTerm} 
+          />
+        </div>
+      )}
+
+      {/* Mejoras relacionadas */}
       <RelatedMejorasPanel mejoras={relatedMejoras} isLoading={isLoadingRelated} searchTerm={searchTerm} />
     </div>
   );

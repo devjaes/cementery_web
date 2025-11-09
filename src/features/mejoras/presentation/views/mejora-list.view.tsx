@@ -8,8 +8,7 @@ import MejoraSearchResults from "../components/mejora-search-results.component";
 import { Button } from "@/shared/components/ui/button";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { ArrowLeft } from "lucide-react";
-import { useFindAllMejorasQuery, useSearchMejorasQuery } from "../hooks/use-mejora-queries";
-import { SearchFallecidosRequisitoInhumacionEntity } from "@/features/requisitos-inhumacion/domain/entities/requisito-inhumacion.entity";
+import { useFindAllMejorasQuery, useSearchMejorasAllQuery } from "../hooks/use-mejora-queries";
 import { MejoraEntity } from "../../domain/entities/mejora.entity";
 
 const normalize = (value?: string | null) => (value ?? "").trim().toUpperCase();
@@ -35,7 +34,7 @@ const MejoraListView: React.FC = () => {
     isFetching,
     isError,
     error,
-  } = useSearchMejorasQuery(searchTerm);
+  } = useSearchMejorasAllQuery(searchTerm);
 
   const {
     data: allMejoras,
@@ -61,18 +60,9 @@ const MejoraListView: React.FC = () => {
   const isSearching = hasSearched && (isLoading || isFetching);
   const isLoadingRelated = hasSearched && (isLoadingMejoras || isFetchingMejoras);
   const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al buscar mejoras.";
-  const resolvedResults: SearchFallecidosRequisitoInhumacionEntity = useMemo(() => {
-    return (
-      searchResults ?? {
-        terminoBusqueda: searchTerm,
-        totalEncontrados: 0,
-        fallecidos: [] as SearchFallecidosRequisitoInhumacionEntity["fallecidos"],
-      }
-    );
-  }, [searchResults, searchTerm]);
 
   const relatedMejoras: MejoraEntity[] = useMemo(() => {
-    if (!hasSearched || !resolvedResults || !allMejoras) {
+    if (!hasSearched || !searchResults || !allMejoras) {
       return [];
     }
 
@@ -80,6 +70,8 @@ const MejoraListView: React.FC = () => {
     const fallecidoCedulas = new Set<string>();
     const solicitanteIds = new Set<string>();
     const solicitanteCedulas = new Set<string>();
+    const propietarioIds = new Set<string>();
+    const propietarioCedulas = new Set<string>();
 
     const registerFallecido = (person?: { id_persona?: string; cedula?: string | null }) => {
       if (!person) return;
@@ -95,12 +87,25 @@ const MejoraListView: React.FC = () => {
       if (cedula) solicitanteCedulas.add(cedula);
     };
 
-    resolvedResults.fallecidos.forEach(({ fallecido, requisitos }) => {
+    const registerPropietario = (person?: { idPersona?: string; cedula?: string | null }) => {
+      if (!person) return;
+      if (person.idPersona) propietarioIds.add(person.idPersona);
+      const cedula = normalize(person.cedula);
+      if (cedula) propietarioCedulas.add(cedula);
+    };
+
+    // Registrar fallecidos
+    searchResults.fallecidos.fallecidos.forEach(({ fallecido, requisitos }) => {
       registerFallecido(fallecido);
       requisitos.forEach((req) => {
         registerFallecido(req.idFallecido);
         registerSolicitante(req.idSolicitante);
       });
+    });
+
+    // Registrar propietarios
+    searchResults.propietarios.forEach(({ propietario }) => {
+      registerPropietario(propietario);
     });
 
     const matchesPerson = (
@@ -115,18 +120,24 @@ const MejoraListView: React.FC = () => {
     };
 
     const hasFallecidoCriteria = fallecidoIds.size > 0 || fallecidoCedulas.size > 0;
+    const hasPropietarioCriteria = propietarioIds.size > 0 || propietarioCedulas.size > 0;
 
     return allMejoras.filter((mejora) => {
       const fallecidoMatch = matchesPerson(mejora.fallecido, fallecidoIds, fallecidoCedulas);
       const solicitanteMatch = matchesPerson(mejora.solicitante, solicitanteIds, solicitanteCedulas);
+      const propietarioMatch = matchesPerson(mejora.solicitante, propietarioIds, propietarioCedulas);
 
       if (hasFallecidoCriteria) {
         return fallecidoMatch;
       }
 
+      if (hasPropietarioCriteria) {
+        return propietarioMatch;
+      }
+
       return solicitanteMatch;
     });
-  }, [hasSearched, resolvedResults, allMejoras]);
+  }, [hasSearched, searchResults, allMejoras]);
 
   return (
     <ContainerApp title="Solicitudes de Mejoras">
@@ -170,9 +181,9 @@ const MejoraListView: React.FC = () => {
               </div>
             )}
 
-            {!isSearching && !isError && (
+            {!isSearching && !isError && searchResults && (
               <MejoraSearchResults
-                results={resolvedResults}
+                results={searchResults}
                 searchTerm={searchTerm}
                 relatedMejoras={relatedMejoras}
                 isLoadingRelated={isLoadingRelated}

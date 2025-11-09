@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { MejoraEntity } from "../../domain/entities/mejora.entity";
 import { MejoraRepositoryImpl } from "../../infraestructure/repositories/mejora.repository.impl";
 import { SearchFallecidosRequisitoInhumacionEntity } from "@/features/requisitos-inhumacion/domain/entities/requisito-inhumacion.entity";
+import { MejoraSearchAllResultsEntity } from "../../domain/entities/mejora-search.entity";
 
 const KEYS = {
   all: () => ["mejoras"],
   byId: (id: string) => ["mejoras", id],
   search: (q: string) => ["mejoras", "search", q],
+  searchAll: (q: string) => ["mejoras", "search-all", q],
 };
 
 export const useFindAllMejorasQuery = (options?: { enabled?: boolean }) => {
@@ -30,6 +32,14 @@ export const useSearchMejorasQuery = (q: string) => {
   return useQuery<SearchFallecidosRequisitoInhumacionEntity>({
     queryKey: KEYS.search(q),
     queryFn: () => MejoraRepositoryImpl.getInstance().search(q),
+    enabled: !!q && q.trim().length >= 2,
+  });
+};
+
+export const useSearchMejorasAllQuery = (q: string) => {
+  return useQuery<MejoraSearchAllResultsEntity>({
+    queryKey: KEYS.searchAll(q),
+    queryFn: () => MejoraRepositoryImpl.getInstance().searchAll(q),
     enabled: !!q && q.trim().length >= 2,
   });
 };

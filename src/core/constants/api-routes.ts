@@ -65,6 +65,7 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.HUECOS,
     UPDATE: (id: string) => `${AR_KEYS.HUECOS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.HUECOS}/${id}`,
+    GET_ARCHIVO: (id: string) => `${AR_KEYS.HUECOS}/${id}/archivo`,
   },
   PROPIETARIOS_NICHOS: {
     LIST: AR_KEYS.PROPIETARIOS_NICHOS,
