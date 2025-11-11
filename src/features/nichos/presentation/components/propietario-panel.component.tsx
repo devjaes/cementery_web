@@ -5,9 +5,11 @@ interface PropietarioPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialPersonId?: string; // Pre-llenar con la persona del comprador
+  paymentId?: string; // ID del pago para confirmar venta cuando se guarde propietario
 }
 
-export function PropietarioPanel({ nichoId, isOpen, onClose, onSuccess }: PropietarioPanelProps) {
+export function PropietarioPanel({ nichoId, isOpen, onClose, onSuccess, initialPersonId, paymentId }: PropietarioPanelProps) {
   return (
     <aside
       className={
@@ -27,7 +29,7 @@ export function PropietarioPanel({ nichoId, isOpen, onClose, onSuccess }: Propie
         </button>
       </div>
       <div className="p-4 overflow-y-auto h-[calc(100%-64px)]">
-        <NichoPropietarioForm nichoId={nichoId} onSuccess={onSuccess} />
+        <NichoPropietarioForm nichoId={nichoId} onSuccess={onSuccess} initialPersonId={initialPersonId} paymentId={paymentId} />
       </div>
     </aside>
   );

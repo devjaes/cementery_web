@@ -3,43 +3,44 @@
 import ContainerApp from "@/core/layout/container-app";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
 
 const features = [
   {
     title: "Gestión de Cementerios",
     description: "Configura y administra los cementerios del municipio.",
     href: "/cementerio",
-    accent: "border-blue-500 bg-blue-50 hover:bg-blue-100",
   },
   {
     title: "Propietarios y Herederos",
     description: "Gestiona las personas propietarias y herederas de nichos.",
     href: "/persons",
-    accent: "border-emerald-500 bg-emerald-50 hover:bg-emerald-100",
   },
   {
     title: "Gestión de Nichos y Huecos",
     description: "Administra los nichos y huecos del cementerio de forma eficiente.",
     href: "/nichos",
-    accent: "border-green-500 bg-green-50 hover:bg-green-100",
   },
   {
     title: "Mapa Interactivo del Cementerio",
     description: "Visualiza y navega el cementerio con los nichos creados.",
     href: "/map",
-    accent: "border-teal-500 bg-teal-50 hover:bg-teal-100",
   },
   {
     title: "Requisitos de Inhumaciones",
     description: "Registra y consulta los requisitos de inhumaciones.",
     href: "/requisitos-inhumacion",
-    accent: "border-lime-500 bg-lime-50 hover:bg-lime-100",
   },
   {
     title: "Inhumaciones",
     description: "Registra y consulta las inhumaciones.",
     href: "/inhumaciones",
-    accent: "border-lime-500 bg-lime-50 hover:bg-lime-100",
   },
 ];
 
@@ -49,40 +50,38 @@ export default function MainPage() {
 
   return (
     <ContainerApp title="Dashboard">
-      <div className="min-h-[calc(100vh-100px)] w-full flex items-center justify-center bg-gradient-to-br from-green-100/60 to-white">
-        <div className="w-full max-w-6xl mx-auto flex flex-col items-center justify-center">
-          <div className="mb-10 text-center">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
-              ¡Hola, {userName}!
-            </h1>
-            <p className="text-xl md:text-2xl text-green-700 font-medium mb-1">
-              ¿Cómo podemos ayudarte hoy?
-            </p>
-            <p className="text-base text-gray-500">
-              Sigue el flujo recomendado para configurar tu sistema paso a paso.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {features.map((feature) => (
-              <Link
-                key={feature.title}
-                href={feature.href}
-                className={`block rounded-2xl shadow-md p-8 transition-all border-2 ${feature.accent} group focus:outline-none`}
-              >
-                <div className="flex flex-col gap-2 h-full items-center justify-center text-center">
-                  <span className="text-2xl font-bold text-green-800 group-hover:underline">
-                    {feature.title}
-                  </span>
-                  <span className="text-base text-gray-600">
-                    {feature.description}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <p className="text-base text-gray-400 mt-12 text-center">
-            Sistema desarrollado para la gestión eficiente y moderna de cementerios municipales.
+      <div className="w-full max-w-7xl mx-auto py-8">
+        <div className="mb-12 text-center space-y-3">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">
+            ¡Hola, {userName}!
+          </h1>
+          <p className="text-lg sm:text-xl text-muted-foreground font-medium">
+            ¿Cómo podemos ayudarte hoy?
           </p>
+          <p className="text-sm text-muted-foreground">
+            Accede a las diferentes secciones del sistema para gestionar tu cementerio
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feature) => (
+            <Link
+              key={feature.title}
+              href={feature.href}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl"
+            >
+              <Card className="h-full transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:-translate-y-1 cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-sm leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
       </div>
     </ContainerApp>

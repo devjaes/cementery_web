@@ -24,6 +24,7 @@ export class NichoMapper {
       numero: model.numero,
       tipo: model.tipo,
       estado: model.estado,
+      estadoVenta: model.estadoVenta,
       fechaConstruccion: model.fecha_construccion,
       observaciones: model.observaciones,
       numHuecos: model.num_huecos,

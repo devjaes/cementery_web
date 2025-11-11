@@ -3,6 +3,8 @@ import { HuecoEntity } from "@/features/huecos/domain/entities/hueco.entity";
 import { PersonEntity } from "@/features/person/domain/entities/person.entity";
 import { PropietarioNichoEntity } from "@/features/propietarios-nichos/domain/entities/propietario-nicho.entity";
 
+export type EstadoVentaNicho = 'Vendido' | 'Reservado' | 'Disponible';
+
 export interface NichoEntity {
   idNicho?: string;
   idCementerio?: CementeryEntity;
@@ -11,6 +13,7 @@ export interface NichoEntity {
   numero: string;
   tipo: string;
   estado: string;
+  estadoVenta: EstadoVentaNicho;
   numHuecos: number;
   fechaConstruccion: string;
   observaciones?: string;
