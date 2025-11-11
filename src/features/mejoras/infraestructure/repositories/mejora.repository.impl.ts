@@ -171,16 +171,18 @@ export class MejoraRepositoryImpl implements MejoraRepository {
   async searchAll(query: string): Promise<MejoraSearchAllResultsEntity> {
     try {
       // 1. Búsqueda en paralelo: fallecidos y personas (propietarios potenciales)
+      // COMENTADO: Búsqueda de fallecidos desactivada - solo buscamos por propietarios de nichos
       const [fallecidosResponse, personasResponse] = await Promise.allSettled([
-        this.httpClient.get<SearchFallecidosRequisitoInhumacionModel>(
-          API_ROUTES.REQUISITOS_INHUMACION.SEARCH_FALLECIDOS(query)
-        ).catch((error) => {
-          // Silenciar errores 404 ya que son esperados cuando no hay resultados
-          if (error?.response?.status === 404) {
-            return { data: { termino_busqueda: query, total_encontrados: 0, fallecidos: [] } };
-          }
-          throw error;
-        }),
+        // this.httpClient.get<SearchFallecidosRequisitoInhumacionModel>(
+        //   API_ROUTES.REQUISITOS_INHUMACION.SEARCH_FALLECIDOS(query)
+        // ).catch((error) => {
+        //   // Silenciar errores 404 ya que son esperados cuando no hay resultados
+        //   if (error?.response?.status === 404) {
+        //     return { data: { termino_busqueda: query, total_encontrados: 0, fallecidos: [] } };
+        //   }
+        //   throw error;
+        // }),
+        Promise.resolve({ data: { termino_busqueda: query, total_encontrados: 0, fallecidos: [] } }), // Retornar vacío directamente
         this.httpClient.get<PersonModel[]>(
           API_ROUTES.PERSONS.SEARCH(query, true) // vivos=true para buscar propietarios
         ).catch((error) => {

@@ -44,7 +44,6 @@ export default function MejoraForm({
   // Combinar valores base con los valores por defecto proporcionados
   const initialValues = useMemo(() => {
     const combined = { ...baseDefaultValues, ...defaultValues };
-    console.log("📝 Valores iniciales del formulario de CREACIÓN:", combined);
     return combined;
   }, [defaultValues]);
   
@@ -90,14 +89,12 @@ export default function MejoraForm({
     setActiveTab("solicitante");
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       const combined = { ...baseDefaultValues, ...defaultValues };
-      console.log("🔄 Reseteando formulario de CREACIÓN con valores:", combined);
       methods.reset(combined);
       setSelectedFiles([]);
     }
   }, [defaultValues, methods]);
 
   const handleSubmit = (data: CreateMejoraDTO) => {
-    console.log("📤 Datos del formulario al enviar:", data);
     const redirectUrl = searchTerm ? `/mejoras?q=${encodeURIComponent(searchTerm)}` : "/mejoras";
     
     create(data, {

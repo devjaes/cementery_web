@@ -19,18 +19,13 @@ export default function MejoraEditView({ id }: { id: string }) {
   
   const defaultValues = useMemo(() => {
     if (!data) {
-      console.log("⏳ Esperando datos de la mejora...");
       return undefined;
     }
-    console.log("📦 Datos recibidos de la API:", data);
     const mapped = mapMejoraEntityToDTO(data);
-    console.log("✅ Valores mapeados para el formulario:", mapped);
     return mapped;
   }, [data]);
 
   const isApproved = data?.estado === "Aprobado";
-  
-  console.log("🎯 Estado de la vista de edición:", { id, isLoading, isError, hasData: !!data, defaultValues });
 
   if (isLoading) {
     return (

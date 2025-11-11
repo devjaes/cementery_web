@@ -6,8 +6,6 @@ import { CreateMejoraDTO } from "../../domain/schemas/mejora.schema";
  * Mapea todos los campos necesarios del formulario incluyendo campos ocultos
  */
 export const mapMejoraEntityToDTO = (entity: MejoraEntity): Partial<CreateMejoraDTO> => {
-  console.log("🔄 Mapeando MejoraEntity a DTO para edición:", entity);
-  
   const dto: Partial<CreateMejoraDTO> = {
     // General
     idCementerio: entity.idCementerio?.idCementerio,
@@ -56,6 +54,5 @@ export const mapMejoraEntityToDTO = (entity: MejoraEntity): Partial<CreateMejora
     direccionEntidad: entity.direccionEntidad,
   };
 
-  console.log("✅ DTO mapeado:", dto);
   return dto;
 };

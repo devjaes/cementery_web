@@ -44,7 +44,6 @@ export default function MejoraFormEdit({
   // Combinar valores base con los valores por defecto proporcionados
   const initialValues = useMemo(() => {
     const combined = { ...baseDefaultValues, ...defaultValues };
-    console.log("📝 Valores iniciales del formulario de EDICIÓN:", combined);
     return combined;
   }, [defaultValues]);
   
@@ -89,14 +88,12 @@ export default function MejoraFormEdit({
     setActiveTab("accion");
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       const combined = { ...baseDefaultValues, ...defaultValues };
-      console.log("🔄 Reseteando formulario de EDICIÓN con valores:", combined);
       methods.reset(combined);
       setSelectedFiles([]);
     }
   }, [defaultValues, methods]);
 
   const handleSubmit = (data: CreateMejoraDTO) => {
-    console.log("📤 Datos del formulario de EDICIÓN al enviar:", data);
     const redirectUrl = searchTerm ? `/mejoras?q=${encodeURIComponent(searchTerm)}` : "/mejoras";
     
     update(
