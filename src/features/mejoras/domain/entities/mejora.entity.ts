@@ -55,44 +55,44 @@ export interface MejoraEntity {
 
 export interface CreateMejoraEntity {
   idCementerio: string;
-  id_nicho?: string;
+  id_nicho?: string | null;
   panteoneroACargo: string;
   metodoSolicitud: "escrito" | "verbal";
 
   id_solicitante: string;
-  solicitanteDireccion?: string;
-  solicitanteTelefono?: string;
-  solicitanteCorreo?: string;
-  observacionSolicitante?: string;
+  solicitanteDireccion?: string | null;
+  solicitanteTelefono?: string | null;
+  solicitanteCorreo?: string | null;
+  observacionSolicitante?: string | null;
 
-  id_fallecido?: string;
-  fechaFallecimiento?: string;
+  id_fallecido?: string | null;
+  fechaFallecimiento?: string | null;
 
-  propietarioNicho?: string;
-  numeroNichos?: number;
-  lugarNicho?: string;
-  codigoSitio?: string;
-  administradorNicho?: string;
-  esPropio?: boolean;
-  observacionNicho?: string;
+  propietarioNicho?: string | null;
+  numeroNichos?: number | null;
+  lugarNicho?: string | null;
+  codigoSitio?: string | null;
+  administradorNicho?: string | null;
+  esPropio?: boolean | null;
+  observacionNicho?: string | null;
 
   tipoServicio: "ARREGLOS" | "CONSTRUCCION" | "LAPIDA";
-  observacionServicio?: string;
-  fechaInicio?: string;
-  fechaFin?: string;
-  horarioTrabajo?: string;
+  observacionServicio?: string | null;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  horarioTrabajo?: string | null;
 
   entidad: string;
-  codigoAutorizacion?: string;
-  condicion?: string;
-  autorizacionTexto?: string;
-  normativaAplicable?: string;
-  obligacionesPostObra?: string;
-  escombreraMunicipal?: string;
-  propietarioFechaAdquisicion?: string;
-  propietarioTipoTenencia?: string;
-  direccionEntidad?: string;
-  propietarioNombre?: string;
+  codigoAutorizacion?: string | null;
+  condicion?: string | null;
+  autorizacionTexto?: string | null;
+  normativaAplicable?: string | null;
+  obligacionesPostObra?: string | null;
+  escombreraMunicipal?: string | null;
+  propietarioFechaAdquisicion?: string | null;
+  propietarioTipoTenencia?: string | null;
+  direccionEntidad?: string | null;
+  propietarioNombre?: string | null;
 }
 
 

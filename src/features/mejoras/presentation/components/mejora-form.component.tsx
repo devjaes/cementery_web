@@ -3,7 +3,6 @@
 import { FormProvider } from "react-hook-form";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import RHFCementerySelect from "@/shared/components/form/rhf/rhf-cementery-select";
 import RHFInput from "@/shared/components/form/rhf/rhf-input";
 import RHFSelect from "@/shared/components/form/rhf/rhf-select";
 import RHFAutocompletePerson from "@/shared/components/form/rhf/rhf-autocomplete-person";
@@ -22,11 +21,6 @@ type MejoraFormProps = {
   searchTerm?: string;
 };
 
-const metodoSolicitudOptions = [
-  { value: "escrito", label: "Escrita" },
-  { value: "verbal", label: "Verbal (solo emergencia)" },
-];
-
 const tipoServicioOptions = [
   { value: "ARREGLOS", label: "Arreglos" },
   { value: "CONSTRUCCION", label: "Construcción" },
@@ -37,6 +31,7 @@ const baseDefaultValues: Partial<CreateMejoraDTO> = {
   metodoSolicitud: "escrito",
   entidad: "GADM Santiago de Pillaro",
   observacionSolicitante: "Sin observaciones",
+  panteoneroACargo: "Por asignar", // Valor por defecto para campo requerido
 };
 
 export default function MejoraForm({ 
@@ -66,10 +61,7 @@ export default function MejoraForm({
 
   const sections = useMemo(
     () => [
-      { value: "general", label: "General", description: "Datos institucionales y de solicitud" },
       { value: "solicitante", label: "Solicitante", description: "Información de contacto del solicitante" },
-      { value: "fallecido", label: "Fallecido", description: "Referencias de la persona fallecida" },
-      { value: "nicho", label: "Nicho", description: "Detalle del nicho o sitio autorizado" },
       { value: "accion", label: "Acción", description: "Programación de la intervención" },
       { value: "documentos", label: "Documentos", description: "Archivos requeridos para la solicitud" },
     ],
@@ -95,7 +87,7 @@ export default function MejoraForm({
   };
 
   useEffect(() => {
-    setActiveTab("general");
+    setActiveTab("solicitante");
     if (defaultValues && Object.keys(defaultValues).length > 0) {
       const combined = { ...baseDefaultValues, ...defaultValues };
       console.log("🔄 Reseteando formulario de CREACIÓN con valores:", combined);
@@ -105,6 +97,7 @@ export default function MejoraForm({
   }, [defaultValues, methods]);
 
   const handleSubmit = (data: CreateMejoraDTO) => {
+    console.log("📤 Datos del formulario al enviar:", data);
     const redirectUrl = searchTerm ? `/mejoras?q=${encodeURIComponent(searchTerm)}` : "/mejoras";
     
     create(data, {
@@ -125,10 +118,31 @@ export default function MejoraForm({
     });
   };
 
+  // Log de errores de validación
+  useEffect(() => {
+    if (Object.keys(methods.formState.errors).length > 0) {
+      console.log("❌ Errores de validación:", methods.formState.errors);
+    }
+  }, [methods.formState.errors]);
+
   return (
     <FormProvider {...methods}>
       {/* @ts-expect-error - Incompatibilidad de tipos entre react-hook-form y el DTO */}
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-8">
+        {/* Mostrar errores de validación si existen */}
+        {Object.keys(methods.formState.errors).length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <h4 className="text-red-800 font-semibold mb-2">Errores en el formulario:</h4>
+            <ul className="list-disc list-inside text-red-700 text-sm space-y-1">
+              {Object.entries(methods.formState.errors).map(([field, error]) => (
+                <li key={field}>
+                  <strong>{field}</strong>: {error?.message?.toString() || "Campo requerido"}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Navega por las secciones para completar la solicitud.</p>
@@ -147,25 +161,6 @@ export default function MejoraForm({
               </TabsList>
             </div>
           </div>
-
-          <TabsContent value="general" className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">Información general</h3>
-              <p className="text-sm text-muted-foreground">Selecciona el cementerio y define los datos principales de la solicitud.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <RHFCementerySelect name="idCementerio" label="Cementerio *" placeholder="Selecciona un cementerio" disabled={isPrefillLoading} />
-              <RHFInput
-                name="panteoneroACargo"
-                label="Panteonero a cargo *"
-                placeholder="Nombre del panteonero"
-                disabled={isPrefillLoading}
-                maxLength={150}
-              />
-              <RHFSelect name="metodoSolicitud" label="Método de solicitud *" options={metodoSolicitudOptions} placeholder="Selecciona" disabled={isPrefillLoading} />
-              <RHFInput name="entidad" label="Entidad emisora" placeholder="Entidad municipal" readOnly maxLength={150} />
-            </div>
-          </TabsContent>
 
           <TabsContent value="solicitante" className="space-y-4">
             <div>
@@ -204,55 +199,6 @@ export default function MejoraForm({
               disabled={isPrefillLoading}
               maxLength={200}
             />
-          </TabsContent>
-
-          <TabsContent value="fallecido" className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">Datos de la persona fallecida</h3>
-              <p className="text-sm text-muted-foreground">Asocia la mejora con la persona fallecida correspondiente.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <RHFAutocompletePerson name="id_fallecido" label="Fallecido" placeholder="Selecciona fallecido" vivos={false} disabled={isPrefillLoading} />
-              <RHFDatePickerCalendar name="fechaFallecimiento" label="Fecha de fallecimiento" />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="nicho" className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">Detalle del nicho o sitio</h3>
-              <p className="text-sm text-muted-foreground">Describe la ubicación física y los responsables del nicho.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <RHFInput name="propietarioNicho" label="Nombre del propietario" disabled={isPrefillLoading} maxLength={200} />
-              <RHFInput name="numeroNichos" label="Número de nichos" type="number" disabled={isPrefillLoading} />
-              <RHFInput
-                name="lugarNicho"
-                label="Lugar del nicho"
-                placeholder="Cementerio Central"
-                disabled={isPrefillLoading}
-                maxLength={100}
-              />
-              <RHFInput
-                name="codigoSitio"
-                label="Lugar del sitio / código"
-                disabled={isPrefillLoading}
-                maxLength={120}
-              />
-              <RHFInput
-                name="administradorNicho"
-                label="Nombre del administrador"
-                disabled={isPrefillLoading}
-                maxLength={120}
-              />
-              <RHFSelect
-                name="esPropio"
-                label="Propiedad"
-                options={[{ value: "true", label: "Propio" }, { value: "false", label: "Arrendado" }]}
-                placeholder="Selecciona"
-                disabled={isPrefillLoading}
-              />
-            </div>
-            <RHFTextarea name="observacionNicho" label="Observación" rows={3} maxLength={200} />
           </TabsContent>
 
           <TabsContent value="accion" className="space-y-4">
@@ -311,6 +257,25 @@ export default function MejoraForm({
             </div>
           </div>
         </Tabs>
+
+    {/* Campos ocultos para sección General */}
+    <input type="hidden" {...methods.register("idCementerio")} />
+    <input type="hidden" {...methods.register("panteoneroACargo")} />
+    <input type="hidden" {...methods.register("metodoSolicitud")} />
+    <input type="hidden" {...methods.register("entidad")} />
+
+    {/* Campos ocultos para sección Fallecido */}
+    <input type="hidden" {...methods.register("id_fallecido")} />
+    <input type="hidden" {...methods.register("fechaFallecimiento")} />
+
+    {/* Campos ocultos para sección Nicho */}
+    <input type="hidden" {...methods.register("propietarioNicho")} />
+    <input type="hidden" {...methods.register("numeroNichos")} />
+    <input type="hidden" {...methods.register("lugarNicho")} />
+    <input type="hidden" {...methods.register("codigoSitio")} />
+    <input type="hidden" {...methods.register("administradorNicho")} />
+    <input type="hidden" {...methods.register("esPropio")} />
+    <input type="hidden" {...methods.register("observacionNicho")} />
 
     {/* Campos ocultos para valores informativos que siguen el flujo */}
     <input type="hidden" {...methods.register("id_nicho")} />
