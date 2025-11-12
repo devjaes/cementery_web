@@ -95,6 +95,8 @@ export const API_ROUTES = {
     LIST: AR_KEYS.REQUISITOS_INHUMACION,
     GET_BY_ID: (id: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/requisito/${id}`,
+    // Endpoint para subir documentos relacionados a un requisito (multipart/form-data)
+    UPLOAD_DOCUMENTS: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}/documentos`,
     CREATE: AR_KEYS.REQUISITOS_INHUMACION,
     UPDATE: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}`,

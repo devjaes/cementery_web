@@ -73,6 +73,102 @@ export function RequisitoInhumacionSearchResults({
   const { mutate: downloadRequisitoInhumacionPdf, isPending: isDownloading } =
     useDownloadRequisitoInhumacionPdfMutation();
 
+  const extractCodigo = (r: unknown): string | undefined => {
+    const rec = r as unknown as Record<string, unknown>;
+    // 1) Try direct properties on requisito
+    const a = rec["codigoInhumacion"];
+    if (typeof a === "string") return a;
+    const b = rec["codigo_inhumacion"];
+    if (typeof b === "string") return b;
+
+    // 2) Try nested inhumacion object: requisito.inhumacion.codigo_inhumacion
+    const inh = rec["inhumacion"] as unknown as Record<string, unknown> | undefined;
+    if (inh) {
+      const c = inh["codigo_inhumacion"];
+      if (typeof c === "string") return c;
+      const d = inh["codigoInhumacion"];
+      if (typeof d === "string") return d;
+      // some backends might nest under different keys
+      const e = inh["codigo"];
+      if (typeof e === "string") return e;
+    }
+
+    // 3) As a last resort, check deeper nesting like id_hueco_nicho -> inhumacion (unlikely)
+    try {
+      const recAny = rec as any;
+      if (recAny?.inhumacion?.codigo_inhumacion) return recAny.inhumacion.codigo_inhumacion;
+      if (recAny?.inhumacion?.codigoInhumacion) return recAny.inhumacion.codigoInhumacion;
+    } catch {
+      // ignore
+    }
+
+    return undefined;
+  };
+
+  const isRequisitoRealizado = (r: unknown): boolean => {
+    try {
+      const reqAny = r as any;
+
+      const readBool = (obj: any, keyCamel: string) => {
+        if (!obj) return false;
+        const keySnake = keyCamel.replace(/[A-Z]/g, (m: string) => `_${m.toLowerCase()}`);
+
+        const candidates = [keyCamel, keySnake, keyCamel.charAt(0).toUpperCase() + keyCamel.slice(1)];
+
+        for (const k of candidates) {
+          if (k in obj) {
+            const val = obj[k];
+            if (typeof val === "boolean") return val;
+            if (typeof val === "string") {
+              const low = val.toLowerCase();
+              if (low === "true" || low === "1") return true;
+              if (low === "false" || low === "0") return false;
+            }
+            if (typeof val === "number") return val === 1;
+          }
+        }
+
+        // Try nested inhumacion: obj.inhumacion[key]
+        try {
+          const inh = obj.inhumacion;
+          if (inh) {
+            for (const k of candidates) {
+              if (k in inh) {
+                const v = inh[k];
+                if (typeof v === "boolean") return v;
+                if (typeof v === "string") {
+                  const low = v.toLowerCase();
+                  if (low === "true" || low === "1") return true;
+                  if (low === "false" || low === "0") return false;
+                }
+                if (typeof v === "number") return v === 1;
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        return false;
+      };
+
+      // Required fields (explicit): these must be true. Note: we intentionally DO NOT include autorizacionDeMovilizacionDelCadaver
+      const requiredKeys = [
+        "copiaCertificadoDefuncion",
+        "informeEstadisticoINEC",
+        "copiaCedula",
+        "pagoTasaInhumacion",
+        "copiaTituloPropiedadNicho",
+        "oficioDeSolicitud",
+      ];
+
+      return requiredKeys.every((k) => readBool(reqAny, k));
+    } catch (e) {
+      console.warn("isRequisitoRealizado error:", e);
+      return false;
+    }
+  };
+
   // Si hay un fallecido seleccionado, mostrar sus detalles
   if (selectedFallecido) {
     const { fallecido, requisitos } = selectedFallecido;
@@ -135,7 +231,7 @@ export function RequisitoInhumacionSearchResults({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Requisitos Encontrados ({requisitos.length})
+              Inhumacion encontrada
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -160,8 +256,8 @@ export function RequisitoInhumacionSearchResults({
                     <TableRow>
                       <TableHead>
                         <span className="flex items-center gap-1">
-                          <Building className="w-4 h-4" />
-                          Cementerio
+                          <span className="w-4 h-4 font-medium">#</span>
+                          Código
                         </span>
                       </TableHead>
                       <TableHead>
@@ -174,6 +270,12 @@ export function RequisitoInhumacionSearchResults({
                         <span className="flex items-center gap-1">
                           <User className="w-4 h-4" />
                           Solicitante
+                        </span>
+                      </TableHead>
+                      <TableHead>
+                        <span className="flex items-center gap-1">
+                          <Building className="w-4 h-4" />
+                          Cementerio
                         </span>
                       </TableHead>
                       <TableHead>
@@ -201,6 +303,9 @@ export function RequisitoInhumacionSearchResults({
                         </span>
                       </TableHead>
                       <TableHead>
+                        <span className="flex items-center gap-1">Estado</span>
+                      </TableHead>
+                      <TableHead>
                         <span className="flex items-center gap-1">
                           Acciones
                         </span>
@@ -211,13 +316,16 @@ export function RequisitoInhumacionSearchResults({
                     {requisitos?.map((requisito) => (
                       <TableRow key={requisito.idRequsitoInhumacion}>
                         <TableCell>
-                          {requisito.idCementerio?.nombre ?? "Sin cementerio"}
+                          {extractCodigo(requisito) ?? "-"}
                         </TableCell>
                         <TableCell>{requisito.pantoneroACargo}</TableCell>
                         <TableCell>
                           {requisito.idSolicitante
                             ? `${requisito.idSolicitante.nombres} ${requisito.idSolicitante.apellidos}`
                             : "No hay solicitante"}
+                        </TableCell>
+                        <TableCell>
+                          {requisito.idCementerio?.nombre ?? "Sin cementerio"}
                         </TableCell>
                         <TableCell>
                           {requisito.idHuecoNicho
@@ -236,6 +344,17 @@ export function RequisitoInhumacionSearchResults({
                           ).toLocaleDateString()}
                         </TableCell>
                         <TableCell>{requisito.horaInhumacion}</TableCell>
+                        <TableCell>
+                          {isRequisitoRealizado(requisito) ? (
+                            <span className="text-green-700 bg-green-100 px-2 py-0.5 rounded-md text-sm">
+                              Realizado
+                            </span>
+                          ) : (
+                            <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md text-sm">
+                              Pendiente
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Link
@@ -376,7 +495,7 @@ export function RequisitoInhumacionSearchResults({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5" />
-              Requisitos Encontrados ({requisitos.length})
+              Inhumacion encontrada
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -401,8 +520,8 @@ export function RequisitoInhumacionSearchResults({
             <TableRow>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Building className="w-4 h-4" />
-                  Cementerio
+                  <span className="w-4 h-4 font-medium">#</span>
+                  Código
                 </span>
               </TableHead>
               <TableHead>
@@ -415,6 +534,12 @@ export function RequisitoInhumacionSearchResults({
                 <span className="flex items-center gap-1">
                   <User className="w-4 h-4" />
                   Solicitante
+                </span>
+              </TableHead>
+              <TableHead>
+                <span className="flex items-center gap-1">
+                  <Building className="w-4 h-4" />
+                  Cementerio
                 </span>
               </TableHead>
               <TableHead>
@@ -442,22 +567,27 @@ export function RequisitoInhumacionSearchResults({
                 </span>
               </TableHead>
               <TableHead>
+                <span className="flex items-center gap-1">Estado</span>
+              </TableHead>
+              <TableHead>
                 <span className="flex items-center gap-1">Acciones</span>
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            
             {requisitos?.map((requisito) => (
               <TableRow key={requisito.idRequsitoInhumacion}>
                 <TableCell>
-                  {requisito.idCementerio?.nombre ?? "Sin cementerio"}
+                  {extractCodigo(requisito) ?? "-"}
                 </TableCell>
                 <TableCell>{requisito.pantoneroACargo}</TableCell>
                 <TableCell>          
                     {requisito.idSolicitante
                       ? `${requisito.idSolicitante.nombres} ${requisito.idSolicitante.apellidos}`
                       : "No hay solicitante"}
+                </TableCell>
+                <TableCell>
+                  {requisito.idCementerio?.nombre ?? "Sin cementerio"}
                 </TableCell>
                 <TableCell>
                   {requisito.idHuecoNicho ?
@@ -474,6 +604,17 @@ export function RequisitoInhumacionSearchResults({
                   {new Date(requisito.fechaInhumacion).toLocaleDateString()}
                 </TableCell>
                 <TableCell>{requisito.horaInhumacion}</TableCell>
+                <TableCell>
+                  {isRequisitoRealizado(requisito) ? (
+                    <span className="text-green-700 bg-green-100 px-2 py-0.5 rounded-md text-sm">
+                      Realizado
+                    </span>
+                  ) : (
+                    <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md text-sm">
+                      Pendiente
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Link

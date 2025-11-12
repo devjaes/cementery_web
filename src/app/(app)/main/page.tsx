@@ -33,14 +33,9 @@ const features = [
     href: "/map",
   },
   {
-    title: "Requisitos de Inhumaciones",
-    description: "Registra y consulta los requisitos de inhumaciones.",
-    href: "/requisitos-inhumacion",
-  },
-  {
     title: "Inhumaciones",
     description: "Registra y consulta las inhumaciones.",
-    href: "/inhumaciones",
+    href: "/requisitos-inhumacion",
   },
 ];
 

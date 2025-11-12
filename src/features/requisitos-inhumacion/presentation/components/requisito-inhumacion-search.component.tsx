@@ -35,7 +35,7 @@ export function RequisitoInhumacionSearch({ onSearch, isSearching }: RequisitoIn
             </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Búsqueda de Requisitos de Inhumaciones
+            Búsqueda de Inhumaciones
           </h2>
           <p className="text-gray-600">
             Busca por cédula, nombres o apellidos del fallecido

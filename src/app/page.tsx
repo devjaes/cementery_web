@@ -15,7 +15,7 @@ export default function Home() {
         </div>
 
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Gestión de nichos, inhumaciones, propietarios y más
+          Gestión de nichos, propietarios y más
         </p>
 
         <div className="pt-4 w-full">

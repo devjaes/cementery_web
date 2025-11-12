@@ -175,7 +175,7 @@ export default function MejoraFormEdit({
                 label="Horario de trabajo"
                 placeholder="Ej: 09h00 a 17h00"
                 disabled={isPrefillLoading}
-                maxLength={120}
+                
               />
             </div>
             <RHFTextarea name="observacionServicio" label="Observación del servicio" rows={3} maxLength={200} />
