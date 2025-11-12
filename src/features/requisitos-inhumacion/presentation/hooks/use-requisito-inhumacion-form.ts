@@ -17,7 +17,7 @@ import { API_ROUTES } from "@/core/constants/api-routes";
 import { RequisitoInhumacionRepositoryImpl } from "../../infraestructure/repositories/requisito-inhumacion.repository.impl";
 import { InhumacionRepositoryImpl } from "@/features/inhumaciones/infrastructure/repositories/inhumacion.repository.impl";
 import { toast } from "sonner";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 
 export function useRequisitoInhumacionForm(
   requisitoInhumacion?: RequisitoInhumacionEntity
@@ -383,7 +383,7 @@ export function useRequisitoInhumacionForm(
                     .find((r: any) => {
                       // match by id_fallecido or by hueco/nicho if provided
                       if (!r) return false;
-                      const sameFallecido = (r.id_fallecido?.id_persona || r.idFallecido?.id_persona || r.idFallecido?.id_persona) === data.idFallecido;
+                      const sameFallecido = (r.id_fallecido?.id_persona || r.idFallecido?.id_persona) === data.idFallecido;
                       return sameFallecido;
                     });
 

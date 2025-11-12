@@ -63,7 +63,7 @@ export class RequisitoInhumacionMapper {
             observacionCopiaTituloPropiedadNicho: (rec["observacionCopiaTituloPropiedadNicho"] ?? rec["observacion_copia_titulo_propiedad_nicho"]) as string,
             autorizacionDeMovilizacionDelCadaver: readBool(rec, "autorizacionDeMovilizacionDelCadaver", "autorizacion_de_movilizacion_del_cadaver"),
             observacionAutorizacionMovilizacion: (rec["observacionAutorizacionMovilizacion"] ?? rec["observacion_autorizacion_movilizacion"]) as string,
-            oficioDeSolicitud: (rec["oficioDeSolicitud"] ?? rec["OficioDeSolicitud"] ?? rec["oficio_de_solicitud"]) as boolean,
+            oficioDeSolicitud: readBool(rec, "oficioDeSolicitud", "oficio_de_solicitud"),
             observacionOficioSolicitud: (rec["observacionOficioSolicitud"] ?? rec["observacion_oficio_solicitud"]) as string,
             idHuecoNicho: HuecoMapper.toEntity(data.id_hueco_nicho),
             idFallecido: PersonMapper.toEntity(data.id_fallecido),
