@@ -27,6 +27,7 @@ export function BloquesTable({ idCementerio }: { idCementerio: string }) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Número</TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Descripción</TableHead>
               <TableHead>Filas</TableHead>
@@ -60,6 +61,7 @@ export function BloquesTable({ idCementerio }: { idCementerio: string }) {
             )}
             {bloques?.map((b) => (
               <TableRow key={b.idBloque}>
+                <TableCell>{b.numero ?? '-'}</TableCell>
                 <TableCell>{b.nombre}</TableCell>
                 <TableCell className="max-w-xs truncate" title={b.descripcion ?? ''}>{b.descripcion}</TableCell>
                 <TableCell>{b.numeroFilas}</TableCell>

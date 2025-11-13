@@ -3,6 +3,7 @@ export interface BloqueModel {
   id_cementerio: string;
   nombre: string;
   descripcion: string | null;
+  numero?: number | null;
   numero_filas: number;
   numero_columnas: number;
   estado: string;
@@ -14,6 +15,7 @@ export interface BloqueCreateModel {
   id_cementerio: string;
   nombre: string;
   descripcion?: string;
+  numero?: number;
   numero_filas: number;
   numero_columnas: number;
 }
@@ -22,6 +24,7 @@ export interface BloqueUpdateModel {
   id_bloque: string;
   nombre?: string;
   descripcion?: string;
+  numero?: number | null;
   numero_filas?: number;
   numero_columnas?: number;
 }

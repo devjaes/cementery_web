@@ -8,6 +8,7 @@ export class BloqueMapper {
       idCementerio: model.id_cementerio,
       nombre: model.nombre,
       descripcion: model.descripcion,
+      numero: model.numero ?? null,
       numeroFilas: model.numero_filas,
       numeroColumnas: model.numero_columnas,
       estado: model.estado,
@@ -21,6 +22,7 @@ export class BloqueMapper {
       id_cementerio: entity.idCementerio,
       nombre: entity.nombre,
       descripcion: entity.descripcion,
+      numero: entity.numero,
       numero_filas: entity.numeroFilas,
       numero_columnas: entity.numeroColumnas,
     };
@@ -31,6 +33,7 @@ export class BloqueMapper {
       id_bloque: entity.idBloque,
       nombre: entity.nombre,
       descripcion: entity.descripcion,
+      numero: entity.numero ?? null,
       numero_filas: entity.numeroFilas,
       numero_columnas: entity.numeroColumnas,
     };
