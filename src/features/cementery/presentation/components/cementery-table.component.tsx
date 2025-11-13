@@ -30,9 +30,11 @@ function StatusChip({ estado }: { estado: string }) {
 
 interface CementeryListTableProps {
     onEditClick?: (id: string) => void;
+    onViewBlocksClick?: (id: string) => void;
+    selectedId?: string | null;
 }
 
-export function CementeryListTable({ onEditClick }: CementeryListTableProps = {}) {
+export function CementeryListTable({ onEditClick, onViewBlocksClick, selectedId }: CementeryListTableProps = {}) {
     const { data: cementeries, isLoading, error } = useFindAllCementeriesQuery();
     const { mutate: deleteCementery, isPending } = useDeleteCementeryMutation();
 
@@ -117,6 +119,13 @@ export function CementeryListTable({ onEditClick }: CementeryListTableProps = {}
                                             onClick={() => onEditClick?.(cementery.idCementerio)}
                                         >
                                             <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant={selectedId === cementery.idCementerio ? "secondary" : "ghost"}
+                                            onClick={() => onViewBlocksClick?.(cementery.idCementerio)}
+                                            className="text-xs"
+                                        >
+                                            {selectedId === cementery.idCementerio ? "Ocultar Bloques" : "Ver Bloques"}
                                         </Button>
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>

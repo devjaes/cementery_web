@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CementeryListTable } from "../components/cementery-table.component";
 import ContainerApp from "@/core/layout/container-app";
 import { Button } from "@/shared/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Blocks } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +15,13 @@ import { CementeryForm } from "../components/cementery-form.component";
 import { useFindCementeryByIdQuery } from "../hooks/use-cementery-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { CEMENTERY_QUERY_KEYS } from "../../domain/constants/cementery-keys";
+import { BloquesTable } from "@/features/bloques/presentation/components/bloques-table.component";
+import { BloqueForm } from "@/features/bloques/presentation/components/bloque-form.component";
 
 export default function CementeryListView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingCementeryId, setEditingCementeryId] = useState<string | null>(null);
+  const [selectedCementeryId, setSelectedCementeryId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const handleCreateSuccess = () => {
@@ -33,6 +36,10 @@ export default function CementeryListView() {
 
   const handleEditClick = (id: string) => {
     setEditingCementeryId(id);
+  };
+
+  const handleViewBlocks = (id: string) => {
+    setSelectedCementeryId((prev) => prev === id ? null : id);
   };
 
   return (
@@ -53,7 +60,28 @@ export default function CementeryListView() {
             Nuevo Cementerio
           </Button>
         </div>
-        <CementeryListTable onEditClick={handleEditClick} />
+        <CementeryListTable onEditClick={handleEditClick} onViewBlocksClick={handleViewBlocks} selectedId={selectedCementeryId} />
+
+        {selectedCementeryId && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                <Blocks className="w-5 h-5" /> Bloques del Cementerio
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2">
+                <BloquesTable idCementerio={selectedCementeryId} />
+              </div>
+              <div className="xl:col-span-1">
+                <div className="rounded-lg border bg-card p-6">
+                  <h4 className="text-lg font-semibold mb-4">Nuevo Bloque</h4>
+                  <BloqueForm idCementerio={selectedCementeryId} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogContent className="max-w-2xl">
