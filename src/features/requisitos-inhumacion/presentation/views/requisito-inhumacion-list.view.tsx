@@ -70,7 +70,7 @@ export default function InhumacionListView() {
       setSelectedFallecido(null);
     };
   return (
-    <ContainerApp title="Búsqueda de Requisitos de Inhumaciones">
+    <ContainerApp title="Búsqueda de Inhumaciones">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">

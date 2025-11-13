@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { useDebounce } from "@/shared/hooks/use-debounce";
-import { useSearchPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
+import { useFindPersonByIdQuery, useSearchPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/shared/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -17,18 +17,21 @@ interface RHFAutocompletePersonProps {
 }
 
 export default function RHFAutocompletePerson({ name, label, placeholder, disabled, vivos }: RHFAutocompletePersonProps) {
-  const { control } = useFormContext();
+  const { control, watch } = useFormContext();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const { data: persons, isLoading } = useSearchPersonsQuery(debouncedSearch, vivos);
+  const selectedValue = watch(name) as string | undefined;
+  const selectedId = typeof selectedValue === "string" ? selectedValue : "";
+  const { data: selectedPersonById } = useFindPersonByIdQuery(selectedId);
 
   return (
     <Controller
       name={name}
       control={control}
       render={({ field }) => {
-        const selectedPerson = persons?.find(p => p.id_persona === field.value);
+        const selectedPerson = persons?.find(p => p.id_persona === field.value) ?? selectedPersonById;
         return (
           <div className="w-full">
             {label && <label className="block text-sm font-medium mb-1">{label}</label>}

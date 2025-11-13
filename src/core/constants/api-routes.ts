@@ -7,6 +7,7 @@ const AR_KEYS = {
   HUECOS: "huecos-nichos",
   INHUMACIONES: "inhumaciones",
   REQUISITOS_INHUMACION: "requisitos-inhumacion",
+  MEJORAS: "mejoras",
   PAYMENTS: "payments",
 };
 
@@ -94,6 +95,8 @@ export const API_ROUTES = {
     LIST: AR_KEYS.REQUISITOS_INHUMACION,
     GET_BY_ID: (id: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/requisito/${id}`,
+    // Endpoint para subir documentos relacionados a un requisito (multipart/form-data)
+    UPLOAD_DOCUMENTS: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}/documentos`,
     CREATE: AR_KEYS.REQUISITOS_INHUMACION,
     UPDATE: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}`,
@@ -101,6 +104,17 @@ export const API_ROUTES = {
       `${AR_KEYS.REQUISITOS_INHUMACION}/${id}/pdf`,
     SEARCH_FALLECIDOS: (busqueda: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/fallecidos/${busqueda}`,
+  },
+  MEJORAS: {
+    LIST: AR_KEYS.MEJORAS,
+    GET_BY_ID: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
+    CREATE: AR_KEYS.MEJORAS,
+    UPDATE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
+    DELETE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
+    UPLOAD_FILE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/files`,
+  DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
+    SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
+    APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
   },
   PAYMENTS: {
     LIST: AR_KEYS.PAYMENTS,

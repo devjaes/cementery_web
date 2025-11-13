@@ -5,6 +5,7 @@ import { PersonModel } from "@/features/person/infraestrcture/models/person.mode
 
 export interface RequisitoInhumacionModel {
   id_requsitoInhumacion: string;
+  codigoInhumacion?: string;
   id_cementerio: CementeryModel;
   pantoneroACargo: string;
   metodoSolicitud: string;
@@ -37,6 +38,7 @@ export interface CreateRequisitoInhumacionModel {
   metodoSolictud: string;
   id_solicitante: string;
   observacionSolicitante?: string;
+  codigo_inhumacion?: string;
 
   copiaCertificadoDefuncion: boolean;
   observacionCertificadoDefuncion?: string;

@@ -7,6 +7,9 @@ import {
 } from "../../domain/entities/payment.entity";
 import { PaymentRepositoryImpl } from "../../infrastructure/repositories/payment.repository.impl";
 import { PAYMENT_QUERY_KEYS } from "../../domain/constants/payment-keys";
+import AxiosClient from "@/core/infrastructure/axios-client";
+import { NichoSalesRepository } from "@/features/nichos/infrastructure/repositories/nicho-sales.repository";
+import { NICHO_QUERY_KEYS } from "@/features/nichos/domain/constants/nicho-keys";
 
 export const useCreatePayment = () => {
   const queryClient = useQueryClient();
@@ -87,12 +90,47 @@ export const useUploadReceipt = () => {
       const repository = PaymentRepositoryImpl.getInstance();
       return await repository.uploadReceipt(data);
     },
-    onSuccess: (data) => {
+    // variables es lo que se pasó a mutate(), útil para obtener validatedBy y file
+    onSuccess: async (payment, variables: UploadReceiptEntity) => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.all() });
       queryClient.invalidateQueries({
-        queryKey: PAYMENT_QUERY_KEYS.byId(data.paymentId),
+        queryKey: PAYMENT_QUERY_KEYS.byId(payment.paymentId),
       });
       toast.success("Comprobante subido y pago confirmado exitosamente");
+
+      // Si el pago corresponde a una venta de nicho, intentar confirmar la venta
+      try {
+        if (payment.procedureType === "niche_sale") {
+          const axiosClient = AxiosClient.getInstance();
+          const nichoSalesRepository = new NichoSalesRepository({
+            post: axiosClient.post.bind(axiosClient),
+            patch: axiosClient.patch.bind(axiosClient),
+          });
+
+          // llamar al endpoint de confirmar venta para que el backend marque el nicho como VENDIDO
+          await nichoSalesRepository.confirmarVenta({
+            idPago: payment.paymentId,
+            validadoPor: variables.validatedBy,
+          });
+
+          // invalidar queries de nichos para refrescar estado
+          queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+          toast.success("Nicho marcado como VENDIDO");
+        }
+      } catch (err: any) {
+        // Si el backend indica que ya está confirmado, tratamos como no bloqueante.
+        const msg = (err?.message || err?.response?.data?.message || "").toString().toLowerCase();
+        if (msg.includes("confirm") || msg.includes("confirmado")) {
+          queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+          // silently accept (ya estaba confirmado)
+          return;
+        }
+
+        // Mostrar toast pero no bloquear el flujo principal
+        toast.error("No se pudo marcar el nicho como VENDIDO automáticamente", {
+          description: err?.message || String(err),
+        });
+      }
     },
     onError: (error: Error) => {
       toast.error("Error al subir el comprobante", {

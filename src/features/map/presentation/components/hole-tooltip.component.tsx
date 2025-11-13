@@ -1,35 +1,42 @@
 import React from 'react';
 import { NichoWithHuecos } from '../hooks/use-niches-with-huecos';
-import { getColorByHuecoOcupado } from '@/shared/lib/get-hueco-color';
+import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity';
 
 interface HuecoTooltipProps {
   nicho: NichoWithHuecos;
 }
 
 export const HuecoTooltip: React.FC<HuecoTooltipProps> = ({ nicho }) => {
-  const ocupados = nicho.huecos?.filter(h => h.estado.toLowerCase() === 'ocupado').length || 0;
-  const reservados = nicho.huecos?.filter(h => h.estado.toLowerCase() === 'reservado').length || 0;
-  const total = nicho.huecos?.length || nicho.numHuecos || 0;
-  const disponibles = Math.max(total - ocupados - reservados, 0);
-  const { color } = getColorByHuecoOcupado(ocupados, reservados, total);
-
-  const getEstadoDescripcion = () => {
-    if (ocupados + reservados === 0) return 'Disponible';
-    if (ocupados + reservados === total) return 'Lleno';
-    return `Disponible (${disponibles}/${total})`;
-  };
+  const huecosOcupados = nicho.huecos?.filter(h => h.ocupado).length || 0;
+  const huecosDisponibles = (nicho.numHuecos || 0) - huecosOcupados;
 
   return (
-    <div className="text-sm text-center space-y-1">
-      <p className="font-semibold">Nicho {nicho.numero}</p>
-      <p className="text-muted-foreground">Estado: {getEstadoDescripcion()}</p>
-      <div className={`w-full h-2 rounded ${color}`} />
-      <div className="text-xs text-muted-foreground mt-2">
-        <p>Huecos: {total}</p>
-        <p>Ocupados: {ocupados}</p>
-        <p>Reservados: {reservados}</p>
-        <p>Disponibles: {disponibles}</p>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">Total de huecos:</span>
+        <span className="font-semibold text-foreground">{nicho.numHuecos || 0}</span>
       </div>
+      
+      {nicho.numHuecos > 0 && (
+        <>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Ocupados:</span>
+            <span className="font-semibold text-rose-600">{huecosOcupados}</span>
+          </div>
+          
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Disponibles:</span>
+            <span className="font-semibold text-emerald-600">{huecosDisponibles}</span>
+          </div>
+
+          <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-rose-500 h-full transition-all"
+              style={{ width: `${(huecosOcupados / nicho.numHuecos) * 100}%` }}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };
