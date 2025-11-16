@@ -20,8 +20,7 @@ import {
   MapPin, 
   Clock,
   AlertCircle,
-  DollarSign,
-  CheckCircle
+  DollarSign
 } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -49,8 +48,6 @@ export default function NuevaExhumacionPage() {
   const inhumacionId = searchParams.get("inhumacion");
   
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [paymentGenerated, setPaymentGenerated] = useState(false);
-  const [paymentCode, setPaymentCode] = useState("");
 
   const { data: inhumacion, isLoading } = useFindInhumacionByIdQuery(inhumacionId || "");
   const createExhumacionMutation = useCreateExhumacionMutation();
@@ -138,24 +135,35 @@ export default function NuevaExhumacionPage() {
       formData.append('archivos', uploadedFile);
     }
 
-    console.log(" Datos a enviar:");
+    console.log("📋 Datos a enviar:");
     console.log("  • nicho_original_id:", inhumacion.idNicho.idNicho);
     console.log("  • inhumacion_id:", inhumacion.idInhumacion);
     console.log("  • archivo:", uploadedFile ? uploadedFile.name : 'Sin archivo');
     console.log("  • ubicacion:", ubicacion);
 
     try {
-      const result = await createExhumacionMutation.mutateAsync(formData);
-      // Simular generación de pago
-      setPaymentGenerated(true);
-      setPaymentCode(`PAY-${format(new Date(), "yyyy-MM-dd")}-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`);
+      // Crear la exhumación
+      console.log("🔄 Iniciando creación de exhumación...");
+      const exhumacionResult = await createExhumacionMutation.mutateAsync(formData);
+      console.log("✅ Exhumación creada exitosamente:", exhumacionResult);
+      console.log("🔍 Estructura completa del resultado:", JSON.stringify(exhumacionResult, null, 2));
+      console.log("🆔 ID de exhumación:", exhumacionResult?.idExhumacion);
+      console.log("🔑 Propiedades del resultado:", Object.keys(exhumacionResult || {}));
       
-      // Mostrar el código de pago por 5 segundos antes de redirigir
-      setTimeout(() => {
-        router.push(`/exhumaciones/${result.idExhumacion}`);
-      }, 5000);
+      // Verificar que tenemos el ID antes de redirigir
+      if (!exhumacionResult?.idExhumacion) {
+        console.error("❌ ERROR: No se recibió el ID de exhumación en la respuesta");
+        console.error("📦 Respuesta completa:", exhumacionResult);
+        alert("Error: No se pudo obtener el ID de la exhumación creada. Revisa la consola para más detalles.");
+        return;
+      }
+      
+      // Redirigir a la página de detalles de la exhumación
+      console.log(`✅ Redirigiendo a: /exhumaciones/${exhumacionResult.idExhumacion}`);
+      router.push(`/exhumaciones/${exhumacionResult.idExhumacion}`);
     } catch (error) {
-      console.error("Error al crear exhumación:", error);
+      console.error("❌ Error al crear exhumación:", error);
+      alert("Error al crear la exhumación. Por favor, intenta nuevamente.");
     }
   };
 
@@ -232,45 +240,6 @@ export default function NuevaExhumacionPage() {
           >
             Volver
           </button>
-        </div>
-      </ContainerApp>
-    );
-  }
-
-  if (paymentGenerated) {
-    return (
-      <ContainerApp title="Nueva Exhumación">
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="p-8 text-center">
-              <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-green-800 mb-2">
-                ¡Exhumación Registrada Exitosamente!
-              </h2>
-              <p className="text-green-700 mb-6">
-                Se ha generado automáticamente una orden de pago para proceder con la exhumación.
-              </p>
-              
-              <div className="bg-white p-4 rounded-lg border border-green-200 mb-6">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  <span className="font-semibold text-green-800">Código de Pago</span>
-                </div>
-                <div className="text-2xl font-mono font-bold text-green-900">
-                  {paymentCode}
-                </div>
-                <p className="text-sm text-green-600 mt-2">
-                  Monto: $150.00 USD
-                </p>
-              </div>
-
-              <div className="text-sm text-green-700 mb-4">
-                <p>• Guarda este código para realizar el pago</p>
-                <p>• Una vez realizado el pago, sube el comprobante para finalizar el proceso</p>
-                <p>• Serás redirigido automáticamente en unos segundos...</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </ContainerApp>
     );
@@ -482,27 +451,32 @@ export default function NuevaExhumacionPage() {
           </Card>
 
           {/* Información de Pago */}
-          <Card className="border-yellow-200 bg-yellow-50">
+          <Card className="border-blue-200 bg-blue-50">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <CardTitle className="flex items-center gap-2 text-blue-800">
                 <DollarSign className="h-5 w-5" />
                 Información de Pago
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-yellow-700">
-                <p className="mb-2">
-                  <span className="font-semibold">Costo de Exhumación:</span> $150.00 USD
+              <div className="text-blue-700">
+                <p className="mb-3 font-semibold">
+                  <span className="text-lg">Costo de Exhumación:</span> $150.00 USD
                 </p>
-                <p className="text-sm">
-                  • Al registrar la exhumación se generará automáticamente una orden de pago
-                </p>
-                <p className="text-sm">
-                  • Recibirás un código de pago único para realizar el pago
-                </p>
-                <p className="text-sm">
-                  • Una vez realizado el pago, deberás subir el comprobante para finalizar el proceso
-                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <span>Después de registrar la exhumación, podrás generar la orden de pago</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <span>Usa el código generado para realizar el pago en tesorería</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Upload className="h-4 w-4 text-blue-600" />
+                    <span>Después del pago, sube el comprobante para completar el proceso</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -515,9 +489,12 @@ export default function NuevaExhumacionPage() {
             <Button 
               type="submit" 
               disabled={createExhumacionMutation.isPending}
-              className="min-w-32"
+              className="min-w-40"
             >
-              {createExhumacionMutation.isPending ? "Registrando..." : "Registrar Exhumación"}
+              {createExhumacionMutation.isPending 
+                ? "Registrando Exhumación..." 
+                : "Registrar Exhumación"
+              }
             </Button>
           </div>
         </form>

@@ -42,7 +42,21 @@ export class ExhumacionRepositoryImpl implements ExhumacionRepository {
             },
           }
         );
-        return ExhumacionMapper.toEntity(data.data);
+        
+        console.log("Respuesta CRUDA del backend (data completo):", data);
+        console.log("Estructura JSON de data:", JSON.stringify(data, null, 2));
+        
+        // El backend devuelve: { success, message, data: { mensaje, exhumacion, nicho_actualizado } }
+        // Necesitamos acceder a data.data.exhumacion
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const responseData = (data.data as any)?.exhumacion || data.data || data;
+        console.log("Datos de exhumacion a mapear:", responseData);
+        
+        const mappedEntity = ExhumacionMapper.toEntity(responseData);
+        console.log("Entidad mapeada:", mappedEntity);
+        console.log("ID en la entidad:", mappedEntity.idExhumacion);
+        
+        return mappedEntity;
       }
 
       // Si es CreateExhumacionEntity, convertir a FormData
@@ -78,7 +92,16 @@ export class ExhumacionRepositoryImpl implements ExhumacionRepository {
           },
         }
       );
-      return ExhumacionMapper.toEntity(data.data);
+      
+      console.log("📦 Respuesta del backend (data):", data);
+      console.log("📦 Respuesta del backend (data.data):", data.data);
+      console.log("🔍 Estructura de data:", JSON.stringify(data, null, 2));
+      
+      const mappedEntity = ExhumacionMapper.toEntity(data.data);
+      console.log("✅ Entidad mapeada:", mappedEntity);
+      console.log("🆔 ID en la entidad:", mappedEntity.idExhumacion);
+      
+      return mappedEntity;
 
     } catch (error) {
       console.error("Error al crear exhumación:", error);
