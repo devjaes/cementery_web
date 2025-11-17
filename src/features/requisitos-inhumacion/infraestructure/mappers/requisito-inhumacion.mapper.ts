@@ -6,6 +6,45 @@ import { HuecoMapper } from "@/features/huecos/infrastructure/mappers/hueco.mapp
 
 
 export class RequisitoInhumacionMapper {
+    static toModel(entity: import("../../domain/entities/requisito-inhumacion.entity").CreateRequisitoInhumacionEntity): import("../models/requisito-inhumacion.model").CreateRequisitoInhumacionModel {
+        // Map Create entity -> Create model, keeping backend naming (snake/Pascal as defined in model)
+        return {
+            id_cementerio: entity.idCementerio,
+            pantoneroACargo: entity.pantoneroACargo,
+            // model has a small typo 'metodoSolictud' — map from entity.metodoSolicitud
+            metodoSolictud: entity.metodoSolicitud,
+            id_solicitante: entity.idSolicitante,
+            observacionSolicitante: entity.observacionSolicitante || undefined,
+            codigo_inhumacion: entity.codigoInhumacion || undefined,
+
+            copiaCertificadoDefuncion: !!entity.copiaCertificadoDefuncion,
+            observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || undefined,
+
+            informeEstadisticoINEC: !!entity.informeEstadisticoINEC,
+            observacionInformeEstadisticoINEC: entity.observacionInformeEstadisticoINEC || undefined,
+
+            copiaCedula: !!entity.copiaCedula,
+            observacionCopiaCedula: entity.observacionCopiaCedula || undefined,
+
+            pagoTasaInhumacion: !!entity.pagoTasaInhumacion,
+            observacionPagoTasaInhumacion: entity.observacionPagoTasaInhumacion || undefined,
+
+            copiaTituloPropiedadNicho: !!entity.copiaTituloPropiedadNicho,
+            observacionCopiaTituloPropiedadNicho: entity.observacionCopiaTituloPropiedadNicho || undefined,
+
+            autorizacionDeMovilizacionDelCadaver: !!entity.autorizacionDeMovilizacionDelCadaver,
+            observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || undefined,
+
+            OficioDeSolicitud: !!entity.oficioDeSolicitud,
+            observacionOficioSolicitud: entity.observacionOficioSolicitud || undefined,
+
+            id_hueco_nicho: entity.idHuecoNicho,
+            id_fallecido: entity.idFallecido,
+            fechaInhumacion: entity.fechaInhumacion,
+            horaInhumacion: entity.horaInhumacion,
+            nombreAdministradorNicho: entity.nombreAdministradorNicho,
+        };
+    }
     static toEntity(data: RequisitoInhumacionModel): RequisitoInhumacionEntity {
         // Safely extract codigoInhumacion supporting both API shapes: codigoInhumacion or codigo_inhumacion
         const maybeCodigo = ((): string | undefined => {
@@ -30,10 +69,19 @@ export class RequisitoInhumacionMapper {
         // Helper to read boolean-like fields supporting multiple naming conventions
         const readBool = (rec: Record<string, unknown>, keyCamel: string, keySnake?: string): boolean => {
             const snake = keySnake ?? keyCamel.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+            // also support PascalCase keys returned by some backends (e.g. `OficioDeSolicitud`)
+            const pascal = keyCamel.charAt(0).toUpperCase() + keyCamel.slice(1);
+
             const a = rec[keyCamel];
             if (typeof a === "boolean") return a;
             if (a === "true" || a === "1") return true;
             if (a === "false" || a === "0") return false;
+
+            const p = rec[pascal];
+            if (typeof p === "boolean") return p;
+            if (p === "true" || p === "1") return true;
+            if (p === "false" || p === "0") return false;
+
             const b = rec[snake];
             if (typeof b === "boolean") return b;
             if (b === "true" || b === "1") return true;
@@ -73,47 +121,9 @@ export class RequisitoInhumacionMapper {
         };
     }
 
-    static toModel(entity: CreateRequisitoInhumacionEntity): CreateRequisitoInhumacionModel{
-        return {
-            codigo_inhumacion: entity.codigoInhumacion,
-            id_cementerio: entity.idCementerio,
-            pantoneroACargo: entity.pantoneroACargo,
-            metodoSolictud: entity.metodoSolicitud,
-            id_solicitante: entity.idSolicitante,
-            observacionSolicitante: entity.observacionSolicitante || "",
-
-            copiaCertificadoDefuncion: entity.copiaCertificadoDefuncion ,
-            observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || "",
-
-            informeEstadisticoINEC: entity.informeEstadisticoINEC ,
-            observacionInformeEstadisticoINEC: entity.observacionInformeEstadisticoINEC,
-
-            copiaCedula: entity.copiaCedula ,
-            observacionCopiaCedula: entity.observacionCopiaCedula || "",
-
-            pagoTasaInhumacion: entity.pagoTasaInhumacion,
-            observacionPagoTasaInhumacion: entity.observacionPagoTasaInhumacion || "",
-
-            copiaTituloPropiedadNicho: entity.copiaTituloPropiedadNicho,
-            observacionCopiaTituloPropiedadNicho: entity.observacionCopiaTituloPropiedadNicho || "",
-
-            autorizacionDeMovilizacionDelCadaver: entity.autorizacionDeMovilizacionDelCadaver,
-            observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || "",
-
-            OficioDeSolicitud: entity.oficioDeSolicitud,
-            observacionOficioSolicitud: entity.observacionOficioSolicitud || "",
-            
-            id_hueco_nicho: entity.idHuecoNicho,
-            id_fallecido: entity.idFallecido,
-            fechaInhumacion: entity.fechaInhumacion,
-            horaInhumacion: entity.horaInhumacion,
-            
-            nombreAdministradorNicho: entity.nombreAdministradorNicho,
-        }
-    }
-
     static toUpdateModel(entity: UpdateRequisitoInhumacionEntity): UpdateRequisitoInhumacionModel{
-        return {
+        // Build a flexible payload (as any) to support multiple backend naming conventions
+        const out: any = {
             id_requisitoInhumacion: entity.idRequisitoInhumacion,
             copiaCertificadoDefuncion: entity.copiaCertificadoDefuncion,
             observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || "",
@@ -132,10 +142,23 @@ export class RequisitoInhumacionMapper {
 
             autorizacionDeMovilizacionDelCadaver: entity.autorizacionDeMovilizacionDelCadaver,
             observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || "",
+        };
 
-            OficioDeSolicitud: entity.oficioDeSolicitud,
-            observacionOficioSolicitud: entity.observacionOficioSolicitud || "",
-        }
+        // Support multiple naming conventions for the backend: camelCase, snake_case and legacy PascalCase
+        out.OficioDeSolicitud = entity.oficioDeSolicitud;
+        out.oficioDeSolicitud = entity.oficioDeSolicitud;
+        out.oficio_de_solicitud = entity.oficioDeSolicitud;
+        out.observacionOficioSolicitud = entity.observacionOficioSolicitud || "";
 
+        // Include related fields so backend can update linked inhumación if required
+        out.id_hueco_nicho = (entity as any).idHuecoNicho ?? undefined;
+        out.id_fallecido = (entity as any).idFallecido ?? undefined;
+        out.fechaInhumacion = (entity as any).fechaInhumacion ?? undefined;
+        out.horaInhumacion = (entity as any).horaInhumacion ?? undefined;
+        out.nombreAdministradorNicho = (entity as any).nombreAdministradorNicho ?? undefined;
+        out.codigoInhumacion = (entity as any).codigoInhumacion ?? undefined;
+
+        return out as UpdateRequisitoInhumacionModel;
     }
+
 }

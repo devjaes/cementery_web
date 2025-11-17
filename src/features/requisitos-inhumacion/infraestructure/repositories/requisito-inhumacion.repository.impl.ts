@@ -39,8 +39,21 @@ export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRep
 
     async update(requisitoInhumacion: UpdateRequisitoInhumacionEntity): Promise<RequisitoInhumacionEntity> {
         const model = RequisitoInhumacionMapper.toUpdateModel(requisitoInhumacion);
+
+        // Resolve id for the update endpoint robustly: prefer entity id, fall back to model
+        const anyEntity: any = requisitoInhumacion as any;
+        const idFromEntity = anyEntity?.idRequisitoInhumacion ?? anyEntity?.idRequsitoInhumacion ?? anyEntity?.id;
+        const idFromModel = (model as any)?.id_requisitoInhumacion ?? (model as any)?.idRequisitoInhumacion;
+        const idToUse = idFromEntity || idFromModel;
+
+        if (!idToUse) {
+            throw new Error("RequisitoInhumacionRepositoryImpl.update: id de requisito no proporcionado");
+        }
+
+        console.log("[DEBUG] RequisitoInhumacionRepositoryImpl.update - id:", idToUse, "payload:", model);
+
         const { data } = await this.httpClient.patch<RequisitoInhumacionModel>(
-            API_ROUTES.REQUISITOS_INHUMACION.UPDATE(model.id_requisitoInhumacion),
+            API_ROUTES.REQUISITOS_INHUMACION.UPDATE(idToUse),
             model
         );
         return RequisitoInhumacionMapper.toEntity(data.data);
