@@ -44,8 +44,8 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
                   className="w-full justify-between"
                   disabled={disabled}
                 >
-                  {selectedPerson 
-                    ? `${selectedPerson.nombres} ${selectedPerson.apellidos} (${selectedPerson.cedula})`
+                  {selectedPerson
+                    ? [selectedPerson.nombres, selectedPerson.apellidos].filter(Boolean).join(" ") + ` (${selectedPerson.cedula})`
                     : placeholder || "Seleccionar persona..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -63,25 +63,28 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
                     ) : (
                       <>
                         {persons && persons.length > 0 ? (
-                          persons.map(person => (
-                            <CommandItem
-                              key={person.id_persona}
-                              value={`${person.nombres} ${person.apellidos} ${person.cedula}`}
-                              onSelect={() => {
-                                field.onChange(person.id_persona);
-                                setSearch("");
-                                setOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  field.value === person.id_persona ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {person.nombres} {person.apellidos} ({person.cedula})
-                            </CommandItem>
-                          ))
+                          persons.map(person => {
+                            const fullName = [person.nombres, person.apellidos].filter(Boolean).join(" ");
+                            return (
+                              <CommandItem
+                                key={person.id_persona}
+                                value={`${fullName} ${person.cedula}`}
+                                onSelect={() => {
+                                  field.onChange(person.id_persona);
+                                  setSearch("");
+                                  setOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === person.id_persona ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {fullName} ({person.cedula})
+                              </CommandItem>
+                            );
+                          })
                         ) : (
                           <CommandEmpty>No se encontraron personas</CommandEmpty>
                         )}
