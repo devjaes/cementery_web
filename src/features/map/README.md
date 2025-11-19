@@ -1,44 +1,49 @@
 # Módulo de Visualización del Mapa del Cementerio
 
-Este módulo proporciona una interfaz visual interactiva para visualizar y gestionar los bloques y nichos del cementerio.
+Este módulo proporciona una interfaz visual interactiva para visualizar y gestionar los bloques y nichos del cementerio de forma jerárquica.
 
 ## Características
 
-### 🏗️ Visualización de Bloques
-- **Visualización en cuadrícula**: Muestra todos los bloques del cementerio seleccionado en una cuadrícula visual
+### 🏗️ Visualización Jerárquica: Bloques → Nichos
+- **Vista de bloques**: Muestra todos los bloques del cementerio seleccionado en una cuadrícula visual
+- **Navegación por bloques**: Click en cualquier bloque para ver sus nichos específicos
 - **Buscador de bloques**: Permite buscar bloques por nombre, número o descripción
-- **Información detallada**: Tooltip con información completa de cada bloque:
-  - Nombre del bloque
-  - Número del bloque
-  - Dimensiones (filas × columnas)
-  - Total de nichos
-  - Descripción
-  - Estado (Activo/Inactivo)
-- **Navegación**: Click en cualquier bloque para ver sus detalles
+- **Asociación automática**: Los nichos se agrupan automáticamente en bloques según su sector
 
-### 📊 Visualización de Nichos
-- **Mapa de nichos**: Visualización en cuadrícula de todos los nichos
+### 📊 Información Detallada de Bloques
+Cada tarjeta de bloque muestra:
+- Nombre del bloque
+- Número del bloque (si está disponible)
+- Dimensiones (filas × columnas)
+- Total de nichos del bloque
+- Estado (Activo/Inactivo)
+- Estadísticas de nichos:
+  - Disponibles
+  - Reservados
+  - Vendidos
+
+### 🗺️ Visualización de Nichos por Bloque
+Al seleccionar un bloque, se muestra:
+- **Mapa de nichos**: Visualización en cuadrícula de todos los nichos del bloque
 - **Estados visuales**: Código de colores para estados:
   - 🟢 Verde: Disponible
   - 🟡 Amarillo: Reservado
   - 🔴 Rojo: Vendido
 - **Información de huecos**: Muestra los huecos ocupados en cada nicho
 - **Acciones rápidas**: Vender, ver reserva, o ver detalles desde el tooltip
+- **Botón de retorno**: Volver a la vista de bloques fácilmente
 
 ### 📈 Estadísticas en Tiempo Real
-- **Para Bloques**:
-  - Total de bloques
-  - Bloques activos
-- **Para Nichos**:
-  - Total de nichos
-  - Nichos disponibles
-  - Nichos reservados
-  - Nichos vendidos
+- **Total de bloques** en el cementerio
+- **Total de nichos** (suma de todos los bloques)
+- **Nichos disponibles**
+- **Nichos reservados**
+- **Nichos vendidos**
 
 ## Componentes
 
 ### `CemeteryMapVisualization`
-Componente principal que integra la visualización de bloques y nichos con pestañas.
+Componente principal que integra la visualización jerárquica del cementerio.
 
 **Props**: Ninguna
 
@@ -51,25 +56,26 @@ function MapPage() {
 }
 ```
 
-### `BlocksMap`
-Componente para visualizar bloques del cementerio con funcionalidad de búsqueda.
+### `BlocksWithNichesMap`
+Componente que maneja la vista de bloques y la transición a nichos específicos del bloque.
 
 **Props**:
 - `cemetery: CementeryEntity` - Entidad del cementerio seleccionado
 - `onStatisticsChange?: (stats) => void` - Callback para actualizar estadísticas
 
 **Características**:
-- Buscador integrado
+- Vista de bloques en cuadrícula
+- Buscador integrado para bloques
+- Navegación a nichos del bloque seleccionado
 - Tarjetas visuales con código de colores por estado
-- Tooltips informativos
-- Navegación a detalles del bloque
+- Tooltips informativos con estadísticas
+- Vista detallada de nichos con grid interactivo
 
-### `NichesGrid`
-Componente para visualizar nichos en formato de cuadrícula.
+### `BlocksMap` (Deprecado)
+Componente anterior para visualizar solo bloques. Ahora reemplazado por `BlocksWithNichesMap`.
 
-**Props**:
-- `cemetery: CementeryEntity` - Entidad del cementerio seleccionado
-- `onStatisticsChange?: (stats) => void` - Callback para actualizar estadísticas
+### `NichesGrid` (Deprecado)
+Componente anterior para visualizar solo nichos. Ahora integrado en `BlocksWithNichesMap`.
 
 ## Estructura de Datos
 
@@ -89,10 +95,41 @@ interface BloqueEntity {
 }
 ```
 
+### BloqueWithNichos
+```typescript
+interface BloqueWithNichos extends BloqueEntity {
+  nichos: NichoWithHuecos[];
+  totalNichos: number;
+  disponibles: number;
+  reservados: number;
+  vendidos: number;
+}
+```
+
 ## Hooks Utilizados
 
 ### `useCemetery()`
 Hook personalizado para gestionar el estado del cementerio seleccionado.
+
+### `useBloquesWithNichos(idCementerio)`
+Hook principal que combina bloques y nichos:
+- Obtiene los bloques del cementerio
+- Obtiene todos los nichos del cementerio
+- Asocia automáticamente nichos a bloques por sector
+- Calcula estadísticas por bloque
+- Maneja la selección/deselección de bloques
+
+```typescript
+const {
+  bloques,           // Array de bloques con sus nichos
+  selectedBloque,    // Bloque actualmente seleccionado
+  selectBloque,      // Función para seleccionar un bloque
+  deselectBloque,    // Función para volver a vista de bloques
+  loading,           // Estado de carga
+  error,             // Errores
+  refetch           // Refrescar datos
+} = useBloquesWithNichos(cementerioId);
+```
 
 ### `useFindBloquesByCementeryQuery(idCementerio)`
 Hook de React Query para obtener los bloques de un cementerio específico.
@@ -100,10 +137,27 @@ Hook de React Query para obtener los bloques de un cementerio específico.
 ### `useNichesWithHuecos(idCementerio)`
 Hook para obtener los nichos con información de huecos.
 
+## Lógica de Asociación Bloque-Nicho
+
+Los nichos se asocian automáticamente a bloques mediante la comparación del campo `sector` del nicho con el `nombre` o `numero` del bloque:
+
+```typescript
+// Ejemplo de asociación
+const bloqueNichos = niches.filter((nicho) => {
+  const bloqueIdentifier = bloque.numero?.toString() || bloque.nombre;
+  return nicho.sector.toLowerCase().includes(bloqueIdentifier.toLowerCase()) ||
+         bloqueIdentifier.toLowerCase().includes(nicho.sector.toLowerCase());
+});
+```
+
+Esta estrategia permite una asociación flexible sin requerir cambios en la base de datos.
+
 ## Navegación
 
-- **Vista de Bloques**: `/cementerio/{idCementerio}/bloques/{idBloque}`
-- **Vista de Nichos**: `/nichos/{idNicho}`
+- **Vista de Bloques**: Muestra todos los bloques del cementerio
+- **Vista de Nichos**: `/nichos/{idNicho}` - Click en "Detalles" de un nicho
+- **Transición**: Click en cualquier bloque → Vista de nichos del bloque seleccionado
+- **Retorno**: Botón "Volver a bloques" en la vista de nichos
 
 ## Estilos y Diseño
 
@@ -143,8 +197,34 @@ export default function MapListView() {
 
 ## Mejoras Futuras
 
+- [ ] Permitir configurar manualmente la relación bloque-nicho
 - [ ] Filtros avanzados para bloques (por estado, capacidad, etc.)
+- [ ] Filtros avanzados para nichos dentro de un bloque
 - [ ] Exportación de datos del mapa
 - [ ] Vista de plano arquitectónico
 - [ ] Modo de impresión optimizado
 - [ ] Gestión de bloques directamente desde el mapa
+- [ ] Drag and drop para reorganizar nichos entre bloques
+
+## Notas Técnicas
+
+### Asociación Automática
+La asociación entre bloques y nichos se realiza de forma automática mediante comparación de texto entre:
+- El `numero` o `nombre` del bloque
+- El campo `sector` del nicho
+
+Esta estrategia funciona bien cuando:
+- Los sectores de los nichos corresponden a nombres/números de bloques
+- Se mantiene una nomenclatura consistente
+
+### Performance
+- Los datos se cargan una sola vez mediante React Query
+- Las búsquedas se realizan en el cliente mediante `useMemo`
+- Las estadísticas se calculan de forma reactiva
+- Los tooltips se renderizan bajo demanda
+
+### Responsive Design
+El componente está optimizado para diferentes tamaños de pantalla:
+- **Mobile**: Grid adaptativo de bloques y nichos
+- **Tablet**: Vista optimizada con más columnas
+- **Desktop**: Experiencia completa con todos los detalles

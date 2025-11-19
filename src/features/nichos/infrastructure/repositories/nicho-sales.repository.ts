@@ -5,6 +5,7 @@ interface HttpClient {
   // Mantener firma compatible con Axios para permitir pasar config (responseType, headers, etc.)
   post<T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>>;
   patch<T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>>;
+  delete<T = any>(url: string, config?: any): Promise<AxiosResponse<T>>;
 }
 
 export class NichoSalesRepository {
@@ -81,7 +82,10 @@ export class NichoSalesRepository {
     idNicho: string;
     motivo: string;
   }): Promise<{ mensaje: string }> {
-    const { data } = await this.httpClient.post('/nicho-sales/cancelar-reserva', params);
+    const { data } = await this.httpClient.delete(
+      `/nicho-sales/cancelar-reserva/${params.idNicho}`,
+      { data: { motivo: params.motivo } }
+    );
     return data;
   }
 }

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { BloqueRepositoryImpl } from "../../infrastructure/repositories/bloque.repository.impl";
 import { BLOQUES_QUERY_KEYS } from "../../domain/constants/bloques-keys";
-import { BloqueEntity } from "../../domain/entities/bloque.entity";
+import { BloqueEntity, BloqueWithNichosEntity } from "../../domain/entities/bloque.entity";
 
 export const useFindBloquesByCementeryQuery = (idCementerio: string) => {
   return useQuery<BloqueEntity[]>({
@@ -16,5 +16,13 @@ export const useFindBloqueByIdQuery = (id: string) => {
     queryKey: BLOQUES_QUERY_KEYS.byId(id),
     queryFn: () => BloqueRepositoryImpl.getInstance().findById(id),
     enabled: !!id,
+  });
+};
+
+export const useFindNichosByBloqueQuery = (idBloque: string) => {
+  return useQuery<BloqueWithNichosEntity>({
+    queryKey: [...BLOQUES_QUERY_KEYS.byId(idBloque), 'nichos'],
+    queryFn: () => BloqueRepositoryImpl.getInstance().findNichosByBloque(idBloque),
+    enabled: !!idBloque,
   });
 };

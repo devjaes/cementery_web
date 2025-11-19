@@ -1,12 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { Building2, Map, MapPin, Phone, User, Grid3x3, Package, Eye, ShoppingCart, Box } from 'lucide-react';
-import { NichesGrid } from './niches-grid.component';
-import { BlocksMap } from './blocks-map.component';
+import { Building2, Map, MapPin, Phone, User, Grid3x3, Package, Eye, ShoppingCart } from 'lucide-react';
 import { useCemetery } from '../hooks/use-cemetery';
+import { BlocksWithNichesMap } from './blocks-with-niches-map.component';
 
 export const CemeteryMapVisualization: React.FC = () => {
     const {
@@ -19,15 +17,9 @@ export const CemeteryMapVisualization: React.FC = () => {
     } = useCemetery();
 
     const [statistics, setStatistics] = useState({ total: 0, disponibles: 0, reservados: 0, vendidos: 0 });
-    const [blockStatistics, setBlockStatistics] = useState({ total: 0, activos: 0 });
-    const [activeTab, setActiveTab] = useState<'bloques' | 'nichos'>('bloques');
 
     const handleStatisticsChange = useCallback((stats: { total: number; disponibles: number; reservados: number; vendidos: number }) => {
         setStatistics(stats);
-    }, []);
-
-    const handleBlockStatisticsChange = useCallback((stats: { total: number; activos: number }) => {
-        setBlockStatistics(stats);
     }, []);
 
     if (loading) {
@@ -151,141 +143,82 @@ export const CemeteryMapVisualization: React.FC = () => {
                                     </div>
 
                                     <div className="ml-auto flex items-center gap-2">
-                                        {activeTab === 'bloques' ? (
-                                            <>
-                                                <Card className="border-border bg-card/50 shadow-sm w-[120px]">
-                                                    <CardContent className="p-2.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <Box className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-[10px] font-medium text-muted-foreground leading-none mb-0.5">
-                                                                    Total
-                                                                </p>
-                                                                <p className="text-lg font-bold text-foreground leading-none">
-                                                                    {blockStatistics.total}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
+                                        <Card className="border-border bg-card/50 shadow-sm w-[120px]">
+                                            <CardContent className="p-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Grid3x3 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] font-medium text-muted-foreground leading-none mb-0.5">
+                                                            Total
+                                                        </p>
+                                                        <p className="text-lg font-bold text-foreground leading-none">
+                                                            {statistics.total}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
 
-                                                <Card className="border-blue-200 bg-blue-50 shadow-sm w-[120px]">
-                                                    <CardContent className="p-2.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <Box className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-[10px] font-medium text-blue-700 leading-none mb-0.5">
-                                                                    Activos
-                                                                </p>
-                                                                <p className="text-lg font-bold text-blue-700 leading-none">
-                                                                    {blockStatistics.activos}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Card className="border-border bg-card/50 shadow-sm w-[120px]">
-                                                    <CardContent className="p-2.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <Grid3x3 className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-[10px] font-medium text-muted-foreground leading-none mb-0.5">
-                                                                    Total
-                                                                </p>
-                                                                <p className="text-lg font-bold text-foreground leading-none">
-                                                                    {statistics.total}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
+                                        <Card className="border-emerald-200 bg-emerald-50 shadow-sm w-[120px]">
+                                            <CardContent className="p-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Package className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] font-medium text-emerald-700 leading-none mb-0.5">
+                                                            Disponibles
+                                                        </p>
+                                                        <p className="text-lg font-bold text-emerald-700 leading-none">
+                                                            {statistics.disponibles}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
 
-                                                <Card className="border-emerald-200 bg-emerald-50 shadow-sm w-[120px]">
-                                                    <CardContent className="p-2.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <Package className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-[10px] font-medium text-emerald-700 leading-none mb-0.5">
-                                                                    Disponibles
-                                                                </p>
-                                                                <p className="text-lg font-bold text-emerald-700 leading-none">
-                                                                    {statistics.disponibles}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
+                                        <Card className="border-amber-200 bg-amber-50 shadow-sm w-[120px]">
+                                            <CardContent className="p-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Eye className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] font-medium text-amber-700 leading-none mb-0.5">
+                                                            Reservados
+                                                        </p>
+                                                        <p className="text-lg font-bold text-amber-700 leading-none">
+                                                            {statistics.reservados}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
 
-                                                <Card className="border-amber-200 bg-amber-50 shadow-sm w-[120px]">
-                                                    <CardContent className="p-2.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <Eye className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-[10px] font-medium text-amber-700 leading-none mb-0.5">
-                                                                    Reservados
-                                                                </p>
-                                                                <p className="text-lg font-bold text-amber-700 leading-none">
-                                                                    {statistics.reservados}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-
-                                                <Card className="border-rose-200 bg-rose-50 shadow-sm w-[120px]">
-                                                    <CardContent className="p-2.5">
-                                                        <div className="flex items-center gap-2">
-                                                            <ShoppingCart className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="text-[10px] font-medium text-rose-700 leading-none mb-0.5">
-                                                                    Vendidos
-                                                                </p>
-                                                                <p className="text-lg font-bold text-rose-700 leading-none">
-                                                                    {statistics.vendidos}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            </>
-                                        )}
+                                        <Card className="border-rose-200 bg-rose-50 shadow-sm w-[120px]">
+                                            <CardContent className="p-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <ShoppingCart className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[10px] font-medium text-rose-700 leading-none mb-0.5">
+                                                            Vendidos
+                                                        </p>
+                                                        <p className="text-lg font-bold text-rose-700 leading-none">
+                                                            {statistics.vendidos}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
 
-                    <Tabs
-                        value={activeTab}
-                        onValueChange={(value) => setActiveTab(value as 'bloques' | 'nichos')}
-                        className="mt-6"
-                    >
-                        {selectedCemetery && (
-                            <>
-                                <TabsList className="grid w-full max-w-md grid-cols-2 mx-auto mb-6">
-                                    <TabsTrigger value="bloques" className="flex items-center gap-2">
-                                        <Box className="w-4 h-4" />
-                                        Bloques
-                                    </TabsTrigger>
-                                    <TabsTrigger value="nichos" className="flex items-center gap-2">
-                                        <Grid3x3 className="w-4 h-4" />
-                                        Nichos
-                                    </TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="bloques">
-                                    <BlocksMap cemetery={selectedCemetery} onStatisticsChange={handleBlockStatisticsChange} />
-                                </TabsContent>
-
-                                <TabsContent value="nichos">
-                                    <NichesGrid cemetery={selectedCemetery} onStatisticsChange={handleStatisticsChange} />
-                                </TabsContent>
-                            </>
-                        )}
-                    </Tabs>
+                    {selectedCemetery && (
+                        <BlocksWithNichesMap 
+                            key={selectedCemetery.idCementerio} 
+                            cemetery={selectedCemetery} 
+                            onStatisticsChange={handleStatisticsChange} 
+                        />
+                    )}
                 </CardContent>
             </Card>
         </div>

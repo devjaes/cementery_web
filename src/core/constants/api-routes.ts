@@ -29,6 +29,7 @@ export const API_ROUTES = {
     LIST: AR_KEYS.BLOQUES,
     GET_BY_ID: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
     GET_BY_CEMENTERIO: (idCementerio: string) => `${AR_KEYS.BLOQUES}/cementerio/${idCementerio}`,
+    GET_NICHOS_BY_BLOQUE: (id: string) => `${AR_KEYS.BLOQUES}/${id}/nichos`,
     CREATE: AR_KEYS.BLOQUES,
     UPDATE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,

@@ -1,9 +1,10 @@
 import { API_ROUTES } from "@/core/constants/api-routes";
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { BloqueRepository } from "../../domain/repositories/bloque.repository";
-import { BloqueCreateEntity, BloqueEntity, BloqueUpdateEntity } from "../../domain/entities/bloque.entity";
+import { BloqueCreateEntity, BloqueEntity, BloqueUpdateEntity, BloqueWithNichosEntity } from "../../domain/entities/bloque.entity";
 import { BloqueMapper } from "../mappers/bloque.mapper";
 import { BloqueModel } from "../models/bloque.model";
+import { NichoMapper } from "@/features/nichos/infrastructure/mappers/nicho.mapper";
 
 export class BloqueRepositoryImpl implements BloqueRepository {
   private httpClient: AxiosClient;
@@ -37,6 +38,20 @@ export class BloqueRepositoryImpl implements BloqueRepository {
     const arr: any[] = raw?.data?.bloques ?? raw?.bloques ?? raw?.data ?? [];
     const source: BloqueModel[] = Array.isArray(arr) ? arr : [];
     return source.map(BloqueMapper.toEntity);
+  }
+
+  async findNichosByBloque(idBloque: string): Promise<BloqueWithNichosEntity> {
+    const { data } = await this.httpClient.get<any>(API_ROUTES.BLOQUES.GET_NICHOS_BY_BLOQUE(idBloque));
+    const raw: any = data;
+    const response = raw?.data ?? raw;
+    
+    return {
+      bloque: BloqueMapper.toEntity(response.bloque),
+      nichos: response.nichos?.map((nicho: any) => NichoMapper.toEntity(nicho)) ?? [],
+      totalNichos: response.total_nichos ?? 0,
+      capacidadTotal: response.capacidad_total ?? 0,
+      espaciosDisponibles: response.espacios_disponibles ?? 0,
+    };
   }
 
   async create(bloque: BloqueCreateEntity): Promise<BloqueEntity> {

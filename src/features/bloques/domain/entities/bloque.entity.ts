@@ -28,3 +28,11 @@ export interface BloqueUpdateEntity {
   numeroFilas?: number;
   numeroColumnas?: number;
 }
+
+export interface BloqueWithNichosEntity {
+  bloque: BloqueEntity;
+  nichos: any[]; // Se mapeará a NichoEntity en el hook
+  totalNichos: number;
+  capacidadTotal: number;
+  espaciosDisponibles: number;
+}
