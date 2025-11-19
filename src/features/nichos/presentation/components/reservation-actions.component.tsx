@@ -146,7 +146,7 @@ export function ReservationActions({ nichoId, open: controlledOpen, onOpenChange
                     validatedBy={validatedBy}
                     onSuccess={() => {
                       setOpen(false);
-                        onReceiptUploaded?.(buyerPersonId, paymentId || undefined);
+                      onReceiptUploaded?.(buyerPersonId, paymentId || undefined);
                     }}
                   />
                 </>
