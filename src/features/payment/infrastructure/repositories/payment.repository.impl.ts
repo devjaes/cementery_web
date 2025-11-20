@@ -73,9 +73,7 @@ export class PaymentRepositoryImpl implements PaymentRepository {
       process.env.NEXT_PUBLIC_BACKEND_API_URL ||
       "https://backend-cementerio-pillaro.onrender.com";
     const url = `${baseURL.endsWith('/') ? baseURL : baseURL + '/'}${API_ROUTES.PAYMENTS.CREATE}`;
-
-    console.log("Creating payment at URL:", url);
-
+    
     const token = await this.getAuthToken();
     const response = await axios.post(url, model, {
       responseType: "blob",
