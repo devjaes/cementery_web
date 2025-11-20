@@ -161,14 +161,33 @@ export function CreatePaymentForm({
 
         const result = await reservarNichoMutation.mutateAsync(reservaParams);
 
-        // result contiene: { reserva, pdfBlob, filename }, pero ya no forzamos descarga ni previsualización automática
-        const { reserva } = result as unknown as {
+        // result contiene: { reserva, pdfBlob, filename }
+        const { reserva, pdfBlob, filename } = result as unknown as {
           reserva: { ordenPago?: { codigo?: string; id?: string; monto?: number; fechaGeneracion?: string; comprador?: { documento: string; nombre: string; direccion?: string } } };
           pdfBlob: Blob;
           filename: string;
         };
 
-        // Opcional: mantener datos del pago generado para otros usos, pero sin abrir modal ni descargar
+        // Guardar el PDF para que el botón de descarga funcione
+        if (pdfBlob) {
+          setPdfBlob(pdfBlob);
+        }
+
+        // Descargar automáticamente el PDF de la orden de pago
+        if (pdfBlob && filename) {
+          const url = window.URL.createObjectURL(pdfBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        }
+
+        // Mantener datos del pago generado
         if (reserva?.ordenPago) {
           const paymentLike: PaymentEntity = {
             paymentId: reserva.ordenPago.id ?? 'N/D',

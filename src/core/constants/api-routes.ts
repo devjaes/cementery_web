@@ -1,6 +1,7 @@
 const AR_KEYS = {
   AUTH: "auth",
   CEMENTERIO: "cementerio",
+  BLOQUES: "bloques",
   NICHOS: "nichos",
   PROPIETARIOS_NICHOS: "propietarios-nichos",
   PERSON: "personas",
@@ -23,6 +24,15 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.CEMENTERIO,
     UPDATE: (id: string) => `${AR_KEYS.CEMENTERIO}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.CEMENTERIO}/${id}`,
+  },
+  BLOQUES: {
+    LIST: AR_KEYS.BLOQUES,
+    GET_BY_ID: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
+    GET_BY_CEMENTERIO: (idCementerio: string) => `${AR_KEYS.BLOQUES}/cementerio/${idCementerio}`,
+    GET_NICHOS_BY_BLOQUE: (id: string) => `${AR_KEYS.BLOQUES}/${id}/nichos`,
+    CREATE: AR_KEYS.BLOQUES,
+    UPDATE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
+    DELETE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
   },
   NICHOS: {
     LIST: AR_KEYS.NICHOS,

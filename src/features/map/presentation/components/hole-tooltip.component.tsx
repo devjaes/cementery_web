@@ -1,9 +1,8 @@
 import React from 'react';
-import { NichoWithHuecos } from '../hooks/use-niches-with-huecos';
-import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity';
+import { NichoEntity } from '@/features/nichos/domain/entities/nicho.entity';
 
 interface HuecoTooltipProps {
-  nicho: NichoWithHuecos;
+  nicho: NichoEntity;
 }
 
 export const HuecoTooltip: React.FC<HuecoTooltipProps> = ({ nicho }) => {

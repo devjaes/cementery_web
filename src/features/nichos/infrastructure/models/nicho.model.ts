@@ -7,6 +7,7 @@ import { PropietarioNichoModel } from "@/features/propietarios-nichos/infrastruc
 export interface NichoModel {
   id_nicho?: string;
   id_cementerio?: CementeryModel;
+  id_bloque?: string;
   sector: string;
   fila: string;
   numero: string;

@@ -1,11 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Building2, Map, MapPin, Phone, User, Grid3x3, Package, Eye, ShoppingCart } from 'lucide-react';
-import { NichesGrid } from './niches-grid.component';
 import { useCemetery } from '../hooks/use-cemetery';
+import { BlocksWithNichesMap } from './blocks-with-niches-map.component';
 
 export const CemeteryMapVisualization: React.FC = () => {
     const {
@@ -213,19 +212,13 @@ export const CemeteryMapVisualization: React.FC = () => {
                         </Card>
                     )}
 
-                    <Tabs
-                        value={selectedCemetery?.idCementerio || ''}
-                        className="mt-6"
-                    >
-                        {cemeteries.map((cemetery) => (
-                            <TabsContent
-                                key={cemetery.idCementerio}
-                                value={cemetery.idCementerio}
-                            >
-                                <NichesGrid cemetery={cemetery} onStatisticsChange={handleStatisticsChange} />
-                            </TabsContent>
-                        ))}
-                    </Tabs>
+                    {selectedCemetery && (
+                        <BlocksWithNichesMap 
+                            key={selectedCemetery.idCementerio} 
+                            cemetery={selectedCemetery} 
+                            onStatisticsChange={handleStatisticsChange} 
+                        />
+                    )}
                 </CardContent>
             </Card>
         </div>

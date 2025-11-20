@@ -8,6 +8,7 @@ export type EstadoVentaNicho = 'Vendido' | 'Reservado' | 'Disponible';
 export interface NichoEntity {
   idNicho?: string;
   idCementerio?: CementeryEntity;
+  idBloque?: string;
   sector: string;
   fila: string;
   numero: string;
