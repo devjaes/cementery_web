@@ -19,11 +19,13 @@ export class NichoMapper {
       idCementerio: model.id_cementerio
         ? CementeryMapper.toEntity(model.id_cementerio)
         : undefined,
+      idBloque: model.id_bloque ? model.id_bloque : undefined,
       sector: model.sector,
       fila: model.fila,
       numero: model.numero,
       tipo: model.tipo,
       estado: model.estado,
+      estadoVenta: model.estadoVenta,
       fechaConstruccion: model.fecha_construccion,
       observaciones: model.observaciones,
       numHuecos: model.num_huecos,

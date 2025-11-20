@@ -255,6 +255,11 @@ export function RequisitoInhumacionForm({
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <RHFInput
+                    name="codigoInhumacion"
+                    label="Código de Inhumación *"
+                    placeholder="Código de inhumación"
+                  />
                   <RHFCementerySelect
                     name="idCementerio"
                     label="Cementerio *"

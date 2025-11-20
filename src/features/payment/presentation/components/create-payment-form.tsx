@@ -33,6 +33,7 @@ import { useCreatePayment } from "../hooks/use-payment-mutation";
 import { PdfPreviewDialog } from "./pdf-preview-dialog";
 import { toast } from "sonner";
 import { useSearchPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
+import { useReservarNicho } from "@/features/nichos/hooks/use-nicho-sales";
 
 const procedureTypeLabels: Record<ProcedureType, string> = {
   burial: "Inhumación",
@@ -55,15 +56,7 @@ const paymentFormSchema = z.object({
   buyerDocument: z.string().regex(/^\d{10}$/, {
     message: "La cédula debe tener exactamente 10 dígitos",
   }),
-  buyerName: z
-    .string()
-    .regex(
-      /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}\s[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{2,}$/,
-      {
-        message:
-          "El nombre debe contener 2 nombres y 2 apellidos separados por espacios",
-      }
-    ),
+  buyerName: z.string().min(1, { message: "El nombre es requerido" }),
   buyerDirection: z.string().optional(),
   observations: z.string().optional(),
   generatedBy: z.string().min(1, { message: "Campo requerido" }),
@@ -91,8 +84,10 @@ export function CreatePaymentForm({
   );
   const [searchDocument, setSearchDocument] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   const createPaymentMutation = useCreatePayment();
+  const reservarNichoMutation = useReservarNicho();
   const searchPersonsQuery = useSearchPersonsQuery(searchDocument, true);
 
   const form = useForm<PaymentFormValues>({
@@ -125,6 +120,7 @@ export function CreatePaymentForm({
       const persons = result.data || [];
 
       if (persons.length === 0) {
+        setSelectedPersonId(null);
         toast.info("No se encontró ninguna persona registrada con esa cédula");
       } else if (persons.length === 1) {
         const person = persons[0];
@@ -132,9 +128,11 @@ export function CreatePaymentForm({
 
         form.setValue("buyerName", fullName);
         form.setValue("buyerDirection", person.direccion || "");
+        setSelectedPersonId(person.id_persona);
 
         toast.success("Datos de persona cargados correctamente");
       } else {
+        setSelectedPersonId(null);
         toast.warning("Se encontraron múltiples personas con esa cédula");
       }
     } catch {
@@ -146,6 +144,82 @@ export function CreatePaymentForm({
 
   const onSubmit = async (values: PaymentFormValues) => {
     try {
+      if (values.procedureType === 'niche_sale') {
+        if (!selectedPersonId) {
+          toast.error('Debe buscar y seleccionar una persona válida antes de reservar.');
+          return;
+        }
+
+        const reservaParams = {
+          idNicho: values.procedureId,
+          idPersona: selectedPersonId,
+          monto: values.amount,
+          generadoPor: values.generatedBy,
+          observaciones: values.observations,
+          direccionComprador: values.buyerDirection,
+        };
+
+        const result = await reservarNichoMutation.mutateAsync(reservaParams);
+
+        // result contiene: { reserva, pdfBlob, filename }
+        const { reserva, pdfBlob, filename } = result as unknown as {
+          reserva: { ordenPago?: { codigo?: string; id?: string; monto?: number; fechaGeneracion?: string; comprador?: { documento: string; nombre: string; direccion?: string } } };
+          pdfBlob: Blob;
+          filename: string;
+        };
+
+        // Guardar el PDF para que el botón de descarga funcione
+        if (pdfBlob) {
+          setPdfBlob(pdfBlob);
+        }
+
+        // Descargar automáticamente el PDF de la orden de pago
+        if (pdfBlob && filename) {
+          const url = window.URL.createObjectURL(pdfBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+          }, 100);
+        }
+
+        // Mantener datos del pago generado
+        if (reserva?.ordenPago) {
+          const paymentLike: PaymentEntity = {
+            paymentId: reserva.ordenPago.id ?? 'N/D',
+            procedureType: 'niche_sale',
+            procedureId: values.procedureId,
+            amount: reserva.ordenPago.monto ?? values.amount,
+            status: 'pending',
+            paymentCode: reserva.ordenPago.codigo ?? 'N/D',
+            generatedDate: reserva.ordenPago.fechaGeneracion ?? new Date().toISOString(),
+            paidDate: null,
+            receiptFile: null,
+            observations: values.observations ?? null,
+            generatedBy: values.generatedBy,
+            validatedBy: null,
+            buyerDocument: reserva.ordenPago.comprador?.documento ?? values.buyerDocument,
+            buyerName: reserva.ordenPago.comprador?.nombre ?? values.buyerName,
+            buyerDirection: reserva.ordenPago.comprador?.direccion ?? values.buyerDirection ?? null,
+            updatedDate: new Date().toISOString(),
+          };
+          setCreatedPayment(paymentLike);
+        } else {
+          setCreatedPayment(null);
+        }
+
+        toast.success(`Reserva creada. Código de pago: ${reserva?.ordenPago?.codigo ?? 'N/D'}`);
+
+        // Informar al padre para que cambie a vista de estado (modal de venta en modo lectura)
+        if (onSuccess) onSuccess();
+        return;
+      }
+
+      // Resto de trámites: usar flujo de pagos estándar (PDF + header)
       const paymentData: CreatePaymentEntity = {
         procedureType: values.procedureType,
         procedureId: values.procedureId,
@@ -163,13 +237,12 @@ export function CreatePaymentForm({
       setCreatedPayment(result.payment);
       setShowPdfPreview(true);
 
-      toast.success("Pago generado exitosamente");
+      toast.success('Pago generado exitosamente');
 
-      if (onSuccess) {
-        onSuccess();
-      }
+      if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Error creating payment:", error);
+      console.error('Error al procesar la solicitud:', error);
+      toast.error('Ocurrió un error al procesar la solicitud');
     }
   };
 
@@ -282,7 +355,7 @@ export function CreatePaymentForm({
                     <FormLabel>Nombre Completo del Comprador</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="2 nombres y 2 apellidos separados por espacios"
+                        placeholder="Nombre completo"
                         {...field}
                       />
                     </FormControl>
@@ -345,14 +418,14 @@ export function CreatePaymentForm({
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="submit" disabled={createPaymentMutation.isPending}>
-              {createPaymentMutation.isPending ? (
+            <Button type="submit" disabled={createPaymentMutation.isPending || reservarNichoMutation.isPending}>
+              {(createPaymentMutation.isPending || reservarNichoMutation.isPending) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generando...
+                  {procedureType === 'niche_sale' ? 'Reservando...' : 'Generando...'}
                 </>
               ) : (
-                "Generar Pago"
+                procedureType === 'niche_sale' ? 'Reservar' : 'Generar Pago'
               )}
             </Button>
           </div>

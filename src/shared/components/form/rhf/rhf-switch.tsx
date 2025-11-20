@@ -6,9 +6,11 @@ import { Label } from "@/shared/components/ui/label";
 type RHFSwitchProps = {
   name: string;
   label: string;
+  disabled?: boolean;
+  description?: string;
 };
 
-function RHFSwitch({ name, label }: RHFSwitchProps) {
+function RHFSwitch({ name, label, disabled = false, description }: RHFSwitchProps) {
   const { control, formState } = useFormContext();
 
   const getErrorMessage = (name: string) => {
@@ -26,7 +28,8 @@ function RHFSwitch({ name, label }: RHFSwitchProps) {
             <Switch
               id={name}
               checked={field.value ?? false}
-              onCheckedChange={field.onChange}
+              onCheckedChange={disabled ? undefined : field.onChange}
+              disabled={disabled}
               ref={field.ref}
             />
           )}
@@ -36,6 +39,9 @@ function RHFSwitch({ name, label }: RHFSwitchProps) {
           {label}
         </Label>
       </div>
+      {description && (
+        <p className="text-xs text-muted-foreground ml-8">{description}</p>
+      )}
       <p className="text-sm text-destructive mt-1">{getErrorMessage(name)}</p>
     </div>
   );

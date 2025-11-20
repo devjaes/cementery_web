@@ -1,6 +1,7 @@
 import { useFormContext, Controller } from "react-hook-form";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Label } from "@/shared/components/ui/label";
+import { cn } from "@/shared/lib/utils";
 
 type RHFTextareaProps = {
   name: string;
@@ -8,14 +9,18 @@ type RHFTextareaProps = {
   placeholder?: string;
   rows?: number;
   className?: string;
+  disabled?: boolean;
+  maxLength?: number;
 };
 
-function RHFTextarea({ 
-  name, 
-  label, 
-  placeholder, 
+function RHFTextarea({
+  name,
+  label,
+  placeholder,
   rows = 3,
-  className 
+  className,
+  disabled,
+  maxLength,
 }: RHFTextareaProps) {
   const { control, formState } = useFormContext();
 
@@ -31,14 +36,20 @@ function RHFTextarea({
       <Controller
         name={name}
         control={control}
-        render={({ field }) => (
-          <Textarea 
-            rows={rows}
-            placeholder={placeholder} 
-            className={`min-h-[80px] resize-none ${className || ''}`}
-            {...field} 
-          />
-        )}
+        render={({ field }) => {
+          const { value, ...rest } = field;
+          return (
+            <Textarea
+              rows={rows}
+              placeholder={placeholder}
+              className={cn("min-h-[80px] resize-none", className)}
+              disabled={disabled}
+              maxLength={maxLength}
+              {...rest}
+              value={value ?? ""}
+            />
+          );
+        }}
       />
       <p className="text-sm text-destructive mt-1">{getErrorMessage(name)}</p>
     </div>
