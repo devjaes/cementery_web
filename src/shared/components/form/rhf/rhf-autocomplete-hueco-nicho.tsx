@@ -6,6 +6,7 @@ import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { PropietarioNichoRepositoryImpl } from "@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl";
 
 interface RHFAutocompleteHuecoNichoProps {
     name: string;
@@ -22,7 +23,7 @@ export default function RHFAutocompleteHuecoNicho({
     disabled,
     isAvailable,
 }: RHFAutocompleteHuecoNichoProps) {
-    const { control } = useFormContext();
+    const { control, setValue } = useFormContext();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const idCementerio = useWatch({ name: "idCementerio" });
@@ -83,11 +84,38 @@ export default function RHFAutocompleteHuecoNicho({
                                                         <CommandItem
                                                             key={h.idDetalleHueco}
                                                             value={`${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`}
-                                                            onSelect={() => {
-                                                                field.onChange(h.idDetalleHueco);
-                                                                setSearch("");
-                                                                setOpen(false);
-                                                            }}
+                                                            onSelect={async () => {
+                                                                    field.onChange(h.idDetalleHueco);
+                                                                    // Intentar obtener el propietario del nicho (si existe) desde el propio objeto
+                                                                    let propietarios = h.idNicho?.propietarios;
+                                                                    // Si no vienen propietarios embebidos, consultar al repositorio por idNicho
+                                                                    if ((!propietarios || propietarios.length === 0) && h.idNicho?.idNicho) {
+                                                                        try {
+                                                                            propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByNicho(h.idNicho.idNicho);
+                                                                        } catch (err) {
+                                                                            propietarios = [];
+                                                                            console.warn("No se pudieron obtener propietarios del nicho:", err);
+                                                                        }
+                                                                    }
+
+                                                                    const propietario = propietarios && propietarios.length > 0
+                                                                        ? propietarios.find((p: any) => p.activo) ?? propietarios[0]
+                                                                        : undefined;
+
+                                                                    const ownerName = propietario?.idPersona
+                                                                        ? [propietario.idPersona.nombres ?? propietario.idPersona.nombres, propietario.idPersona.apellidos ?? propietario.idPersona.apellidos].filter(Boolean).join(" ")
+                                                                        : "";
+
+                                                                    // Rellenar el campo nombreAdministradorNicho en el formulario
+                                                                    try {
+                                                                        setValue("nombreAdministradorNicho", ownerName, { shouldValidate: true, shouldDirty: true });
+                                                                    } catch (e) {
+                                                                        // En caso de que el formulario no tenga ese campo, no interrumpir
+                                                                    }
+
+                                                                    setSearch("");
+                                                                    setOpen(false);
+                                                                }}
                                                         >
                                                             <Check
                                                                 className={cn(
