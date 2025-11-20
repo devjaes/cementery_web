@@ -113,6 +113,16 @@ export default function RHFAutocompleteHuecoNicho({
                                                                         // En caso de que el formulario no tenga ese campo, no interrumpir
                                                                     }
 
+                                                                    // También rellenar el solicitante (`idSolicitante`) con el id de la persona propietaria
+                                                                    try {
+                                                                        const ownerPersonId = propietario?.idPersona?.id_persona || propietario?.idPersona?.id_persona;
+                                                                        if (ownerPersonId) {
+                                                                            setValue("idSolicitante", ownerPersonId, { shouldValidate: true, shouldDirty: true });
+                                                                        }
+                                                                    } catch (e) {
+                                                                        // No bloquear si falla
+                                                                    }
+
                                                                     setSearch("");
                                                                     setOpen(false);
                                                                 }}
