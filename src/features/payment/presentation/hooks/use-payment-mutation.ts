@@ -23,6 +23,7 @@ export const useCreatePayment = () => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.all() });
     },
     onError: (error: Error) => {
+      console.log("Error creating payment:", error);
       toast.error("Error al generar el pago", {
         description: error.message,
       });
@@ -105,6 +106,7 @@ export const useUploadReceipt = () => {
           const nichoSalesRepository = new NichoSalesRepository({
             post: axiosClient.post.bind(axiosClient),
             patch: axiosClient.patch.bind(axiosClient),
+            delete: axiosClient.delete.bind(axiosClient),
           });
 
           // llamar al endpoint de confirmar venta para que el backend marque el nicho como VENDIDO
