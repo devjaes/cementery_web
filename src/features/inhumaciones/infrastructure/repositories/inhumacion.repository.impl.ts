@@ -38,10 +38,12 @@ export class InhumacionRepositoryImpl implements InhumacionRepository {
 
     async update(inhumacion: UpdateInhumacionEntity): Promise<InhumacionEntity> {
         const model = InhumacionMapper.toUpdateModel(inhumacion);
+        console.log("[DEBUG] InhumacionRepositoryImpl.update - payload:\n", model);
         const { data } = await this.httpClient.patch<InhumacionModel>(
             API_ROUTES.INHUMACIONES.UPDATE(model.id_inhumacion),
             model
         );
+        console.log("[DEBUG] InhumacionRepositoryImpl.update - response:\n", data);
         return InhumacionMapper.toEntity(data.data);
     }
 

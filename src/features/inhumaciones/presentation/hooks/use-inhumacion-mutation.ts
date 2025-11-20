@@ -33,8 +33,40 @@ export const useUpdateInhumacionMutation = () => {
             return await repository.update(data);
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: INHUMACION_QUERY_KEYS.all() });
-            queryClient.invalidateQueries({ queryKey: INHUMACION_QUERY_KEYS.byId(data.idInhumacion) });
+            // Ensure UI reflects updated inhumación immediately
+            try {
+                // Update single inhumación cache
+                queryClient.setQueryData(
+                    INHUMACION_QUERY_KEYS.byId(data.idInhumacion),
+                    data
+                );
+
+                // Update list cache: if present, replace the updated item
+                queryClient.setQueryData(
+                    INHUMACION_QUERY_KEYS.all(),
+                    (old: any) => {
+                        if (!old) return old;
+                        try {
+                            const list = Array.isArray(old) ? old : (old?.data || old?.inhumaciones || []);
+                            const updated = (list || []).map((item: any) =>
+                                item.idInhumacion === data.idInhumacion ? data : item
+                            );
+                            // preserve original shape if possible
+                            if (Array.isArray(old)) return updated;
+                            if (old?.data) return { ...old, data: updated };
+                            if (old?.inhumaciones) return { ...old, inhumaciones: updated };
+                            return updated;
+                        } catch (e) {
+                            return old;
+                        }
+                    }
+                );
+            } catch (e) {
+                // fallback to invalidation if setQueryData fails
+                queryClient.invalidateQueries({ queryKey: INHUMACION_QUERY_KEYS.all() });
+                queryClient.invalidateQueries({ queryKey: INHUMACION_QUERY_KEYS.byId(data.idInhumacion) });
+            }
+
             toast.success("Inhumación actualizada exitosamente");
         },
         onError: (error) => {

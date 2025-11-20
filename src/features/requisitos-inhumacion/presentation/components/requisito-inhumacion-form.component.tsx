@@ -318,6 +318,7 @@ export function RequisitoInhumacionForm({
                     label="Fallecido *"
                     placeholder="Ingrese a la persona fallecida"
                     vivos={false}
+                    onlyNotInhumed={true}
                   />
                 </div>
                 <div className="col-span-2">

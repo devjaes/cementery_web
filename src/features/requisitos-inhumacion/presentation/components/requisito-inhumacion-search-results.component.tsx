@@ -447,9 +447,9 @@ export function RequisitoInhumacionSearchResults({
           </CardHeader>
           <CardContent>
             <p className="text-green-700">
-              Se encontró el requisito de{" "}
+              Se encontró el requisito de{' '}
               <span className="font-medium">
-                {fallecido.nombres} {fallecido.apellidos}
+                {[fallecido.nombres, fallecido.apellidos].filter(Boolean).join(' ')}{' '}
               </span>
               que coincide con &quot;{searchTerm}&quot;.
             </p>
