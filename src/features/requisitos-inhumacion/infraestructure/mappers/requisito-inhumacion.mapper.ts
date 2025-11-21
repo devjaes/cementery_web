@@ -124,24 +124,39 @@ export class RequisitoInhumacionMapper {
     static toUpdateModel(entity: UpdateRequisitoInhumacionEntity): UpdateRequisitoInhumacionModel{
         // Build a flexible payload (as any) to support multiple backend naming conventions
         const out: any = {
-            id_requisitoInhumacion: entity.idRequisitoInhumacion,
+            // Ensure the identifier is present for the update endpoint
+            id_requisitoInhumacion: entity.idRequisitoInhumacion ?? (entity as any).idRequsitoInhumacion ?? (entity as any).id,
+            // Basic editable fields (ensure these are sent so backend persists them)
+            pantoneroACargo: (entity as any).pantoneroACargo,
+            pantonero_a_cargo: (entity as any).pantoneroACargo ?? undefined,
+            metodoSolictud: (entity as any).metodoSolicitud || (entity as any).metodoSolictud,
+            id_solicitante: (entity as any).idSolicitante ?? (entity as any).id_solicitante,
+            observacionSolicitante: (entity as any).observacionSolicitante || undefined,
+            id_cementerio: (entity as any).idCementerio ?? undefined,
+            codigo_inhumacion: (entity as any).codigoInhumacion ?? undefined,
             copiaCertificadoDefuncion: entity.copiaCertificadoDefuncion,
             observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || "",
+            observacion_certificado_defuncion: entity.observacionCertificadoDefuncion || "",
 
             informeEstadisticoINEC: entity.informeEstadisticoINEC,
             observacionInformeEstadisticoINEC: entity.observacionInformeEstadisticoINEC || "",
+            observacion_informe_estadistico_inec: entity.observacionInformeEstadisticoINEC || "",
 
             copiaCedula: entity.copiaCedula,
             observacionCopiaCedula: entity.observacionCopiaCedula || "",
+            observacion_copia_cedula: entity.observacionCopiaCedula || "",
 
             pagoTasaInhumacion: entity.pagoTasaInhumacion,
             observacionPagoTasaInhumacion: entity.observacionPagoTasaInhumacion || "",
+            observacion_pago_tasa_inhumacion: entity.observacionPagoTasaInhumacion || "",
 
             copiaTituloPropiedadNicho: entity.copiaTituloPropiedadNicho,
             observacionCopiaTituloPropiedadNicho: entity.observacionCopiaTituloPropiedadNicho || "",
+            observacion_copia_titulo_propiedad_nicho: entity.observacionCopiaTituloPropiedadNicho || "",
 
             autorizacionDeMovilizacionDelCadaver: entity.autorizacionDeMovilizacionDelCadaver,
             observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || "",
+            observacion_autorizacion_movilizacion: entity.observacionAutorizacionMovilizacion || "",
         };
 
         // Support multiple naming conventions for the backend: camelCase, snake_case and legacy PascalCase
@@ -149,6 +164,7 @@ export class RequisitoInhumacionMapper {
         out.oficioDeSolicitud = entity.oficioDeSolicitud;
         out.oficio_de_solicitud = entity.oficioDeSolicitud;
         out.observacionOficioSolicitud = entity.observacionOficioSolicitud || "";
+        out.observacion_oficio_solicitud = entity.observacionOficioSolicitud || "";
 
         // Include related fields so backend can update linked inhumación if required
         out.id_hueco_nicho = (entity as any).idHuecoNicho ?? undefined;
@@ -157,6 +173,18 @@ export class RequisitoInhumacionMapper {
         out.horaInhumacion = (entity as any).horaInhumacion ?? undefined;
         out.nombreAdministradorNicho = (entity as any).nombreAdministradorNicho ?? undefined;
         out.codigoInhumacion = (entity as any).codigoInhumacion ?? undefined;
+
+        // mirror observation fields with snake_case aliases to improve backend compatibility
+        out.observacion_certificado_defuncion = out.observacion_certificado_defuncion || out.observacionCertificadoDefuncion;
+        out.observacion_informe_estadistico_inec = out.observacion_informe_estadistico_inec || out.observacionInformeEstadisticoINEC;
+        out.observacion_copia_cedula = out.observacion_copia_cedula || out.observacionCopiaCedula;
+        out.observacion_pago_tasa_inhumacion = out.observacion_pago_tasa_inhumacion || out.observacionPagoTasaInhumacion;
+        out.observacion_copia_titulo_propiedad_nicho = out.observacion_copia_titulo_propiedad_nicho || out.observacionCopiaTituloPropiedadNicho;
+        out.observacion_autorizacion_movilizacion = out.observacion_autorizacion_movilizacion || out.observacionAutorizacionMovilizacion;
+        out.observacion_oficio_solicitud = out.observacion_oficio_solicitud || out.observacionOficioSolicitud;
+
+        // ensure pantonero also available in snake_case
+        out.pantonero_a_cargo = out.pantonero_a_cargo || out.pantoneroACargo;
 
         return out as UpdateRequisitoInhumacionModel;
     }

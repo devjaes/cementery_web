@@ -50,6 +50,8 @@ import {
   useDeleteRequisitoInhumacionMutation,
   useDownloadRequisitoInhumacionPdfMutation,
 } from "../hooks/use-requisito-inhumacion-mutation";
+import { useEffect, useState } from "react";
+import { PaymentRepositoryImpl } from "@/features/payment/infrastructure/repositories/payment.repository.impl";
 
 interface RequisitoInhumacionSearchResultsProps {
   results: SearchFallecidosRequisitoInhumacionEntity;
@@ -104,6 +106,58 @@ export function RequisitoInhumacionSearchResults({
 
     return undefined;
   };
+
+  const [paidMap, setPaidMap] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const repo = PaymentRepositoryImpl.getInstance();
+
+    const loadPaidStates = async () => {
+      try {
+        const requisitosList = ((): any[] => {
+          try {
+            // results may be nested; flatten requisitos from results
+            const all: any[] = [];
+            for (const f of results.fallecidos || []) {
+              for (const r of f.requisitos || []) {
+                all.push(r);
+              }
+            }
+            return all;
+          } catch {
+            return [];
+          }
+        })();
+
+        const uniqueIds = Array.from(new Set(requisitosList.map((rq) => {
+          // derive procedure id: prefer inhumacion id then requisito id
+          return (rq?.inhumacion?.id_inhumacion) || rq?.idRequsitoInhumacion || rq?.idRequisitoInhumacion || rq?.id;
+        }).filter(Boolean)));
+
+        const map: Record<string, boolean> = {};
+        await Promise.all(uniqueIds.map(async (id) => {
+          try {
+            const payments = await repo.findByProcedure("burial", id);
+            const hasPaid = Array.isArray(payments) && payments.some(p => {
+              const s = (p.status || "").toString().toLowerCase();
+              return s === "paid" || s === "pagado";
+            });
+            map[id] = hasPaid;
+          } catch (e) {
+            map[id] = false;
+          }
+        }));
+
+        if (!cancelled) setPaidMap(map);
+      } catch (e) {
+        console.warn("Error loading payment states for requisitos:", e);
+      }
+    };
+
+    loadPaidStates();
+    return () => { cancelled = true; };
+  }, [results]);
 
   const isRequisitoRealizado = (r: unknown): boolean => {
     try {
@@ -162,7 +216,15 @@ export function RequisitoInhumacionSearchResults({
         "oficioDeSolicitud",
       ];
 
-      return requiredKeys.every((k) => readBool(reqAny, k));
+      const checklistOk = requiredKeys.every((k) => readBool(reqAny, k));
+
+      // Determine procedure id for looking up payments
+      const procedureId = reqAny?.inhumacion?.id_inhumacion || reqAny?.idRequsitoInhumacion || reqAny?.idRequisitoInhumacion || reqAny?.id;
+
+      const paymentPaid = procedureId ? Boolean(paidMap[procedureId]) : false;
+
+      // The requisito is considered 'Realizado' only when checklist OK AND a paid payment exists
+      return checklistOk && paymentPaid;
     } catch (e) {
       console.warn("isRequisitoRealizado error:", e);
       return false;

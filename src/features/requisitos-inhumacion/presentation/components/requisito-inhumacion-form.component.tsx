@@ -13,6 +13,11 @@ import RHFCheckbox from "@/shared/components/form/rhf/rhf-chechbox";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
 import RHFAutocompleteHuecoNicho from "@/shared/components/form/rhf/rhf-autocomplete-hueco-nicho";
 import { DocumentUploadCard } from "./document-upload-card.component";
+import AxiosClient from "@/core/infrastructure/axios-client";
+import { API_ROUTES } from "@/core/constants/api-routes";
+import { useEffect } from "react";
+import { PropietarioNichoRepositoryImpl } from "@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl";
+import { HuecoRepositoryImpl } from "@/features/huecos/infrastructure/repositories/hueco.repository.impl";
 
 interface RequisitoInhumacionFormProps {
   requistoInhumacion?: RequisitoInhumacionEntity;
@@ -35,19 +40,13 @@ const steps = [
       "metodoSolicitud",
       "idHuecoNicho",
       "nombreAdministradorNicho",
+      "idSolicitante",
+      "idFallecido",
     ],
-    optionalFields: [],
-  },
-  {
-    id: 2,
-    title: "Personas Involucradas",
-    description: "Datos del solicitante y fallecido",
-    color: "bg-green-500",
-    requiredFields: ["idSolicitante", "idFallecido"],
     optionalFields: ["observacionSolicitante"],
   },
   {
-    id: 3,
+    id: 2,
     title: "Programación",
     description: "Fecha y hora de la inhumación",
     color: "bg-purple-500",
@@ -55,7 +54,7 @@ const steps = [
     optionalFields: [],
   },
   {
-    id: 4,
+    id: 3,
     title: "Documentos",
     description: "Requisitos y documentación",
     color: "bg-red-500",
@@ -183,13 +182,68 @@ export function RequisitoInhumacionForm({
 
   const currentStepData = steps.find((step) => step.id === currentStep);
 
+  
+
+  // Watch solicitante selection and, if a propietario/nicho exists for that person,
+  // automatically set `idHuecoNicho` and `nombreAdministradorNicho` in the form.
+  const solicitanteId = methods.watch("idSolicitante");
+  useEffect(() => {
+    let cancelled = false;
+    if (!solicitanteId) return;
+
+    (async () => {
+      try {
+        // First, resolve the person's cedula because backend endpoint expects cedula (por-persona/:cedula)
+        const http = AxiosClient.getInstance();
+        const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(solicitanteId));
+        const cedula: string | undefined = personaResp?.data?.data?.cedula;
+        if (!cedula) return;
+
+        // Use the cedula-based endpoint which exists on the backend
+        const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(cedula);
+        if (!propietarios || propietarios.length === 0) return;
+
+        const activo = propietarios.find((p) => p.activo) || propietarios[0];
+        const ownerName = activo?.idPersona
+          ? [activo.idPersona.nombres || "", activo.idPersona.apellidos || ""].filter(Boolean).join(" ")
+          : "";
+
+        // set owner name always when found
+        try {
+          methods.setValue("nombreAdministradorNicho", ownerName, { shouldValidate: true, shouldDirty: true });
+        } catch (e) {
+          // ignore if field missing
+        }
+
+        const idNicho = activo?.idNicho?.idNicho || undefined;
+        if (!idNicho) return;
+
+        const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(idNicho);
+        if (cancelled) return;
+        if (Array.isArray(huecos) && huecos.length > 0) {
+          // Prefer a hueco disponible or the first one
+          const chosen = huecos.find((h) => h.estado === "Disponible") || huecos[0];
+          if (chosen && chosen.idDetalleHueco) {
+            methods.setValue("idHuecoNicho", chosen.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
+          }
+        }
+      } catch (err) {
+        console.warn("Error resolviendo hueco desde solicitante:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [solicitanteId]);
+
   if (!currentStepData) {
     return <div>Error: Paso no encontrado</div>;
   }
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <div className="bg-white shadow-lg rounded-lg mb-6">
+      <div className="bg-white shadow-lg rounded-lg mb-6 min-h-[160px] flex flex-col justify-between">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800">
             Registro de Requisitos de Inhumación
@@ -200,39 +254,42 @@ export function RequisitoInhumacionForm({
         </div>
 
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center w-full">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <button
-                  onClick={() => goToStep(step.id)}
-                  className={`
-                    flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-200
-                    ${
-                      currentStep === step.id
-                        ? `${step.color} text-white shadow-lg`
-                        : currentStep > step.id
-                        ? "bg-gray-400 text-white cursor-pointer hover:bg-gray-500"
-                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    }
-                  `}
-                  disabled={currentStep < step.id}
-                >
-                  {currentStep > step.id ? "✓" : step.id}
-                </button>
-                <div className="ml-3 hidden md:block">
-                  <p
-                    className={`text-sm font-medium ${
-                      currentStep === step.id
-                        ? "text-gray-900"
-                        : "text-gray-500"
-                    }`}
+              <div key={step.id} className="flex items-center w-auto">
+                <div className="flex items-center flex-shrink-0">
+                  <button
+                    onClick={() => goToStep(step.id)}
+                    className={`
+                      flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-200
+                      ${
+                        currentStep === step.id
+                          ? `${step.color} text-white shadow-lg`
+                          : currentStep > step.id
+                          ? "bg-gray-400 text-white cursor-pointer hover:bg-gray-500"
+                          : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      }
+                    `}
+                    disabled={currentStep < step.id}
                   >
-                    {step.title}
-                  </p>
+                    {currentStep > step.id ? "✓" : step.id}
+                  </button>
+                  <div className="ml-3 hidden md:block">
+                    <p
+                      className={`text-sm font-medium ${
+                        currentStep === step.id
+                          ? "text-gray-900"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {step.title}
+                    </p>
+                  </div>
                 </div>
+
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-8 h-0.5 mx-4 ${
+                    className={`w-16 h-0.5 mx-4 ${
                       currentStep > step.id ? "bg-gray-400" : "bg-gray-200"
                     }`}
                   />
@@ -282,36 +339,25 @@ export function RequisitoInhumacionForm({
                     placeholder="Selecciona un hueco o nicho"
                   /> */}
 
+                  {/* Reordered: Solicitante (left) and Hueco/Nicho (right). Administrador del Nicho hidden visually */}
+                  <RHFAutocompletePerson
+                    name="idSolicitante"
+                    label="Solicitante *"
+                    placeholder="Selecciona un solicitante"
+                    vivos={true}
+                  />
+
                   <RHFAutocompleteHuecoNicho
                     name="idHuecoNicho"
                     label="Hueco/Nicho *"
                     placeholder="Selecciona un hueco o nicho"
                     isAvailable={true}
                   />
-                  <RHFInput
-                    name="nombreAdministradorNicho"
-                    label="Administrador del Nicho *"
-                    placeholder="Nombre del administrador del nicho"
-                  />
-                </div>
-              </div>
-            )}
 
-            {/* Paso 2: Personas Involucradas */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <span className="w-3 h-3 bg-green-500 rounded-full mr-3"></span>
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    Personas Involucradas
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <RHFAutocompletePerson
-                    name="idSolicitante"
-                    label="Solicitante *"
-                    placeholder="Selecciona un solicitante"
-                    vivos={true}
+                  {/* Keep nombreAdministradorNicho value but hide the visible input. Register as hidden so submission and mappers keep working */}
+                  <input
+                    type="hidden"
+                    {...methods.register("nombreAdministradorNicho")}
                   />
                   <RHFAutocompletePerson
                     name="idFallecido"
@@ -320,20 +366,20 @@ export function RequisitoInhumacionForm({
                     vivos={false}
                     onlyNotInhumed={true}
                   />
-                </div>
-                <div className="col-span-2">
-                  <RHFTextarea
-                    name="observacionSolicitante"
-                    label="Observación del Solicitante (Opcional)"
-                    placeholder="Observaciones del solicitante"
-                    rows={4}
-                  />
+                  <div className="col-span-2">
+                    <RHFTextarea
+                      name="observacionSolicitante"
+                      label="Observación del Solicitante (Opcional)"
+                      placeholder="Observaciones del solicitante"
+                      rows={3}
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Paso 3: Programación */}
-            {currentStep === 3 && (
+            {/* Paso 2 ahora es 'Programación' después de ocultar Personas Involucradas */}
+            {currentStep === 2 && (
               <div className="space-y-6">
                 <div className="flex items-center mb-6">
                   <span className="w-3 h-3 bg-purple-500 rounded-full mr-3"></span>
@@ -343,11 +389,6 @@ export function RequisitoInhumacionForm({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  
-                  {/* <RHFDatePicker
-                    name="fechaInhumacion"
-                    label="Fecha de Inhumación *"
-                  /> */}
-
                   <RHFDatePickerCalendar
                   name="fechaInhumacion"
                     label="Fecha de Inhumación *" 
@@ -363,8 +404,9 @@ export function RequisitoInhumacionForm({
               </div>
             )}
 
-            {/* Paso 4: Documentos */}
-            {currentStep === 4 && (
+            
+            {/* Paso 3: Documentos */}
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="flex items-center mb-6">
                   <span className="w-3 h-3 bg-red-500 rounded-full mr-3"></span>
