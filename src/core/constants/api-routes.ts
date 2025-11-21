@@ -1,6 +1,7 @@
 const AR_KEYS = {
   AUTH: "auth",
   CEMENTERIO: "cementerio",
+  BLOQUES: "bloques",
   NICHOS: "nichos",
   PROPIETARIOS_NICHOS: "propietarios-nichos",
   PERSON: "personas",
@@ -8,6 +9,7 @@ const AR_KEYS = {
   INHUMACIONES: "inhumaciones",
   EXHUMACIONES: "exhumaciones",
   REQUISITOS_INHUMACION: "requisitos-inhumacion",
+  MEJORAS: "mejoras",
   PAYMENTS: "payments",
 };
 
@@ -23,6 +25,15 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.CEMENTERIO,
     UPDATE: (id: string) => `${AR_KEYS.CEMENTERIO}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.CEMENTERIO}/${id}`,
+  },
+  BLOQUES: {
+    LIST: AR_KEYS.BLOQUES,
+    GET_BY_ID: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
+    GET_BY_CEMENTERIO: (idCementerio: string) => `${AR_KEYS.BLOQUES}/cementerio/${idCementerio}`,
+    GET_NICHOS_BY_BLOQUE: (id: string) => `${AR_KEYS.BLOQUES}/${id}/nichos`,
+    CREATE: AR_KEYS.BLOQUES,
+    UPDATE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
+    DELETE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
   },
   NICHOS: {
     LIST: AR_KEYS.NICHOS,
@@ -65,6 +76,7 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.HUECOS,
     UPDATE: (id: string) => `${AR_KEYS.HUECOS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.HUECOS}/${id}`,
+    GET_ARCHIVO: (id: string) => `${AR_KEYS.HUECOS}/${id}/archivo`,
   },
   PROPIETARIOS_NICHOS: {
     LIST: AR_KEYS.PROPIETARIOS_NICHOS,
@@ -94,6 +106,8 @@ export const API_ROUTES = {
     LIST: AR_KEYS.REQUISITOS_INHUMACION,
     GET_BY_ID: (id: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/requisito/${id}`,
+    // Endpoint para subir documentos relacionados a un requisito (multipart/form-data)
+    UPLOAD_DOCUMENTS: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}/documentos`,
     CREATE: AR_KEYS.REQUISITOS_INHUMACION,
     UPDATE: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.REQUISITOS_INHUMACION}/${id}`,
@@ -112,6 +126,16 @@ export const API_ROUTES = {
     UPLOAD_FILES: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}/archivos`,
     BY_INHUMACION: (inhumacionId: string) => `${AR_KEYS.EXHUMACIONES}?inhumacion_id=${inhumacionId}`,
     BY_NICHO: (nichoId: string) => `${AR_KEYS.EXHUMACIONES}?nicho_original_id=${nichoId}`,
+  MEJORAS: {
+    LIST: AR_KEYS.MEJORAS,
+    GET_BY_ID: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
+    CREATE: AR_KEYS.MEJORAS,
+    UPDATE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
+    DELETE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
+    UPLOAD_FILE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/files`,
+  DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
+    SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
+    APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
   },
   PAYMENTS: {
     LIST: AR_KEYS.PAYMENTS,

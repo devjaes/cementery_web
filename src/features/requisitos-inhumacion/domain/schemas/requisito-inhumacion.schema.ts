@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CreateRequisitoInhumacionSchema = z.object({
+    codigoInhumacion: z.string().min(1, "El código de inhumación es requerido").max(50, "Máximo 50 caracteres"),
     idCementerio: z.string().uuid("El cementerio es requerido y debe ser un UUID válido"),
     pantoneroACargo: z.string().min(1, "El pantonero a cargo es requerido").max(100, "Máximo 100 caracteres"),
     metodoSolicitud: z.string().min(1, "El método de solicitud es requerido").max(50, "Máximo 50 caracteres"),

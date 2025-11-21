@@ -9,18 +9,13 @@ import {
 } from "@/shared/components/ui/table";
 import {
   AlertCircle,
-  Hash,
-  Landmark,
-  Layers,
-  ListOrdered,
-  User2,
-  BadgeCheck,
   Pencil,
   Trash2,
   Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
+import { Badge } from "@/shared/components/ui/badge";
 import { useDeleteNichoMutation } from "../hooks/use-nicho-mutations";
 import {
   AlertDialog,
@@ -36,13 +31,17 @@ import {
 import clsx from "clsx";
 import { StatusChip } from "../utils/nichos-status-chip";
 
-export function NichoListTable() {
+interface NichoListTableProps {
+  onEditClick?: (id: string) => void;
+}
+
+export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
   const { data: nichos, isLoading, error } = useFindAllNichosQuery();
   const { mutate: deleteNicho, isPending } = useDeleteNichoMutation();
 
   return (
-    <div className="rounded-lg border bg-white p-6 mt-4">
-      <h3 className="text-lg font-semibold mb-4">
+    <div className="rounded-lg border bg-card p-6 mt-4">
+      <h3 className="text-lg font-semibold mb-4 text-foreground">
         Resultados ({nichos?.length ?? 0})
       </h3>
       <div className="overflow-x-auto">
@@ -51,43 +50,31 @@ export function NichoListTable() {
             <TableRow>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Hash className="w-4 h-4" />
-                  ID
-                </span>
-              </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  <Landmark className="w-4 h-4" />
                   Cementerio
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <Layers className="w-4 h-4" />
                   Sector
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <ListOrdered className="w-4 h-4" />
                   Fila
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <ListOrdered className="w-4 h-4" />
                   Número
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <User2 className="w-4 h-4" />
                   Tipo
                 </span>
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  <BadgeCheck className="w-4 h-4" />
                   Estado
                 </span>
               </TableHead>
@@ -99,21 +86,24 @@ export function NichoListTable() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={8}>Cargando...</TableCell>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Cargando...</p>
+                </TableCell>
               </TableRow>
             )}
             {error && (
               <TableRow>
-                <TableCell colSpan={8} className="text-red-500">
-                  {error instanceof Error ? error.stack : "Error desconocido"}
+                <TableCell colSpan={7} className="text-center py-8 text-destructive">
+                  {error instanceof Error ? error.message : "Error al cargar los nichos"}
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && nichos && nichos.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center">
+                <TableCell colSpan={7} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <AlertCircle className="w-12 h-12 mb-1 text-gray-400" />
+                    <AlertCircle className="w-12 h-12 mb-1" />
                     <span className="text-base md:text-lg font-medium">
                       No existen nichos registrados aún.
                     </span>
@@ -123,12 +113,19 @@ export function NichoListTable() {
             )}
             {nichos?.map((nicho) => (
               <TableRow key={nicho.idNicho}>
-                <TableCell>{nicho.idNicho}</TableCell>
-                <TableCell>{nicho.idCementerio?.nombre || ""}</TableCell>
-                <TableCell>{nicho.sector}</TableCell>
-                <TableCell>{nicho.fila}</TableCell>
-                <TableCell>{nicho.numero}</TableCell>
-                <TableCell>{nicho.tipo}</TableCell>
+                <TableCell className="font-medium">{nicho.idCementerio?.nombre || "N/A"}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{nicho.sector}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{nicho.fila}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{nicho.numero}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{nicho.tipo}</Badge>
+                </TableCell>
                 <TableCell>
                   <StatusChip estado={nicho.estado} />
                 </TableCell>
@@ -139,11 +136,21 @@ export function NichoListTable() {
                         <Eye className="w-4 h-4" />
                       </Button>
                     </Link>
-                    <Link href={`/nichos/${nicho.idNicho}/editar`}>
-                      <Button size="icon" variant="ghost">
+                    {onEditClick ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => onEditClick(nicho.idNicho!)}
+                      >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link href={`/nichos/${nicho.idNicho}/editar`}>
+                        <Button size="icon" variant="ghost">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button size="icon" variant="ghost">
@@ -164,7 +171,7 @@ export function NichoListTable() {
                             onClick={() => deleteNicho(nicho.idNicho!)}
                             disabled={isPending}
                             className={clsx(
-                              "px-8 bg-red-500 hover:bg-red-600",
+                              "px-8 bg-destructive hover:bg-destructive/90",
                               isPending && "opacity-50 cursor-not-allowed"
                             )}
                           >

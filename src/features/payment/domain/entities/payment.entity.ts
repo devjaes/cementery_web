@@ -1,11 +1,11 @@
-export type ProcedureType = 
-  | 'burial' 
-  | 'exhumation' 
-  | 'niche_sale' 
-  | 'tomb_improvement' 
-  | 'hole_extension';
+export type ProcedureType =
+  | "burial"
+  | "exhumation"
+  | "niche_sale"
+  | "tomb_improvement"
+  | "hole_extension";
 
-export type PaymentStatus = 'pending' | 'paid';
+export type PaymentStatus = "pending" | "paid";
 
 export interface PaymentEntity {
   paymentId: string;
@@ -20,6 +20,9 @@ export interface PaymentEntity {
   observations: string | null;
   generatedBy: string;
   validatedBy: string | null;
+  buyerDocument: string;
+  buyerName: string;
+  buyerDirection: string | null;
   updatedDate: string;
   // Campos que ya existen en la BD
   buyerDocument: string;
@@ -32,6 +35,9 @@ export interface CreatePaymentEntity {
   procedureId: string;
   amount: number;
   generatedBy: string;
+  buyerDocument: string;
+  buyerName: string;
+  buyerDirection?: string;
   observations?: string;
   // Campos que YA EXISTEN en la BD
   buyerName: string;
@@ -63,4 +69,9 @@ export interface UploadReceiptEntity {
   paymentId: string;
   file: File;
   validatedBy: string;
+}
+
+export interface CreatePaymentResponse {
+  payment: PaymentEntity;
+  pdfBlob: Blob;
 }

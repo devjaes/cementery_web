@@ -26,6 +26,9 @@ export class PaymentMapper {
       observations: model.observations,
       generatedBy: model.generatedBy,
       validatedBy: model.validatedBy,
+      buyerDocument: model.buyerDocument,
+      buyerName: model.buyerName,
+      buyerDirection: model.buyerDirection,
       updatedDate: model.updatedDate,
       // Campos que ya existen en la BD
       buyerDocument: model.buyerDocument,
@@ -40,6 +43,9 @@ export class PaymentMapper {
       procedureId: entity.procedureId,
       amount: entity.amount,
       generatedBy: entity.generatedBy,
+      buyerDocument: entity.buyerDocument,
+      buyerName: entity.buyerName,
+      buyerDirection: entity.buyerDirection,
       observations: entity.observations,
       // Campos que YA EXISTEN en la BD
       buyerName: entity.buyerName,

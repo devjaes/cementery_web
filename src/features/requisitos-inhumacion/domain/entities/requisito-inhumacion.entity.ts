@@ -5,6 +5,7 @@ import { PersonEntity } from "@/features/person/domain/entities/person.entity";
 
 export interface RequisitoInhumacionEntity {
   idRequsitoInhumacion: string;
+  codigoInhumacion?: string;
   idCementerio: CementeryEntity;
   pantoneroACargo: string;
   metodoSolicitud: string;
@@ -32,6 +33,7 @@ export interface RequisitoInhumacionEntity {
 }
 
 export interface CreateRequisitoInhumacionEntity {
+  codigoInhumacion: string;
   idCementerio: string;
   pantoneroACargo: string;
   metodoSolicitud: string;

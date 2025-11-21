@@ -6,6 +6,7 @@ import { API_ROUTES } from "@/core/constants/api-routes";
 import { RequisitoInhumacionRepository } from "../../domain/repositories/requisito-inhumacion.repository";
 import { AxiosResponse } from "axios";
 import { SearchFallecidosRequisitoInhumacionMapper } from "../mappers/requisito-inhumacion-fallecido.mapper";
+import { ResponseAPI } from "@/core/interfaces/api.interface";
 
 
 export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRepository {
@@ -38,8 +39,21 @@ export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRep
 
     async update(requisitoInhumacion: UpdateRequisitoInhumacionEntity): Promise<RequisitoInhumacionEntity> {
         const model = RequisitoInhumacionMapper.toUpdateModel(requisitoInhumacion);
+
+        // Resolve id for the update endpoint robustly: prefer entity id, fall back to model
+        const anyEntity: any = requisitoInhumacion as any;
+        const idFromEntity = anyEntity?.idRequisitoInhumacion ?? anyEntity?.idRequsitoInhumacion ?? anyEntity?.id;
+        const idFromModel = (model as any)?.id_requisitoInhumacion ?? (model as any)?.idRequisitoInhumacion;
+        const idToUse = idFromEntity || idFromModel;
+
+        if (!idToUse) {
+            throw new Error("RequisitoInhumacionRepositoryImpl.update: id de requisito no proporcionado");
+        }
+
+        console.log("[DEBUG] RequisitoInhumacionRepositoryImpl.update - id:", idToUse, "payload:", model);
+
         const { data } = await this.httpClient.patch<RequisitoInhumacionModel>(
-            API_ROUTES.REQUISITOS_INHUMACION.UPDATE(model.id_requisitoInhumacion),
+            API_ROUTES.REQUISITOS_INHUMACION.UPDATE(idToUse),
             model
         );
         return RequisitoInhumacionMapper.toEntity(data.data);
@@ -61,5 +75,47 @@ export class RequisitoInhumacionRepositoryImpl implements RequisitoInhumacionRep
     async searchFallecidos(busqueda: string): Promise<SearchFallecidosRequisitoInhumacionEntity> {
         const { data } = await this.httpClient.get<SearchFallecidosRequisitoInhumacionModel>(API_ROUTES.REQUISITOS_INHUMACION.SEARCH_FALLECIDOS(busqueda));
         return SearchFallecidosRequisitoInhumacionMapper.toEntity(data.data);
+    }
+
+    async uploadDocuments(id: string, files: {
+        solicitud_firmada?: File;
+        cedula_solicitante?: File;
+        certificado_defuncion_civil?: File;
+        certificado_defuncion_medico?: File;
+        titulo_propiedad?: File;
+        comprobante_pago?: File;
+        autorizacion_movilizacion?: File;
+    }): Promise<AxiosResponse<ResponseAPI<unknown>>> {
+        const form = new FormData();
+        // Agregar solo las claves que tengan archivo
+        (Object.entries(files) as [string, File | undefined][]).forEach(([key, file]) => {
+            if (file) {
+                form.append(key, file);
+            }
+        });
+
+        // Use postForm so Axios handles the multipart/form-data headers and boundary correctly
+        return await this.httpClient.postForm(
+            API_ROUTES.REQUISITOS_INHUMACION.UPLOAD_DOCUMENTS(id),
+            form
+        );
+    }
+
+    /**
+     * Subir documento consolidado para un requisito de inhumación
+     * Endpoint backend: POST /requisitos-inhumacion/:id/documentos (campo: documento_consolidado)
+     */
+    async uploadConsolidatedDocumentForRequisito(id: string, file?: File): Promise<AxiosResponse<ResponseAPI<unknown>>> {
+        const form = new FormData();
+        if (file) {
+            form.append('documento_consolidado', file);
+        }
+
+        // Post to requisitos-inhumacion/:id/documentos
+        const url = `requisitos-inhumacion/${id}/documentos`;
+        // debug: show the final URL used by AxiosClient (useful in devtools)
+        console.log("[repo] uploadConsolidatedDocumentForRequisito -> POST", this.httpClient.getUri ? this.httpClient.getUri({ url }) : url);
+        // use postForm so Axios sets the correct multipart/form-data headers
+        return await this.httpClient.postForm(url, form);
     }
 }

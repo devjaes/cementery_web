@@ -3,17 +3,23 @@ import ContainerApp from "@/core/layout/container-app";
 import { Button } from "@/shared/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { RequisitoInhumacionFallecidosEntity } from "../../domain/entities/requisito-inhumacion.entity";
 import { useSearchRequisitoInhumacionFallecidosQuery } from "../hooks/use-requisito-inhumacion-queries";
 import { RequisitoInhumacionSearch } from "../components/requisito-inhumacion-search.component";
 import { RequisitoInhumacionSearchResults } from "../components/requisito-inhumacion-search-results.component";
+import { useDownloadRequisitoInhumacionPdfMutation } from "../hooks/use-requisito-inhumacion-mutation";
+import { useRouter } from "next/navigation";
 
 export default function InhumacionListView() {
  const [searchTerm, setSearchTerm] = useState<string>("");
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedFallecido, setSelectedFallecido] = useState<RequisitoInhumacionFallecidosEntity | null>(null);
+  const params = useSearchParams();
+  const router = useRouter();
+  const { mutate: downloadRequisitoPdf, isPending: isDownloading } = useDownloadRequisitoInhumacionPdfMutation();
 
   const {
     data: searchResults,
@@ -21,7 +27,29 @@ export default function InhumacionListView() {
     error
   } = useSearchRequisitoInhumacionFallecidosQuery(searchTerm);
 
-  
+  useEffect(() => {
+    const q = params?.get("q");
+    if (q) {
+      setSearchTerm(q);
+      setHasSearched(true);
+    }
+    // Auto-download behavior: if autoDownloadId is present, trigger download and remove param
+    const autoId = params?.get("autoDownloadId");
+    if (autoId) {
+      // Trigger download
+      try {
+        downloadRequisitoPdf(autoId);
+      } catch (e) {
+        console.warn("Auto-download failed:", e);
+      }
+      // Remove autoDownloadId from URL without refreshing the page
+      const searchParams = new URLSearchParams(Array.from(params.entries()));
+      searchParams.delete("autoDownloadId");
+      const qPart = searchParams.toString();
+      router.replace(qPart ? `/requisitos-inhumacion?${qPart}` : `/requisitos-inhumacion`);
+    }
+  }, [params]);
+
     const handleSearch = (busqueda: string) => {
       setSearchTerm(busqueda);
       setHasSearched(true);
@@ -42,7 +70,7 @@ export default function InhumacionListView() {
       setSelectedFallecido(null);
     };
   return (
-    <ContainerApp title="Búsqueda de Requisitos de Inhumaciones">
+    <ContainerApp title="Búsqueda de Inhumaciones">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">

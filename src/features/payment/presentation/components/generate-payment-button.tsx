@@ -11,8 +11,13 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { FileText, Loader2 } from "lucide-react";
-import { useCreatePayment, useDownloadReceipt } from "../hooks/use-payment-mutation";
-import { CreatePaymentEntity, ProcedureType } from "../../domain/entities/payment.entity";
+import { useCreatePayment } from "../hooks/use-payment-mutation";
+import { PdfPreviewDialog } from "./pdf-preview-dialog";
+import {
+  CreatePaymentEntity,
+  ProcedureType,
+  PaymentEntity,
+} from "../../domain/entities/payment.entity";
 
 interface GeneratePaymentButtonProps {
   procedureType: ProcedureType;
@@ -34,8 +39,12 @@ export const GeneratePaymentButton = ({
   onSuccess,
 }: GeneratePaymentButtonProps) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [createdPayment, setCreatedPayment] = useState<PaymentEntity | null>(
+    null
+  );
   const createPayment = useCreatePayment();
-  const downloadReceipt = useDownloadReceipt();
 
   const handleGeneratePayment = async () => {
     const paymentData: CreatePaymentEntity = {
@@ -47,17 +56,17 @@ export const GeneratePaymentButton = ({
     };
 
     createPayment.mutate(paymentData, {
-      onSuccess: (payment) => {
+      onSuccess: (result) => {
         setShowConfirmDialog(false);
-        
-        downloadReceipt.mutate(payment.paymentId);
-        
-        onSuccess?.(payment.paymentId);
+        setPdfBlob(result.pdfBlob);
+        setCreatedPayment(result.payment);
+        setShowPdfPreview(true);
+        onSuccess?.(result.payment.paymentId);
       },
     });
   };
 
-  const isLoading = createPayment.isPending || downloadReceipt.isPending;
+  const isLoading = createPayment.isPending;
 
   return (
     <>
@@ -75,8 +84,9 @@ export const GeneratePaymentButton = ({
           <DialogHeader>
             <DialogTitle>Generar Comprobante de Pago</DialogTitle>
             <DialogDescription>
-              Se generará un comprobante de pago por ${amount.toFixed(2)}. 
-              El trámite quedará en estado pendiente hasta que se suba el comprobante pagado.
+              Se generará un comprobante de pago por ${amount.toFixed(2)}. El
+              trámite quedará en estado pendiente hasta que se suba el
+              comprobante pagado.
             </DialogDescription>
           </DialogHeader>
 
@@ -108,6 +118,13 @@ export const GeneratePaymentButton = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PdfPreviewDialog
+        open={showPdfPreview}
+        onOpenChange={setShowPdfPreview}
+        pdfBlob={pdfBlob}
+        payment={createdPayment}
+      />
     </>
   );
 };

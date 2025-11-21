@@ -10,6 +10,7 @@ import {
   UsersRound,
   FileText,
   RotateCcw,
+  Hammer,
 } from "lucide-react";
 
 import {
@@ -62,18 +63,18 @@ const data = {
       icon: ListIcon,
       isActive: (pathname: string) => pathname === "/map",
     },
-     {
-      title: "Requisito Inhumaciones",
+    {
+      title: "Inhumaciones",
       url: "/requisitos-inhumacion",
       icon: FileText,
       isActive: (pathname: string) =>
         pathname.startsWith("/requisitos-inhumaciones"),
     },
     {
-      title: "Inhumaciones",
-      url: "/inhumaciones",
-      icon: FileText,
-      isActive: (pathname: string) => pathname.startsWith("/inhumaciones"),
+      title: "Mejoras en Tumbas",
+      url: "/mejoras",
+      icon: Hammer,
+      isActive: (pathname: string) => pathname.startsWith("/mejoras"),
     },
     {
       title: "Exhumaciones",

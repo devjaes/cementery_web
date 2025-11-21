@@ -17,6 +17,9 @@ export interface HuecoModel {
   fecha_creacion: string;
   fecha_actualizacion: string | null;
   requisitos_inhumacion: any[]; // TODO: Definir interfaz cuando se implemente el módulo de requisitos
+  // Nuevos campos de ampliación
+  ruta_archivo_ampliacion?: string;
+  observacion_ampliacion?: string;
 }
 
 export interface CreateHuecoModel {
