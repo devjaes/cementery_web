@@ -1,5 +1,4 @@
 "use client";
-
 import {
   Card,
   CardContent,
@@ -16,6 +15,8 @@ import { DocumentUploadCard } from "./document-upload-card.component";
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { API_ROUTES } from "@/core/constants/api-routes";
 import { CreatePaymentForm } from "@/features/payment/presentation/components/create-payment-form";
+import { GeneratePaymentButton } from "@/features/payment/presentation/components/generate-payment-button";
+import { PaymentStatusCard } from "@/features/payment/presentation/components/payment-status-card";
 
 interface RequisitoInhumacionCardProps {
   requisitoInhumacion: RequisitoInhumacionEntity;
@@ -41,6 +42,11 @@ export function RequisitoInhumacionCard({
   const [existingDocumentUrl, setExistingDocumentUrl] = useState<string | undefined>(undefined);
   const [inhumacionId, setInhumacionId] = useState<string | null>(null);
   const [resolvingInhumacion, setResolvingInhumacion] = useState(false);
+  const [ordenOwnerName, setOrdenOwnerName] = useState<string | null>(null);
+  const [ordenOwnerCedula, setOrdenOwnerCedula] = useState<string | null>(null);
+  const [resolvingOwner, setResolvingOwner] = useState(false);
+  const [ordenOwnerPersonId, setOrdenOwnerPersonId] = useState<string | null>(null);
+  const [generatedPaymentId, setGeneratedPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     // resolve existing document (already present)
@@ -126,11 +132,47 @@ export function RequisitoInhumacionCard({
         const payload = inhResp?.data?.data;
         const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
         const inhs = first?.inhumaciones || first?.persona?.inhumaciones || payload?.inhumaciones || [];
+        let resolvedInhumacionId: string | undefined = undefined;
         if (Array.isArray(inhs) && inhs.length > 0) {
-          const id = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
-          if (!cancelled) setInhumacionId(id || null);
+          resolvedInhumacionId = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
+          if (!cancelled) setInhumacionId(resolvedInhumacionId || null);
         } else {
           if (!cancelled) setInhumacionId(null);
+        }
+        // previously we also resolved propietario del nicho here; we'll resolve it again
+        // but keep it hidden in the UI — we only use it to prefill the buyer fields.
+        if (!cancelled && resolvedInhumacionId) {
+          try {
+            const inhumRepo = (await import("@/features/inhumaciones/infrastructure/repositories/inhumacion.repository.impl")).InhumacionRepositoryImpl.getInstance();
+            const inhum = await inhumRepo.findById(resolvedInhumacionId);
+            const idNicho = inhum?.idNicho?.idNicho || inhs[0]?.id_nicho?.id_nicho || inhs[0]?.idNicho?.idNicho || undefined;
+            if (idNicho) {
+              setResolvingOwner(true);
+              try {
+                const propietarios = await (await import("@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl")).PropietarioNichoRepositoryImpl.getInstance().findByNicho(idNicho);
+                if (!cancelled) {
+                  const activo = (propietarios || []).find((p: any) => p.activo) || propietarios?.[0];
+                  const persona = activo?.idPersona;
+                  const fullName = persona ? `${persona.nombres || ""} ${persona.apellidos || ""}`.trim() : null;
+                  setOrdenOwnerName(fullName || null);
+                  setOrdenOwnerCedula(persona?.cedula || null);
+                  const pid = (persona as any)?.id_persona ?? (persona as any)?.idPersona ?? (persona as any)?.id ?? null;
+                  setOrdenOwnerPersonId(pid);
+                }
+              } catch (e) {
+                console.warn("Error resolviendo propietario del nicho (silencioso):", e);
+                if (!cancelled) {
+                  setOrdenOwnerName(null);
+                  setOrdenOwnerCedula(null);
+                  setOrdenOwnerPersonId(null);
+                }
+              } finally {
+                if (!cancelled) setResolvingOwner(false);
+              }
+            }
+          } catch (e) {
+            console.warn("Error resolviendo inhumacion para obtener propietario (silencioso):", e);
+          }
         }
       } catch (e) {
         console.warn("No se pudo resolver inhumación para Orden de Pago:", e);
@@ -145,6 +187,42 @@ export function RequisitoInhumacionCard({
       cancelled = true;
     };
   }, [expandedSections.ordenPago, requisitoInhumacion]);
+
+  const handleResolveInhumManual = async () => {
+    setResolvingInhumacion(true);
+    try {
+      const http = AxiosClient.getInstance();
+      const idFallecido = requisitoInhumacion?.idFallecido?.id_persona;
+      if (!idFallecido) {
+        setInhumacionId(null);
+        return;
+      }
+
+      const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(idFallecido));
+      const cedula: string | undefined = personaResp?.data?.data?.cedula;
+      if (!cedula) {
+        setInhumacionId(null);
+        return;
+      }
+
+      const inhResp = await http.get<any>(API_ROUTES.INHUMACIONES.SEARCH_FALLECIDOS(cedula));
+      const payload = inhResp?.data?.data;
+      const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
+      const inhs = first?.inhumaciones || first?.persona?.inhumaciones || payload?.inhumaciones || [];
+      if (Array.isArray(inhs) && inhs.length > 0) {
+        const resolvedInhumacionId = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
+        setInhumacionId(resolvedInhumacionId || null);
+      } else {
+        setInhumacionId(null);
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("Manual resolve failed:", e);
+      setInhumacionId(null);
+    } finally {
+      setResolvingInhumacion(false);
+    }
+  };
 
    
   const toggleSection = (sectionKey: string) => {
@@ -550,16 +628,77 @@ export function RequisitoInhumacionCard({
                           <CreatePaymentForm
                             procedureType="burial"
                             procedureId={inhumacionId}
-                            defaultAmount={45}
+                            defaultAmount={47}
+                            amountReadOnly={true}
+                            noFormElement={true}
+                            enablePersonFallback={true}
+                            hideSubmitButton={true}
+                            buyerDocumentInitial={ordenOwnerCedula}
+                            buyerNameInitial={ordenOwnerName}
+                            buyerPersonIdInitial={ordenOwnerPersonId}
                             onSuccess={() => {
                               // opcional: refrescar datos o mostrar notificación
                             }}
                           />
+                          {/* Botón principal verde - reutiliza la lógica de PaymentFlow (alineado a la derecha) */}
+                          <div className="mt-4 w-full flex justify-end">
+                            <GeneratePaymentButton
+                              procedureType="burial"
+                              procedureId={inhumacionId}
+                              amount={47}
+                              generatedBy={requisitoInhumacion?.pantoneroACargo || ''}
+                              observations={requisitoInhumacion?.observacionSolicitante || undefined}
+                              buyerDocument={ordenOwnerCedula ?? undefined}
+                              buyerName={ordenOwnerName ?? undefined}
+                              buyerDirection={undefined}
+                              onSuccess={(paymentId) => {
+                                // opcional: refrescar la vista o mostrar notificación
+                              }}
+                              onPreviewClose={(paymentId) => {
+                                setGeneratedPaymentId(paymentId);
+                              }}
+                            />
+                          </div>
                         </CardContent>
                       </Card>
                     ) : (
-                      <div className="p-3 bg-yellow-50 rounded text-sm text-gray-700">
-                        No se encontró una inhumación asociada todavía. Guarda primero el requisito o intenta resolver la inhumación para habilitar la generación de la orden de pago.
+                      <div className="p-3 bg-yellow-50 rounded text-sm text-gray-700 space-y-3">
+                        <div>No se encontró una inhumación asociada todavía.</div>
+                        <div>Guarda primero el requisito o intenta resolver la inhumación para habilitar la generación de la orden de pago.</div>
+                        <div className="flex items-center gap-2 w-full">
+                          <button
+                            type="button"
+                            onClick={handleResolveInhumManual}
+                            disabled={resolvingInhumacion}
+                            className={`px-3 py-2 rounded bg-blue-600 text-white text-sm ${resolvingInhumacion ? 'opacity-60 cursor-wait' : 'hover:bg-blue-700'}`}
+                          >
+                            {resolvingInhumacion ? 'Resolviendo...' : 'Reintentar resolución'}
+                          </button>
+
+                          <div className="ml-auto">
+                            <GeneratePaymentButton
+                              procedureType="burial"
+                              procedureId={requisitoInhumacion?.idRequsitoInhumacion ?? ''}
+                              amount={47}
+                              generatedBy={requisitoInhumacion?.pantoneroACargo || ''}
+                              observations={requisitoInhumacion?.observacionSolicitante || undefined}
+                              onSuccess={() => {
+                                // opcional: manejar refresco o notificación tras generar
+                              }}
+                              onPreviewClose={(paymentId) => setGeneratedPaymentId(paymentId)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* Mostrar estado del pago sólo después de generar y cerrar el preview (dentro de Orden de Pago) */}
+                    {generatedPaymentId && (
+                      <div className="mt-4">
+                        <PaymentStatusCard
+                          procedureType="burial"
+                          procedureId={inhumacionId ?? requisitoInhumacion?.idRequsitoInhumacion ?? ''}
+                          validatedBy={requisitoInhumacion?.pantoneroACargo || ''}
+                        />
                       </div>
                     )}
                   </div>

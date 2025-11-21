@@ -33,14 +33,26 @@ export const PaymentFlowComponent = ({
             <CardTitle>Generar Pago</CardTitle>
           </CardHeader>
           <CardContent>
-            <GeneratePaymentButton
-              procedureType={procedureType}
-              procedureId={procedureId}
-              amount={amount}
-              generatedBy={generatedBy}
-              observations={observations}
-              onSuccess={() => setHasPayment(true)}
-            />
+            <div className="space-y-2">
+              <GeneratePaymentButton
+                procedureType={procedureType}
+                procedureId={procedureId}
+                amount={amount}
+                generatedBy={generatedBy}
+                observations={observations}
+                onSuccess={() => setHasPayment(true)}
+              />
+
+              {/* Reuse the same "Generar Comprobante de Pago" button under the main one */}
+              <GeneratePaymentButton
+                procedureType={procedureType}
+                procedureId={procedureId}
+                amount={amount}
+                generatedBy={generatedBy}
+                observations={observations}
+                onSuccess={() => setHasPayment(true)}
+              />
+            </div>
           </CardContent>
         </Card>
       ) : (

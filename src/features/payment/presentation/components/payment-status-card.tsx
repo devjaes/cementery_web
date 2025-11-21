@@ -132,6 +132,7 @@ export const PaymentStatusCard = ({
 
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               className="gap-2"
               onClick={() => downloadReceipt.mutate(latestPayment.paymentId)}
@@ -146,6 +147,7 @@ export const PaymentStatusCard = ({
             </Button>
 
             <Button
+              type="button"
               variant="outline"
               className="gap-2"
               onClick={async () => {
