@@ -124,7 +124,15 @@ export class RequisitoInhumacionMapper {
     static toUpdateModel(entity: UpdateRequisitoInhumacionEntity): UpdateRequisitoInhumacionModel{
         // Build a flexible payload (as any) to support multiple backend naming conventions
         const out: any = {
-            id_requisitoInhumacion: entity.idRequisitoInhumacion,
+            // Ensure the identifier is present for the update endpoint
+            id_requisitoInhumacion: entity.idRequisitoInhumacion ?? (entity as any).idRequsitoInhumacion ?? (entity as any).id,
+            // Basic editable fields (ensure these are sent so backend persists them)
+            pantoneroACargo: (entity as any).pantoneroACargo,
+            metodoSolictud: (entity as any).metodoSolicitud || (entity as any).metodoSolictud,
+            id_solicitante: (entity as any).idSolicitante ?? (entity as any).id_solicitante,
+            observacionSolicitante: (entity as any).observacionSolicitante || undefined,
+            id_cementerio: (entity as any).idCementerio ?? undefined,
+            codigo_inhumacion: (entity as any).codigoInhumacion ?? undefined,
             copiaCertificadoDefuncion: entity.copiaCertificadoDefuncion,
             observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || "",
 

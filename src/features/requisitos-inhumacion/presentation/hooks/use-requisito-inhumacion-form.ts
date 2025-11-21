@@ -16,6 +16,7 @@ import { API_ROUTES } from "@/core/constants/api-routes";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { RequisitoInhumacionRepositoryImpl } from "../../infraestructure/repositories/requisito-inhumacion.repository.impl";
 import { InhumacionRepositoryImpl } from "@/features/inhumaciones/infrastructure/repositories/inhumacion.repository.impl";
+import { PaymentRepositoryImpl } from "@/features/payment/infrastructure/repositories/payment.repository.impl";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 
@@ -125,6 +126,47 @@ export function useRequisitoInhumacionForm(
       return personaResp?.data?.data?.cedula || null;
     } catch {
       return null;
+    }
+  };
+
+  // Decide if we should trigger PDF download: all checklist booleans must be true
+  // and there must be a 'paid' payment with a receipt uploaded for the associated inhumación.
+  const shouldDownloadPdf = async (
+    requisitoId: string,
+    data: CreateRequisitoInhumacionDTO
+  ): Promise<boolean> => {
+    try {
+      // Check checklist booleans from the form data
+      const checklistKeys: (keyof CreateRequisitoInhumacionDTO)[] = [
+        "copiaCertificadoDefuncion",
+        "informeEstadisticoINEC",
+        "copiaCedula",
+        "pagoTasaInhumacion",
+        "copiaTituloPropiedadNicho",
+        "oficioDeSolicitud",
+        "autorizacionDeMovilizacionDelCadaver",
+      ];
+
+      const allChecked = checklistKeys.every((k) => Boolean(data[k]));
+      if (!allChecked) return false;
+
+      // Resolve inhumacion id from idFallecido if available
+      const inhumacionId = await resolveInhumacionIdByFallecido(data.idFallecido);
+      if (!inhumacionId) return false;
+
+      // Find payments for this procedure and check for a paid one with receipt
+      const paymentsRepo = PaymentRepositoryImpl.getInstance();
+      const payments = await paymentsRepo.findByProcedure("burial", inhumacionId as string);
+      if (!payments || payments.length === 0) return false;
+
+      const hasPaidWithReceipt = payments.some(
+        (p) => (p.status === "paid" || String(p.status).toLowerCase() === "paid") && !!p.receiptFile
+      );
+
+      return hasPaidWithReceipt;
+    } catch (e) {
+      console.warn("shouldDownloadPdf check failed:", e);
+      return false;
     }
   };
 
@@ -239,12 +281,18 @@ export function useRequisitoInhumacionForm(
               resultAny?.idRequisitoInhumacion ??
               resultAny?.id ?? existingId;
 
-            // Trigger a single download directly here (avoid relying on URL param)
+            // Trigger a single download directly here only if conditions met
             if (requisitoId) {
               try {
-                downloadRequisitoPdf(requisitoId);
+                const should = await shouldDownloadPdf(requisitoId, data);
+                if (should) {
+                  downloadRequisitoPdf(requisitoId);
+                } else {
+                  // Inform user that PDF will be available once checklist and payment are complete
+                  toast.info("El PDF estará disponible cuando se completen todos los requisitos y el pago esté confirmado.");
+                }
               } catch (e) {
-                console.warn("Error triggering download:", e);
+                console.warn("Error checking download conditions:", e);
               }
             }
 
@@ -344,12 +392,16 @@ export function useRequisitoInhumacionForm(
             data.idFallecido
           );
 
-          // Trigger download once (if we have an id)
           if (requisitoId) {
             try {
-              downloadRequisitoPdf(requisitoId);
+              const should = await shouldDownloadPdf(requisitoId, data);
+              if (should) {
+                downloadRequisitoPdf(requisitoId);
+              } else {
+                toast.info("El PDF estará disponible cuando se completen todos los requisitos y el pago esté confirmado.");
+              }
             } catch (e) {
-              console.warn("Error triggering download after create:", e);
+              console.warn("Error checking download conditions after create:", e);
             }
           }
 
