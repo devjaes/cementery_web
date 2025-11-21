@@ -284,23 +284,25 @@ export function RequisitoInhumacionForm({
                     placeholder="Selecciona un hueco o nicho"
                   /> */}
 
+                  {/* Reordered: Solicitante (left) and Hueco/Nicho (right). Administrador del Nicho hidden visually */}
+                  <RHFAutocompletePerson
+                    name="idSolicitante"
+                    label="Solicitante *"
+                    placeholder="Selecciona un solicitante"
+                    vivos={true}
+                  />
+
                   <RHFAutocompleteHuecoNicho
                     name="idHuecoNicho"
                     label="Hueco/Nicho *"
                     placeholder="Selecciona un hueco o nicho"
                     isAvailable={true}
                   />
-                  <RHFInput
-                    name="nombreAdministradorNicho"
-                    label="Administrador del Nicho *"
-                    placeholder="Nombre del administrador del nicho"
-                  />
-                  {/* Campos movidos: Solicitante, Fallecido y Observación del Solicitante */}
-                  <RHFAutocompletePerson
-                    name="idSolicitante"
-                    label="Solicitante *"
-                    placeholder="Selecciona un solicitante"
-                    vivos={true}
+
+                  {/* Keep nombreAdministradorNicho value but hide the visible input. Register as hidden so submission and mappers keep working */}
+                  <input
+                    type="hidden"
+                    {...methods.register("nombreAdministradorNicho")}
                   />
                   <RHFAutocompletePerson
                     name="idFallecido"
