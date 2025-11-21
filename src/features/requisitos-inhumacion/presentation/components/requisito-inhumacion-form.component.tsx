@@ -35,23 +35,25 @@ const steps = [
       "metodoSolicitud",
       "idHuecoNicho",
       "nombreAdministradorNicho",
+      "idSolicitante",
+      "idFallecido",
     ],
-    optionalFields: [],
-  },
-  {
-    id: 2,
-    title: "Personas Involucradas",
-    description: "Datos del solicitante y fallecido",
-    color: "bg-green-500",
-    requiredFields: ["idSolicitante", "idFallecido"],
     optionalFields: ["observacionSolicitante"],
   },
   {
-    id: 3,
+    id: 2,
     title: "Programación",
     description: "Fecha y hora de la inhumación",
     color: "bg-purple-500",
     requiredFields: ["fechaInhumacion", "horaInhumacion"],
+    optionalFields: [],
+  },
+  {
+    id: 3,
+    title: "Generar orden de pago",
+    description: "Generar orden de pago (vista previa)",
+    color: "bg-yellow-500",
+    requiredFields: [],
     optionalFields: [],
   },
   {
@@ -293,20 +295,7 @@ export function RequisitoInhumacionForm({
                     label="Administrador del Nicho *"
                     placeholder="Nombre del administrador del nicho"
                   />
-                </div>
-              </div>
-            )}
-
-            {/* Paso 2: Personas Involucradas */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <span className="w-3 h-3 bg-green-500 rounded-full mr-3"></span>
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    Personas Involucradas
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Campos movidos: Solicitante, Fallecido y Observación del Solicitante */}
                   <RHFAutocompletePerson
                     name="idSolicitante"
                     label="Solicitante *"
@@ -320,20 +309,20 @@ export function RequisitoInhumacionForm({
                     vivos={false}
                     onlyNotInhumed={true}
                   />
-                </div>
-                <div className="col-span-2">
-                  <RHFTextarea
-                    name="observacionSolicitante"
-                    label="Observación del Solicitante (Opcional)"
-                    placeholder="Observaciones del solicitante"
-                    rows={4}
-                  />
+                  <div className="col-span-2">
+                    <RHFTextarea
+                      name="observacionSolicitante"
+                      label="Observación del Solicitante (Opcional)"
+                      placeholder="Observaciones del solicitante"
+                      rows={3}
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Paso 3: Programación */}
-            {currentStep === 3 && (
+            {/* Paso 2 ahora es 'Programación' después de ocultar Personas Involucradas */}
+            {currentStep === 2 && (
               <div className="space-y-6">
                 <div className="flex items-center mb-6">
                   <span className="w-3 h-3 bg-purple-500 rounded-full mr-3"></span>
@@ -343,11 +332,6 @@ export function RequisitoInhumacionForm({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  
-                  {/* <RHFDatePicker
-                    name="fechaInhumacion"
-                    label="Fecha de Inhumación *"
-                  /> */}
-
                   <RHFDatePickerCalendar
                   name="fechaInhumacion"
                     label="Fecha de Inhumación *" 
@@ -363,6 +347,21 @@ export function RequisitoInhumacionForm({
               </div>
             )}
 
+            {/* Paso 3: Generar orden de pago (placeholder) */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div className="flex items-center mb-6">
+                  <span className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></span>
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Generar orden de pago
+                  </h3>
+                </div>
+
+                <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">
+                  Aquí irá la vista para generar la orden de pago. Por el momento este paso es solo un título/placeholder.
+                </div>
+              </div>
+            )}
             {/* Paso 4: Documentos */}
             {currentStep === 4 && (
               <div className="space-y-6">
