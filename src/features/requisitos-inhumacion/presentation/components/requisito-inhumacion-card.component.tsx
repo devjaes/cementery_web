@@ -15,6 +15,7 @@ import { useRequisitoInhumacionForm } from "../hooks/use-requisito-inhumacion-fo
 import { DocumentUploadCard } from "./document-upload-card.component";
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { API_ROUTES } from "@/core/constants/api-routes";
+import { CreatePaymentForm } from "@/features/payment/presentation/components/create-payment-form";
 
 interface RequisitoInhumacionCardProps {
   requisitoInhumacion: RequisitoInhumacionEntity;
@@ -26,7 +27,8 @@ export function RequisitoInhumacionCard({
   const [expandedSections, setExpandedSections] = useState<{
     [key: string]: boolean;
   }>({
-    documentos: true, 
+    documentos: true,
+    ordenPago: false,
   });
 
   const [expandedObservations, setExpandedObservations] = useState<{
@@ -37,8 +39,11 @@ export function RequisitoInhumacionCard({
     useRequisitoInhumacionForm(requisitoInhumacion);
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
   const [existingDocumentUrl, setExistingDocumentUrl] = useState<string | undefined>(undefined);
+  const [inhumacionId, setInhumacionId] = useState<string | null>(null);
+  const [resolvingInhumacion, setResolvingInhumacion] = useState(false);
 
   useEffect(() => {
+    // resolve existing document (already present)
     const loadExistingDocument = async () => {
       try {
         const http = AxiosClient.getInstance();
@@ -93,6 +98,53 @@ export function RequisitoInhumacionCard({
     };
     loadExistingDocument();
   }, [requisitoInhumacion?.idFallecido?.id_persona]);
+
+  // When the Orden de Pago section is opened, try to resolve the related inhumacion id
+  useEffect(() => {
+    let cancelled = false;
+    const resolveInhum = async () => {
+      try {
+        if (!expandedSections.ordenPago) return;
+        setResolvingInhumacion(true);
+        const http = AxiosClient.getInstance();
+        const idFallecido = requisitoInhumacion?.idFallecido?.id_persona;
+        if (!idFallecido) {
+          setInhumacionId(null);
+          setResolvingInhumacion(false);
+          return;
+        }
+
+        const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(idFallecido));
+        const cedula: string | undefined = personaResp?.data?.data?.cedula;
+        if (!cedula) {
+          setInhumacionId(null);
+          setResolvingInhumacion(false);
+          return;
+        }
+
+        const inhResp = await http.get<any>(API_ROUTES.INHUMACIONES.SEARCH_FALLECIDOS(cedula));
+        const payload = inhResp?.data?.data;
+        const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
+        const inhs = first?.inhumaciones || first?.persona?.inhumaciones || payload?.inhumaciones || [];
+        if (Array.isArray(inhs) && inhs.length > 0) {
+          const id = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
+          if (!cancelled) setInhumacionId(id || null);
+        } else {
+          if (!cancelled) setInhumacionId(null);
+        }
+      } catch (e) {
+        console.warn("No se pudo resolver inhumación para Orden de Pago:", e);
+        setInhumacionId(null);
+      } finally {
+        if (!cancelled) setResolvingInhumacion(false);
+      }
+    };
+
+    resolveInhum();
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedSections.ordenPago, requisitoInhumacion]);
 
    
   const toggleSection = (sectionKey: string) => {
@@ -468,6 +520,46 @@ export function RequisitoInhumacionCard({
                             </span>
                           </p>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Orden de Pago */}
+            <div>
+              <SectionHeader
+                title="Orden de Pago"
+                sectionKey="ordenPago"
+                bgColor="bg-gray-50"
+                textColor="text-black"
+                borderColor="border-gray-500"
+              />
+              {expandedSections.ordenPago && (
+                <div className="p-4 bg-white border border-gray-200 border-t-0">
+                  <div className="space-y-4">
+                    {resolvingInhumacion ? (
+                      <div className="text-sm text-gray-600">Resolviendo trámite asociado...</div>
+                    ) : inhumacionId ? (
+                      <Card className="mb-4">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Crear Orden</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <CreatePaymentForm
+                            procedureType="burial"
+                            procedureId={inhumacionId}
+                            defaultAmount={45}
+                            onSuccess={() => {
+                              // opcional: refrescar datos o mostrar notificación
+                            }}
+                          />
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="p-3 bg-yellow-50 rounded text-sm text-gray-700">
+                        No se encontró una inhumación asociada todavía. Guarda primero el requisito o intenta resolver la inhumación para habilitar la generación de la orden de pago.
                       </div>
                     )}
                   </div>
