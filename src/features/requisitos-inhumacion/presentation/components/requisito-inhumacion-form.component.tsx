@@ -13,6 +13,12 @@ import RHFCheckbox from "@/shared/components/form/rhf/rhf-chechbox";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
 import RHFAutocompleteHuecoNicho from "@/shared/components/form/rhf/rhf-autocomplete-hueco-nicho";
 import { DocumentUploadCard } from "./document-upload-card.component";
+import { CreatePaymentForm } from "@/features/payment/presentation/components/create-payment-form";
+import AxiosClient from "@/core/infrastructure/axios-client";
+import { API_ROUTES } from "@/core/constants/api-routes";
+import { useEffect } from "react";
+import { PropietarioNichoRepositoryImpl } from "@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl";
+import { HuecoRepositoryImpl } from "@/features/huecos/infrastructure/repositories/hueco.repository.impl";
 
 interface RequisitoInhumacionFormProps {
   requistoInhumacion?: RequisitoInhumacionEntity;
@@ -184,6 +190,62 @@ export function RequisitoInhumacionForm({
   };
 
   const currentStepData = steps.find((step) => step.id === currentStep);
+
+  const [paymentProcedureId, setPaymentProcedureId] = useState<string | null>(null);
+  const [resolvingProcedureId, setResolvingProcedureId] = useState(false);
+
+  // Watch solicitante selection and, if a propietario/nicho exists for that person,
+  // automatically set `idHuecoNicho` and `nombreAdministradorNicho` in the form.
+  const solicitanteId = methods.watch("idSolicitante");
+  useEffect(() => {
+    let cancelled = false;
+    if (!solicitanteId) return;
+
+    (async () => {
+      try {
+        // First, resolve the person's cedula because backend endpoint expects cedula (por-persona/:cedula)
+        const http = AxiosClient.getInstance();
+        const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(solicitanteId));
+        const cedula: string | undefined = personaResp?.data?.data?.cedula;
+        if (!cedula) return;
+
+        // Use the cedula-based endpoint which exists on the backend
+        const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(cedula);
+        if (!propietarios || propietarios.length === 0) return;
+
+        const activo = propietarios.find((p) => p.activo) || propietarios[0];
+        const ownerName = activo?.idPersona
+          ? [activo.idPersona.nombres || "", activo.idPersona.apellidos || ""].filter(Boolean).join(" ")
+          : "";
+
+        // set owner name always when found
+        try {
+          methods.setValue("nombreAdministradorNicho", ownerName, { shouldValidate: true, shouldDirty: true });
+        } catch (e) {
+          // ignore if field missing
+        }
+
+        const idNicho = activo?.idNicho?.idNicho || undefined;
+        if (!idNicho) return;
+
+        const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(idNicho);
+        if (cancelled) return;
+        if (Array.isArray(huecos) && huecos.length > 0) {
+          // Prefer a hueco disponible or the first one
+          const chosen = huecos.find((h) => h.estado === "Disponible") || huecos[0];
+          if (chosen && chosen.idDetalleHueco) {
+            methods.setValue("idHuecoNicho", chosen.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
+          }
+        }
+      } catch (err) {
+        console.warn("Error resolviendo hueco desde solicitante:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [solicitanteId]);
 
   if (!currentStepData) {
     return <div>Error: Paso no encontrado</div>;
@@ -359,8 +421,76 @@ export function RequisitoInhumacionForm({
                   </h3>
                 </div>
 
-                <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">
-                  Aquí irá la vista para generar la orden de pago. Por el momento este paso es solo un título/placeholder.
+                {/* Integración del formulario de creación de pago
+                    - Si podemos resolver un id de inhumación (procedureId) lo mostramos.
+                    - Si no, pedimos al usuario que guarde el requisito primero. */}
+                <div>
+                  {resolvingProcedureId ? (
+                    <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">Resolviendo trámite para generar la orden de pago...</div>
+                  ) : paymentProcedureId ? (
+                    <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">
+                      <CreatePaymentForm
+                        procedureType="burial"
+                        procedureId={paymentProcedureId}
+                        onSuccess={() => setCurrentStep(4)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">
+                      <p className="mb-3">No se encontró una inhumación asociada todavía.</p>
+                      <p className="mb-3">Guarda primero el requisito para generar la orden de pago, o verifica que el fallecido esté registrado.</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            // Intentar crear el requisito actual (intentará subir documento y navegar)
+                            await handleFormSubmit();
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded"
+                        >
+                          Guardar requisito y continuar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            // Intentar resolver de forma manual llamando al endpoint de búsqueda por fallecido
+                            setResolvingProcedureId(true);
+                            try {
+                              const idFallecido = methods.getValues().idFallecido;
+                              if (!idFallecido) {
+                                // nothing to do
+                                setResolvingProcedureId(false);
+                                return;
+                              }
+                              const http = AxiosClient.getInstance();
+                              // obtener cédula
+                              const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(idFallecido));
+                              const cedula: string | undefined = personaResp?.data?.data?.cedula;
+                              if (!cedula) {
+                                setResolvingProcedureId(false);
+                                return;
+                              }
+                              const inhResp = await http.get<any>(API_ROUTES.INHUMACIONES.SEARCH_FALLECIDOS(cedula));
+                              const payload = inhResp?.data?.data;
+                              const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
+                              const inhs = first?.inhumaciones || first?.persona?.inhumaciones || payload?.inhumaciones || [];
+                              if (Array.isArray(inhs) && inhs.length > 0) {
+                                const id = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
+                                if (id) setPaymentProcedureId(id);
+                              }
+                            } catch (e) {
+                              console.warn('Error resolviendo inhumación para pago:', e);
+                            } finally {
+                              setResolvingProcedureId(false);
+                            }
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded"
+                        >
+                          Intentar resolver ahora
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
