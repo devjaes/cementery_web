@@ -999,7 +999,7 @@ export default function ExhumacionDetailPage() {
         // Crear el pago en el backend
         const paymentResult = await createPaymentMutation.mutateAsync(paymentData);
         console.log(' Pago creado exitosamente:', paymentResult);
-        paymentToUse = paymentResult;
+        paymentToUse = paymentResult.payment; // Extraer solo la entidad del pago de la respuesta
       }
 
       // 3. Descargar el PDF directamente del backend (SIN MODIFICAR NADA)

@@ -126,6 +126,7 @@ export const API_ROUTES = {
     UPLOAD_FILES: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}/archivos`,
     BY_INHUMACION: (inhumacionId: string) => `${AR_KEYS.EXHUMACIONES}?inhumacion_id=${inhumacionId}`,
     BY_NICHO: (nichoId: string) => `${AR_KEYS.EXHUMACIONES}?nicho_original_id=${nichoId}`,
+  },
   MEJORAS: {
     LIST: AR_KEYS.MEJORAS,
     GET_BY_ID: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
@@ -133,7 +134,7 @@ export const API_ROUTES = {
     UPDATE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     UPLOAD_FILE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/files`,
-  DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
+    DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
     SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
     APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
   },
