@@ -5,7 +5,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Alert, AlertDescription } from "@/shared/components/ui/alert";
+ import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { RequisitoInhumacionFallecidosEntity } from "../../domain/entities/requisito-inhumacion.entity";
 import { useSearchRequisitoInhumacionFallecidosQuery } from "../hooks/use-requisito-inhumacion-queries";
 import { RequisitoInhumacionSearch } from "../components/requisito-inhumacion-search.component";

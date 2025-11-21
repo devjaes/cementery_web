@@ -63,9 +63,9 @@ export const GeneratePaymentButton = ({
       amount,
       generatedBy,
       observations,
-      buyerDocument: buyerDocument ?? undefined,
-      buyerName: buyerName ?? undefined,
-      buyerDirection: buyerDirection ?? undefined,
+      buyerDocument: buyerDocument ?? "",
+      buyerName: buyerName ?? "",
+      buyerDirection: buyerDirection ?? "",
     };
 
     createPayment.mutate(paymentData, {
@@ -98,7 +98,7 @@ export const GeneratePaymentButton = ({
           <DialogHeader>
             <DialogTitle>Generar Comprobante de Pago</DialogTitle>
             <DialogDescription>
-              Se generará un comprobante de pago por ${amount.toFixed(2)}. El
+              Se generará un comprobante de pago por {"$" + amount.toFixed(2)}. El
               trámite quedará en estado pendiente hasta que se suba el
               comprobante pagado.
             </DialogDescription>
@@ -107,7 +107,7 @@ export const GeneratePaymentButton = ({
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Monto:</span>
-              <span className="font-semibold">${amount.toFixed(2)}</span>
+              <span className="font-semibold">{"$" + amount.toFixed(2)}</span>
             </div>
             {observations && (
               <div className="flex flex-col gap-1">
