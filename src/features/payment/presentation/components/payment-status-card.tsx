@@ -115,10 +115,10 @@ export const PaymentStatusCard = ({
                 </p>
               </div>
             )}
-            {latestPayment.validatedBy && (
+            {(latestPayment.validatedBy || validatedBy) && (
               <div>
                 <span className="text-muted-foreground">Validado por:</span>
-                <p className="font-semibold">{latestPayment.validatedBy}</p>
+                <p className="font-semibold">{latestPayment.validatedBy || validatedBy}</p>
               </div>
             )}
           </div>

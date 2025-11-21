@@ -137,6 +137,8 @@ export function useRequisitoInhumacionForm(
   ): Promise<boolean> => {
     try {
       // Check checklist booleans from the form data
+      // Note: 'autorizacionDeMovilizacionDelCadaver' is optional and should NOT block
+      // the automatic download flow, so we exclude it from the checklist.
       const checklistKeys: (keyof CreateRequisitoInhumacionDTO)[] = [
         "copiaCertificadoDefuncion",
         "informeEstadisticoINEC",
@@ -144,7 +146,6 @@ export function useRequisitoInhumacionForm(
         "pagoTasaInhumacion",
         "copiaTituloPropiedadNicho",
         "oficioDeSolicitud",
-        "autorizacionDeMovilizacionDelCadaver",
       ];
 
       const allChecked = checklistKeys.every((k) => Boolean(data[k]));
@@ -159,11 +160,14 @@ export function useRequisitoInhumacionForm(
       const payments = await paymentsRepo.findByProcedure("burial", inhumacionId as string);
       if (!payments || payments.length === 0) return false;
 
-      const hasPaidWithReceipt = payments.some(
-        (p) => (p.status === "paid" || String(p.status).toLowerCase() === "paid") && !!p.receiptFile
-      );
+      // Consider payment as paid if its status is 'paid' (english) or 'pagado' (spanish), case-insensitive.
+      // For automatic PDF download we only require the payment to be in a paid state; a receipt file is optional.
+      const hasPaid = payments.some((p) => {
+        const s = (p.status || "").toString().toLowerCase();
+        return s === "paid" || s === "pagado";
+      });
 
-      return hasPaidWithReceipt;
+      return hasPaid;
     } catch (e) {
       console.warn("shouldDownloadPdf check failed:", e);
       return false;

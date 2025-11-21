@@ -75,6 +75,8 @@ interface CreatePaymentFormProps {
   buyerDocumentInitial?: string | null;
   buyerNameInitial?: string | null;
   buyerPersonIdInitial?: string | null;
+  buyerDirectionInitial?: string | null;
+  generatedByInitial?: string | null;
   noFormElement?: boolean;
   /**
    * When true, if the persons search (with vivos=true) returns no results,
@@ -98,6 +100,8 @@ export function CreatePaymentForm({
   buyerDocumentInitial = null,
   buyerNameInitial = null,
   buyerPersonIdInitial = null,
+  buyerDirectionInitial = null,
+  generatedByInitial = null,
   noFormElement = false,
   enablePersonFallback = false,
   hideSubmitButton = false,
@@ -143,8 +147,14 @@ export function CreatePaymentForm({
     if (buyerPersonIdInitial) {
       setSelectedPersonId(buyerPersonIdInitial);
     }
+    if (buyerDirectionInitial) {
+      form.setValue("buyerDirection", buyerDirectionInitial);
+    }
+    if (generatedByInitial) {
+      form.setValue("generatedBy", generatedByInitial);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buyerDocumentInitial, buyerNameInitial, buyerPersonIdInitial]);
+  }, [buyerDocumentInitial, buyerNameInitial, buyerPersonIdInitial, buyerDirectionInitial, generatedByInitial]);
 
   // If parent provides initial buyer data (e.g. propietario resolved), apply them
   // Note: we accept these props via the component signature when updated below.

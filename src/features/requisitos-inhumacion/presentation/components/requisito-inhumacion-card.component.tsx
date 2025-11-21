@@ -47,6 +47,7 @@ export function RequisitoInhumacionCard({
   const [ordenOwnerCedula, setOrdenOwnerCedula] = useState<string | null>(null);
   const [resolvingOwner, setResolvingOwner] = useState(false);
   const [ordenOwnerPersonId, setOrdenOwnerPersonId] = useState<string | null>(null);
+  const [ordenOwnerDirection, setOrdenOwnerDirection] = useState<string | null>(null);
   const [generatedPaymentId, setGeneratedPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -151,21 +152,23 @@ export function RequisitoInhumacionCard({
               setResolvingOwner(true);
               try {
                 const propietarios = await (await import("@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl")).PropietarioNichoRepositoryImpl.getInstance().findByNicho(idNicho);
-                if (!cancelled) {
+                  if (!cancelled) {
                   const activo = (propietarios || []).find((p: any) => p.activo) || propietarios?.[0];
                   const persona = activo?.idPersona;
                   const fullName = persona ? `${persona.nombres || ""} ${persona.apellidos || ""}`.trim() : null;
                   setOrdenOwnerName(fullName || null);
                   setOrdenOwnerCedula(persona?.cedula || null);
+                  setOrdenOwnerDirection(persona?.direccion || null);
                   const pid = (persona as any)?.id_persona ?? (persona as any)?.idPersona ?? (persona as any)?.id ?? null;
                   setOrdenOwnerPersonId(pid);
                 }
               } catch (e) {
                 console.warn("Error resolviendo propietario del nicho (silencioso):", e);
-                if (!cancelled) {
+                  if (!cancelled) {
                   setOrdenOwnerName(null);
                   setOrdenOwnerCedula(null);
                   setOrdenOwnerPersonId(null);
+                  setOrdenOwnerDirection(null);
                 }
               } finally {
                 if (!cancelled) setResolvingOwner(false);
@@ -654,6 +657,8 @@ export function RequisitoInhumacionCard({
                             hideSubmitButton={true}
                             buyerDocumentInitial={ordenOwnerCedula}
                             buyerNameInitial={ordenOwnerName}
+                            buyerDirectionInitial={ordenOwnerDirection}
+                            generatedByInitial={requisitoInhumacion?.pantoneroACargo ?? undefined}
                             buyerPersonIdInitial={ordenOwnerPersonId}
                             onSuccess={() => {
                               // opcional: refrescar datos o mostrar notificación
@@ -669,7 +674,7 @@ export function RequisitoInhumacionCard({
                               observations={requisitoInhumacion?.observacionSolicitante || undefined}
                               buyerDocument={ordenOwnerCedula ?? undefined}
                               buyerName={ordenOwnerName ?? undefined}
-                              buyerDirection={undefined}
+                              buyerDirection={ordenOwnerDirection ?? undefined}
                               onSuccess={(paymentId) => {
                                 // opcional: refrescar la vista o mostrar notificación
                               }}
@@ -701,6 +706,7 @@ export function RequisitoInhumacionCard({
                               amount={47}
                               generatedBy={requisitoInhumacion?.pantoneroACargo || ''}
                               observations={requisitoInhumacion?.observacionSolicitante || undefined}
+                              buyerDirection={ordenOwnerDirection ?? undefined}
                               onSuccess={() => {
                                 // opcional: manejar refresco o notificación tras generar
                               }}
