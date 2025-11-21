@@ -668,7 +668,7 @@ export function RequisitoInhumacionCard({
                           <div className="mt-4 w-full flex justify-end">
                             <GeneratePaymentButton
                               procedureType="burial"
-                              procedureId={inhumacionId}
+                              procedureId={procedureIdForPayments}
                               amount={47}
                               generatedBy={requisitoInhumacion?.pantoneroACargo || ''}
                               observations={requisitoInhumacion?.observacionSolicitante || undefined}
@@ -676,7 +676,7 @@ export function RequisitoInhumacionCard({
                               buyerName={ordenOwnerName ?? undefined}
                               buyerDirection={ordenOwnerDirection ?? undefined}
                               onSuccess={(paymentId) => {
-                                // opcional: refrescar la vista o mostrar notificación
+                                setGeneratedPaymentId(paymentId);
                               }}
                               onPreviewClose={(paymentId) => {
                                 setGeneratedPaymentId(paymentId);
@@ -702,13 +702,13 @@ export function RequisitoInhumacionCard({
                           <div className="ml-auto">
                             <GeneratePaymentButton
                               procedureType="burial"
-                              procedureId={requisitoInhumacion?.idRequsitoInhumacion ?? ''}
+                              procedureId={procedureIdForPayments}
                               amount={47}
                               generatedBy={requisitoInhumacion?.pantoneroACargo || ''}
                               observations={requisitoInhumacion?.observacionSolicitante || undefined}
                               buyerDirection={ordenOwnerDirection ?? undefined}
-                              onSuccess={() => {
-                                // opcional: manejar refresco o notificación tras generar
+                              onSuccess={(paymentId) => {
+                                setGeneratedPaymentId(paymentId);
                               }}
                               onPreviewClose={(paymentId) => setGeneratedPaymentId(paymentId)}
                             />
