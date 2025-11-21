@@ -304,7 +304,18 @@ export function useRequisitoInhumacionForm(
             router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : `/requisitos-inhumacion`);
           },
           onError: (error) => {
-            console.error("Error en actualización:", error);
+            // Log useful Axios error details to aid debugging
+            try {
+              const e: any = error;
+              console.error("Error en actualización:", {
+                message: e?.message,
+                status: e?.response?.status,
+                response: e?.response?.data,
+                config: e?.config,
+              });
+            } catch (logErr) {
+              console.error("Error en actualización (logging failed):", error, logErr);
+            }
           },
         }
       );
@@ -413,7 +424,18 @@ export function useRequisitoInhumacionForm(
           router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
         },
         onError: async (error) => {
-          console.error("Error en creación:", error);
+          // Provide richer debugging output when creation fails
+          try {
+            const e: any = error;
+            console.error("Error en creación:", {
+              message: e?.message,
+              status: e?.response?.status,
+              response: e?.response?.data,
+              config: e?.config,
+            });
+          } catch (logErr) {
+            console.error("Error en creación (logging failed):", error, logErr);
+          }
           // If backend reports that the requisito already exists, attempt to locate it and attach the document
           try {
             const axiosErr = error as AxiosError;
