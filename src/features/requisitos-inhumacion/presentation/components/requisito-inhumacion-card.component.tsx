@@ -17,6 +17,7 @@ import { API_ROUTES } from "@/core/constants/api-routes";
 import { CreatePaymentForm } from "@/features/payment/presentation/components/create-payment-form";
 import { GeneratePaymentButton } from "@/features/payment/presentation/components/generate-payment-button";
 import { PaymentStatusCard } from "@/features/payment/presentation/components/payment-status-card";
+import { usePaymentsByProcedure } from "@/features/payment/presentation/hooks/use-payment-query";
 
 interface RequisitoInhumacionCardProps {
   requisitoInhumacion: RequisitoInhumacionEntity;
@@ -187,6 +188,24 @@ export function RequisitoInhumacionCard({
       cancelled = true;
     };
   }, [expandedSections.ordenPago, requisitoInhumacion]);
+
+  // When Orden de Pago is opened, also try to fetch any existing payments for the resolved procedure
+  const procedureIdForPayments = inhumacionId
+    ? inhumacionId
+    : ((requisitoInhumacion as any)?.idRequsitoInhumacion ?? (requisitoInhumacion as any)?.idRequisitoInhumacion ?? (requisitoInhumacion as any)?.id ?? "");
+
+  const { data: existingPayments, isLoading: paymentsLoading } = usePaymentsByProcedure(
+    "burial",
+    procedureIdForPayments,
+    Boolean(expandedSections.ordenPago && procedureIdForPayments)
+  );
+
+  useEffect(() => {
+    if (existingPayments && existingPayments.length > 0) {
+      // set payment id so the UI shows the status card
+      setGeneratedPaymentId(existingPayments[0].paymentId);
+    }
+  }, [existingPayments]);
 
   const handleResolveInhumManual = async () => {
     setResolvingInhumacion(true);
