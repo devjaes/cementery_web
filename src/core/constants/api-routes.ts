@@ -7,6 +7,7 @@ const AR_KEYS = {
   PERSON: "personas",
   HUECOS: "huecos-nichos",
   INHUMACIONES: "inhumaciones",
+  EXHUMACIONES: "exhumaciones",
   REQUISITOS_INHUMACION: "requisitos-inhumacion",
   MEJORAS: "mejoras",
   PAYMENTS: "payments",
@@ -115,6 +116,16 @@ export const API_ROUTES = {
     SEARCH_FALLECIDOS: (busqueda: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/fallecidos/${busqueda}`,
   },
+  EXHUMACIONES: {
+    LIST: AR_KEYS.EXHUMACIONES,
+    GET_BY_ID: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}`,
+    CREATE: AR_KEYS.EXHUMACIONES,
+    UPDATE: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}`,
+    DELETE: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}`,
+    UPLOAD_COMPROBANTE: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}/comprobante`,
+    UPLOAD_FILES: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}/archivos`,
+    BY_INHUMACION: (inhumacionId: string) => `${AR_KEYS.EXHUMACIONES}?inhumacion_id=${inhumacionId}`,
+    BY_NICHO: (nichoId: string) => `${AR_KEYS.EXHUMACIONES}?nicho_original_id=${nichoId}`,
   MEJORAS: {
     LIST: AR_KEYS.MEJORAS,
     GET_BY_ID: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,

@@ -30,6 +30,10 @@ export class PaymentMapper {
       buyerName: model.buyerName,
       buyerDirection: model.buyerDirection,
       updatedDate: model.updatedDate,
+      // Campos que ya existen en la BD
+      buyerDocument: model.buyerDocument,
+      buyerName: model.buyerName,
+      buyerDirection: model.buyerDirection,
     };
   }
 
@@ -43,6 +47,16 @@ export class PaymentMapper {
       buyerName: entity.buyerName,
       buyerDirection: entity.buyerDirection,
       observations: entity.observations,
+      // Campos que YA EXISTEN en la BD
+      buyerName: entity.buyerName,
+      buyerDocument: entity.buyerDocument,
+      buyerDirection: entity.buyerDirection,
+      // Campos adicionales para la generación del PDF
+      causa: entity.causa,
+      procedureTitle: entity.procedureTitle,
+      ubicacion: entity.ubicacion,
+      fallecidoNombre: entity.fallecidoNombre,
+      concepto: entity.concepto,
     };
   }
 

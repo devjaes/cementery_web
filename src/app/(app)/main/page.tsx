@@ -37,6 +37,12 @@ const features = [
     description: "Registra y consulta las inhumaciones.",
     href: "/requisitos-inhumacion",
   },
+  {
+    title: "Exhumaciones",
+    description: "Gestiona las exhumaciones basadas en inhumaciones existentes.",
+    href: "/exhumaciones",
+    accent: "border-orange-500 bg-orange-50 hover:bg-orange-100",
+  },
 ];
 
 export default function MainPage() {
