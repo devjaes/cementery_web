@@ -30,7 +30,12 @@ import { format, isValid, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { useFindExhumacionByIdQuery } from "@/features/exhumaciones/presentation/hooks/use-exhumacion-queries";
 import { useUploadComprobanteMutation, useDeleteExhumacionMutation } from "@/features/exhumaciones/presentation/hooks/use-exhumacion-mutations";
-//import { useCreatePayment, useDownloadReceipt } from "@/features/payment/presentation/hooks/use-payment-mutation";
+import { 
+  useCreatePayment, 
+  useDownloadReceipt, 
+  useUploadReceipt 
+} from "@/features/payment/presentation/hooks/use-payment-mutation";
+import { usePaymentsByProcedure } from "@/features/payment/presentation/hooks/use-payment-query";
 import jsPDF from 'jspdf';
 
 // Helper function para formatear fechas de manera segura
@@ -69,29 +74,74 @@ export default function ExhumacionDetailPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generatingPayment, setGeneratingPayment] = useState(false);
+  const [generatingAuthorization, setGeneratingAuthorization] = useState(false);
 
   const { data: exhumacion, isLoading, error } = useFindExhumacionByIdQuery(exhumacionId);
   const uploadComprobanteMutation = useUploadComprobanteMutation();
   const deleteExhumacionMutation = useDeleteExhumacionMutation();
-  //const createPaymentMutation = useCreatePayment();
-  //const downloadReceiptMutation = useDownloadReceipt();
+  
+  // Payment hooks
+  const createPaymentMutation = useCreatePayment();
+  const downloadReceiptMutation = useDownloadReceipt();
+  const uploadReceiptMutation = useUploadReceipt();
+  
+  // Query para obtener pagos de esta exhumación
+  const { data: payments } = usePaymentsByProcedure(
+    'exhumation', 
+    exhumacionId,
+    !!exhumacionId
+  );
 
   // Debug: Log para ver la estructura de datos
   if (exhumacion) {
-    console.log("📋 Datos de exhumación cargados:", exhumacion);
-    console.log("📁 Campo archivos:", {
+    console.log(" Datos de exhumación cargados:", exhumacion);
+    console.log(" Campo archivos:", {
       archivos: exhumacion.archivos,
       tipo: typeof exhumacion.archivos,
       esArray: Array.isArray(exhumacion.archivos),
       longitud: exhumacion.archivos?.data?.length,
       propiedades: exhumacion.archivos ? Object.keys(exhumacion.archivos) : 'No disponible'
     });
-    console.log("📅 Fechas recibidas:", {
+    console.log("Fechas recibidas:", {
       fechaExhumacion: exhumacion.fechaExhumacion,
       fechaCreacion: exhumacion.fechaCreacion,
       fechaActualizacion: exhumacion.fechaActualizacion,
     });
+    
+    // Análisis de campos estáticos vs dinámicos
+    console.log(" ANÁLISIS DE DATOS PARA PAGOS Y DOCUMENTOS:");
+    console.log(" Campos disponibles y dinámicos:", {
+      'Nombre dueño': exhumacion.duenioNicho,
+      'Ubicación cementerio': exhumacion.ubicacion,
+      'Fecha exhumación': exhumacion.fechaExhumacion,
+      'Hora exhumación': exhumacion.horaExhumacion,
+      'Causa': exhumacion.causa,
+      'Nombre fallecido': exhumacion.inhumacion?.idFallecido?.nombres,
+      'Apellidos fallecido': exhumacion.inhumacion?.idFallecido?.apellidos,
+      'Cedula fallecido': exhumacion.inhumacion?.idFallecido?.cedula,
+      'Solicitante inhumación': exhumacion.inhumacion?.solicitante
+    });
+    console.log(" Campos faltantes en BD (hardcodeados):", {
+      'Para pagos': ['cedulaDuenio', 'direccionDuenio', 'telefonoDuenio'],
+      'Para PDF autorización': ['parentescoDuenio', 'fechaAdquisicionNicho', 'administradorCementerio', 'tipoPropiedad', 'directorServicios', 'funcionarioEncargado'],
+      'Fallbacks temporales usados': {
+        buyerDocument: 'fallecido.cedula → debería ser dueño.cedula',
+        buyerDirection: 'fallecido.direccion → debería ser dueño.direccion'
+      }
+    });
   }
+
+  // Debug: Log de pagos
+  // if (payments) {
+  //   console.log(" Pagos encontrados para esta exhumación:", payments);
+  //   console.log(" Pago pendiente:", payments.find(p => p.status === 'pending'));
+  //   console.log("Pago pagado:", payments.find(p => p.status === 'paid'));
+  //   console.log(" Estado combinado de pago:", {
+  //     estadoExhumacion: exhumacion?.estadoPago,
+  //     tienePagoPaid: payments?.some(p => p.status === 'paid'),
+  //     estadoFinal: (exhumacion?.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid'))
+  //   });
+  // }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -105,13 +155,38 @@ export default function ExhumacionDetailPage() {
 
     setUploading(true);
     try {
+      // 1. SUBIR COMPROBANTE A LA TABLA DE EXHUMACIONES (funcionalidad original)
+      console.log(' Subiendo comprobante a tabla de exhumaciones...');
       await uploadComprobanteMutation.mutateAsync({
         id: exhumacion.idExhumacion,
         file: selectedFile
       });
+      console.log(' Comprobante subido a tabla de exhumaciones exitosamente');
+
+      // 2. SI EXISTE UN PAGO PENDIENTE, TAMBIÉN SUBIRLO AL MÓDULO DE PAYMENTS
+      if (payments?.length) {
+        const pendingPayment = payments.find(p => p.status === 'pending');
+        
+        if (pendingPayment) {
+          console.log(' Subiendo comprobante al módulo de payments...');
+          await uploadReceiptMutation.mutateAsync({
+            paymentId: pendingPayment.paymentId,
+            file: selectedFile,
+            validatedBy: 'admin-user' // TODO: usar usuario actual
+          });
+          console.log(' Comprobante subido al módulo de payments exitosamente');
+        } else {
+          console.log(' No se encontró pago pendiente en el módulo de payments, solo se actualizó la tabla de exhumaciones');
+        }
+      } else {
+        console.log(' No hay pagos en el módulo de payments, solo se actualizó la tabla de exhumaciones');
+      }
+
       setSelectedFile(null);
+      
     } catch (error) {
-      console.error("Error al subir comprobante:", error);
+      console.error(" Error al subir comprobante:", error);
+      alert(`Error al subir el comprobante.\n\nError: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setUploading(false);
     }
@@ -206,29 +281,51 @@ export default function ExhumacionDetailPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      console.log('✅ Comprobante descargado exitosamente');
+      console.log(' Comprobante descargado exitosamente');
     } catch (error) {
-      console.error('❌ Error al descargar comprobante:', error);
+      console.error(' Error al descargar comprobante:', error);
     }
   };
 
-  const handleDownloadAutorizacion = () => {
+  const handleDownloadAutorizacion = async () => {
     if (!exhumacion) {
       console.error('No hay datos de exhumación disponibles');
       return;
     }
 
+    setGeneratingAuthorization(true);
+
     try {
       // Crear nuevo documento PDF en formato A4
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // Variables para posicionamiento
+      // Variables para posicionamiento y paginación
       let yPos = 8;
       const pageWidth = 210;
+      const pageHeight = 297; // A4 height in mm
       const leftMargin = 8;
       const rightMargin = 202;
       const tableWidth = rightMargin - leftMargin;
-      const cellHeight = 6;
+      const baseCellHeight = 6;
+      const bottomMargin = 20; // Margen inferior para evitar que el contenido se corte
+      
+      // Función auxiliar para verificar si necesitamos una nueva página
+      const checkNewPage = (requiredHeight: number) => {
+        if (yPos + requiredHeight > pageHeight - bottomMargin) {
+          pdf.addPage();
+          yPos = 8; // Reset position to top of new page
+          return true;
+        }
+        return false;
+      };
+      
+      // Función auxiliar para calcular altura necesaria para texto
+      const calculateTextHeight = (text: string, maxWidth: number, fontSize: number = 7) => {
+        pdf.setFontSize(fontSize);
+        const lines = pdf.splitTextToSize(text, maxWidth);
+        const lineHeight = fontSize * 0.35; // Aproximadamente 0.35mm por punto de fuente
+        return Math.max(baseCellHeight, lines.length * lineHeight + 2); // +2mm padding
+      };
       
       // Función auxiliar para dibujar bordes de tabla
       const drawTableBorder = (x: number, y: number, width: number, height: number, fill = false) => {
@@ -241,27 +338,74 @@ export default function ExhumacionDetailPage() {
           pdf.rect(x, y, width, height, 'D');
         }
       };
+      
+      // Función auxiliar para dibujar texto con ajuste automático
+      const drawTextInCell = (text: string, x: number, y: number, maxWidth: number, cellHeight: number, fontSize: number = 7) => {
+        pdf.setFontSize(fontSize);
+        if (text.trim() === '') return;
+        
+        const lines = pdf.splitTextToSize(text, maxWidth - 2); // -2mm para padding
+        const lineHeight = fontSize * 0.35;
+        const startY = y + 2 + lineHeight; // Padding superior + altura de línea
+        
+        lines.forEach((line: string, index: number) => {
+          const lineY = startY + (index * lineHeight);
+          if (lineY < y + cellHeight - 1) { // Verificar que no se salga de la celda
+            pdf.text(line, x + 1, lineY); // +1mm padding izquierdo
+          }
+        });
+      };
 
       // === ENCABEZADO CON LOGO Y TÍTULO ===
-      // Borde completo del documento
-      drawTableBorder(leftMargin, yPos, tableWidth, 270);
+      // Verificar si hay espacio para el documento completo, si no, comenzar en nueva página
+      checkNewPage(50); // Reservar espacio para encabezado
       
-      // Logo municipal simulado
-      pdf.setFillColor(50, 150, 50); // Verde
-      pdf.rect(leftMargin + 3, yPos + 3, 4, 3, 'F');
-      pdf.setFillColor(255, 200, 50); // Amarillo
-      pdf.rect(leftMargin + 7, yPos + 3, 4, 3, 'F');
-      pdf.setFillColor(255, 100, 100); // Rojo
-      pdf.rect(leftMargin + 11, yPos + 3, 4, 3, 'F');
-      pdf.setFillColor(100, 150, 255); // Azul
-      pdf.rect(leftMargin + 15, yPos + 3, 4, 3, 'F');
-      
-      // Texto del logo
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(7);
-      pdf.text("SANTIAGO DE", leftMargin + 3, yPos + 10);
-      pdf.text("PÍLLARO", leftMargin + 3, yPos + 13);
+      // Logo municipal real
+      try {
+        // Cargar el logo desde la carpeta public
+        const logoImg = new Image();
+        logoImg.crossOrigin = 'anonymous';
+        
+        // Crear una promesa para cargar la imagen
+        const loadImage = new Promise((resolve, reject) => {
+          logoImg.onload = () => resolve(logoImg);
+          logoImg.onerror = reject;
+          logoImg.src = '/municipio-pillaro.jpg';
+        });
+
+        await loadImage;
+        
+        // Agregar la imagen al PDF
+        const logoWidth = 25; // Ancho del logo en mm
+        const logoHeight = 15; // Alto del logo en mm
+        
+        // Convertir imagen a formato base64 para jsPDF
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          throw new Error('No se pudo obtener el contexto del canvas');
+        }
+        canvas.width = logoImg.width;
+        canvas.height = logoImg.height;
+        ctx.drawImage(logoImg, 0, 0);
+        const logoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Insertar logo en el PDF
+        pdf.addImage(logoDataUrl, 'JPEG', leftMargin + 3, yPos + 3, logoWidth, logoHeight);
+        
+        console.log('✅ Logo municipal cargado exitosamente');
+      } catch (error) {
+        console.warn('⚠️ No se pudo cargar el logo, usando texto como fallback:', error);
+        
+        // Fallback: texto descriptivo si no se puede cargar la imagen
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8);
+        pdf.text("GADM SANTIAGO", leftMargin + 3, yPos + 8);
+        pdf.text("DE PÍLLARO", leftMargin + 3, yPos + 12);
+        pdf.setFontSize(6);
+        pdf.text("Logo Municipal", leftMargin + 3, yPos + 16);
+      }
 
       // Título principal centrado
       pdf.setFontSize(12);
@@ -276,248 +420,334 @@ export default function ExhumacionDetailPage() {
       yPos += 20;
       
       // === TABLA SUPERIOR CON FECHA ===
+      checkNewPage(baseCellHeight * 3); // Verificar espacio para las siguientes filas
+      
       // Primera fila - Fecha (span completo)
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight);
+      const fechaTexto = `FECHA: ${formatDateSafely(new Date(), "dd 'DE' MMMM 'DE' yyyy").toUpperCase()}`;
+      const fechaHeight = calculateTextHeight(fechaTexto, tableWidth - 4, 8);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth, fechaHeight);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.text(`FECHA: ${formatDateSafely(new Date(), "dd 'DE' MMMM 'DE' yyyy").toUpperCase()}`, leftMargin + 2, yPos + 4);
+      drawTextInCell(fechaTexto, leftMargin, yPos, tableWidth, fechaHeight, 8);
 
-
-      yPos += cellHeight;
+      yPos += fechaHeight;
       // Segunda fila - Autorización y Código en la misma fila
-      drawTableBorder(leftMargin, yPos, tableWidth * 0.45, cellHeight, false);
+      const autorizacionTexto = "AUTORIZACIÓN DE EXHUMACIÓN";
+      const codigoLabelTexto = "Código de exhumación:";
+      const codigoValorTexto = exhumacion.codigo || '008-2025-CMC-EXH';
+      
+      const autorizacionHeight = Math.max(
+        calculateTextHeight(autorizacionTexto, tableWidth * 0.45 - 4, 8),
+        calculateTextHeight(codigoLabelTexto, tableWidth * 0.28 - 4, 7),
+        calculateTextHeight(codigoValorTexto, tableWidth * 0.27 - 4, 8)
+      );
+      
+      checkNewPage(autorizacionHeight);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth * 0.45, autorizacionHeight, false);
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.text("AUTORIZACIÓN DE EXHUMACIÓN", leftMargin + 2, yPos + 4);
+      drawTextInCell(autorizacionTexto, leftMargin, yPos, tableWidth * 0.45, autorizacionHeight, 8);
       
-      drawTableBorder(leftMargin + tableWidth * 0.45, yPos, tableWidth * 0.28, cellHeight);
+      drawTableBorder(leftMargin + tableWidth * 0.45, yPos, tableWidth * 0.28, autorizacionHeight);
       pdf.setFont("helvetica", "normal");
-      pdf.text("Código de exhumación:", leftMargin + tableWidth * 0.45 + 2, yPos + 4);
+      drawTextInCell(codigoLabelTexto, leftMargin + tableWidth * 0.45, yPos, tableWidth * 0.28, autorizacionHeight, 7);
       
-      drawTableBorder(leftMargin + tableWidth * 0.73, yPos, tableWidth * 0.27, cellHeight);
+      drawTableBorder(leftMargin + tableWidth * 0.73, yPos, tableWidth * 0.27, autorizacionHeight);
       pdf.setFont("helvetica", "bold");
-      pdf.text(exhumacion.codigo || '008-2025-CMC-EXH', leftMargin + tableWidth * 0.73 + 2, yPos + 4);
+      drawTextInCell(codigoValorTexto, leftMargin + tableWidth * 0.73, yPos, tableWidth * 0.27, autorizacionHeight, 8);
       
-      yPos += cellHeight;
+      yPos += autorizacionHeight;
       
       // Celda separadora vacía con fondo negro
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, true);
+      checkNewPage(baseCellHeight);
+      drawTableBorder(leftMargin, yPos, tableWidth, baseCellHeight, true);
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("", leftMargin + 2, yPos + 4);
 
-      yPos += cellHeight;
+      yPos += baseCellHeight;
 
       // === SECCIONES A) y B) - ENCABEZADOS BLANCOS ===
-      drawTableBorder(leftMargin, yPos, tableWidth * 0.5, cellHeight, false);
+      const encabezadoA = "A) Datos Institucionales:";
+      const encabezadoB = "B) Motivo de solicitud";
+      
+      const encabezadosHeight = Math.max(
+        calculateTextHeight(encabezadoA, tableWidth * 0.5 - 4, 8),
+        calculateTextHeight(encabezadoB, tableWidth * 0.5 - 4, 8)
+      );
+      
+      checkNewPage(encabezadosHeight);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth * 0.5, encabezadosHeight, false);
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
-      pdf.text("A) Datos Institucionales:", leftMargin + (tableWidth * 0.5 / 2), yPos + 4, { align: "center" });
+      pdf.text(encabezadoA, leftMargin + (tableWidth * 0.5 / 2), yPos + encabezadosHeight/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.5, cellHeight, false);
-      pdf.text("B) Motivo de solicitud", leftMargin + tableWidth * 0.5 + (tableWidth * 0.5 / 2), yPos + 4, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.5, encabezadosHeight, false);
+      pdf.text(encabezadoB, leftMargin + tableWidth * 0.5 + (tableWidth * 0.5 / 2), yPos + encabezadosHeight/2 + 1, { align: "center" });
       
-      yPos += cellHeight;
+      yPos += encabezadosHeight;
       
       // Filas de datos institucionales y motivo
       const institutionalRows = [
         ['Cementerio:', exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL CENTRAL', 'Escrito', true],
-        ['Funcionario o cargo:', 'WILSON HINOJOSA', 'Verbal (solo en caso de emergencia)', false]
+        ['Funcionario o cargo:', 'WILSON HINOJOSA', 'Verbal (solo en caso de emergencia)', false] // TODO: Debe venir de BD - tabla funcionarios/empleados
       ];
       
       institutionalRows.forEach(row => {
+        // Calcular altura necesaria para esta fila
+        const rowHeight = Math.max(
+          calculateTextHeight(row[0] as string, tableWidth * 0.22 - 4, 7),
+          calculateTextHeight(row[1] as string, tableWidth * 0.28 - 4, 7),
+          calculateTextHeight(row[2] as string, tableWidth * 0.42 - 4, 7),
+          baseCellHeight
+        );
+        
+        checkNewPage(rowHeight);
+        
         // Columna izquierda - institucional
-        drawTableBorder(leftMargin, yPos, tableWidth * 0.22, cellHeight);
+        drawTableBorder(leftMargin, yPos, tableWidth * 0.22, rowHeight);
         pdf.setTextColor(0, 0, 0);
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7);
-        pdf.text(row[0] as string, leftMargin + 1, yPos + 4);
+        drawTextInCell(row[0] as string, leftMargin, yPos, tableWidth * 0.22, rowHeight, 7);
         
-        drawTableBorder(leftMargin + tableWidth * 0.22, yPos, tableWidth * 0.28, cellHeight);
-        pdf.text(row[1] as string, leftMargin + tableWidth * 0.22 + 1, yPos + 4);
+        drawTableBorder(leftMargin + tableWidth * 0.22, yPos, tableWidth * 0.28, rowHeight);
+        drawTextInCell(row[1] as string, leftMargin + tableWidth * 0.22, yPos, tableWidth * 0.28, rowHeight, 7);
         
         // Columna derecha - motivo
-        drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.42, cellHeight);
-        pdf.text(row[2] as string, leftMargin + tableWidth * 0.5 + 1, yPos + 4);
+        drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.42, rowHeight);
+        drawTextInCell(row[2] as string, leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.42, rowHeight, 7);
         
-        drawTableBorder(leftMargin + tableWidth * 0.92, yPos, tableWidth * 0.08, cellHeight);
+        drawTableBorder(leftMargin + tableWidth * 0.92, yPos, tableWidth * 0.08, rowHeight);
         if (row[3]) {
-          pdf.text('X', leftMargin + tableWidth * 0.94, yPos + 4);
+          pdf.setFontSize(7);
+          pdf.text('X', leftMargin + tableWidth * 0.94, yPos + rowHeight/2 + 1);
         }
         
-        yPos += cellHeight;
+        yPos += rowHeight;
       });
       
       // Celda separadora vacía con fondo negro
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, true);
+      checkNewPage(baseCellHeight);
+      drawTableBorder(leftMargin, yPos, tableWidth, baseCellHeight, true);
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("", leftMargin + 2, yPos + 4);
 
-      yPos += cellHeight;
+      yPos += baseCellHeight;
 
       // === SECCIONES C) y D) - ENCABEZADOS BLANCOS ===
-      drawTableBorder(leftMargin, yPos, tableWidth * 0.5, cellHeight, false);
+      const encabezadoC = "C) Datos del solicitante:";
+      const encabezadoD = "D) CHECK LIST DE REQUISITOS";
+      
+      const encabezadosHeight2 = Math.max(
+        calculateTextHeight(encabezadoC, tableWidth * 0.5 - 4, 8),
+        calculateTextHeight(encabezadoD, tableWidth * 0.2 - 4, 8),
+        baseCellHeight
+      );
+      
+      checkNewPage(encabezadosHeight2);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth * 0.5, encabezadosHeight2, false);
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
-      pdf.text("C) Datos del solicitante:", leftMargin + (tableWidth * 0.5 / 2), yPos + 4, { align: "center" });
+      pdf.text(encabezadoC, leftMargin + (tableWidth * 0.5 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, cellHeight, false);
-      pdf.text("D) CHECK LIST DE REQUISITOS", leftMargin + tableWidth * 0.5 + (tableWidth * 0.2 / 2), yPos + 4, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, encabezadosHeight2, false);
+      pdf.text(encabezadoD, leftMargin + tableWidth * 0.5 + (tableWidth * 0.2 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.7, yPos, tableWidth * 0.1, cellHeight, false);
+      drawTableBorder(leftMargin + tableWidth * 0.7, yPos, tableWidth * 0.1, encabezadosHeight2, false);
       pdf.setFontSize(7);
-      pdf.text("Cumple", leftMargin + tableWidth * 0.7 + (tableWidth * 0.1 / 2), yPos + 4, { align: "center" });
+      pdf.text("Cumple", leftMargin + tableWidth * 0.7 + (tableWidth * 0.1 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.1, cellHeight, false);
-      pdf.text("No cumple", leftMargin + tableWidth * 0.8 + (tableWidth * 0.1 / 2), yPos + 4, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.1, encabezadosHeight2, false);
+      pdf.text("No cumple", leftMargin + tableWidth * 0.8 + (tableWidth * 0.1 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, cellHeight, false);
-      pdf.text("Observación", leftMargin + tableWidth * 0.9 + (tableWidth * 0.1 / 2), yPos + 4, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, encabezadosHeight2, false);
+      pdf.text("Observación", leftMargin + tableWidth * 0.9 + (tableWidth * 0.1 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      yPos += cellHeight;
+      yPos += encabezadosHeight2;
       
       // Datos combinados del solicitante y requisitos
       const solicitanteRequisitos = [
         ['Nombre/Apellido', exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA', 'Copia del certificado de defunción REC', true, false, ''],
-        ['Parentesco (únicamente de primer grado)', 'SOBRINA', 'Certificado de Inhumación', true, false, ''],
-        ['Nº Cédula de Identidad', exhumacion.inhumacion?.idFallecido?.cedula || '1800846784', 'Copia de C.I. del solicitante', true, false, ''],
+        ['Parentesco (únicamente de primer grado)', 'SOBRINA', 'Certificado de Inhumación', true, false, ''], // TODO: Debe venir de BD - campo parentesco
+        ['Nº Cédula de Identidad', exhumacion.inhumacion?.idFallecido?.cedula || '1800846784', 'Copia de C.I. del solicitante', true, false, ''], // TODO: Debe ser cédula del dueño/solicitante
         ['', '', 'Copia del T. de propiedad del nicho/lote/sitio', true, false, 'USUARIO CUENTA CON DOCUMENTO OTORGADO POR EL SERVICIOS PÚBLICOS. OFICIO DE INDUCCIÓN DE LA DIRECCIÓN MUNICIPAL'],
-        ['Dirección', 'PÍLLARO CENTRO', 'Certificado de no adeudar a la municipalidad', true, false, ''],
-        ['Num. Celular', '88333634', 'Haber cumplido 4 años de inhumación', true, false, ''],
-        ['Correo Electrónico', '', 'Orden de un juez (en caso de efectos legales)', false, false, 'N/A'],
+        ['Dirección', 'PÍLLARO CENTRO', 'Certificado de no adeudar a la municipalidad', true, false, ''], // TODO: Debe venir de BD - direccion del dueño
+        ['Num. Celular', '88333634', 'Haber cumplido 4 años de inhumación', true, false, ''], // TODO: Debe venir de BD - telefono del dueño
+        ['Correo Electrónico', '', 'Orden de un juez (en caso de efectos legales)', false, false, 'N/A'], // TODO: Debe venir de BD - email del dueño
         ['', '', 'Pago por exhumación', exhumacion.estadoPago === 'finalizado', exhumacion.estadoPago !== 'finalizado', '']
       ];
       
-      solicitanteRequisitos.forEach((row, index) => {
-        // Ajustar altura para la fila con observación larga
-        const currentCellHeight = index === 3 ? cellHeight + 3 : cellHeight;
+      solicitanteRequisitos.forEach((row) => {
+        // Calcular altura necesaria para cada columna
+        const col1Height = calculateTextHeight(row[0] as string, tableWidth * 0.22 - 4, 7);
+        const col2Height = calculateTextHeight(row[1] as string, tableWidth * 0.28 - 4, 7);
+        const col3Height = calculateTextHeight(row[2] as string, tableWidth * 0.2 - 4, 7);
+        const col6Height = calculateTextHeight(row[5] as string, tableWidth * 0.1 - 4, 6);
+        
+        // La altura de la fila es el máximo entre todas las columnas
+        const currentCellHeight = Math.max(col1Height, col2Height, col3Height, col6Height, baseCellHeight);
+        
+        checkNewPage(currentCellHeight);
         
         // Columna izquierda - solicitante
         drawTableBorder(leftMargin, yPos, tableWidth * 0.22, currentCellHeight);
         pdf.setTextColor(0, 0, 0);
         pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(7);
-        pdf.text(row[0] as string, leftMargin + 1, yPos + 4);
+        drawTextInCell(row[0] as string, leftMargin, yPos, tableWidth * 0.22, currentCellHeight, 7);
         
         drawTableBorder(leftMargin + tableWidth * 0.22, yPos, tableWidth * 0.28, currentCellHeight);
-        pdf.text(row[1] as string, leftMargin + tableWidth * 0.22 + 1, yPos + 4);
+        drawTextInCell(row[1] as string, leftMargin + tableWidth * 0.22, yPos, tableWidth * 0.28, currentCellHeight, 7);
         
         // Columna derecha - requisitos
         drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, currentCellHeight);
-        const reqText = pdf.splitTextToSize(row[2] as string, (tableWidth * 0.18));
-        pdf.text(reqText, leftMargin + tableWidth * 0.5 + 1, yPos + 3);
+        drawTextInCell(row[2] as string, leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, currentCellHeight, 7);
         
         drawTableBorder(leftMargin + tableWidth * 0.7, yPos, tableWidth * 0.1, currentCellHeight);
         if (row[3]) {
-          pdf.text('X', leftMargin + tableWidth * 0.73, yPos + 4);
+          pdf.setFontSize(7);
+          pdf.text('X', leftMargin + tableWidth * 0.73, yPos + currentCellHeight/2 + 1);
         }
         
         drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.1, currentCellHeight);
         if (row[4]) {
-          pdf.text('X', leftMargin + tableWidth * 0.83, yPos + 4);
+          pdf.setFontSize(7);
+          pdf.text('X', leftMargin + tableWidth * 0.83, yPos + currentCellHeight/2 + 1);
         }
         
         drawTableBorder(leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, currentCellHeight);
-        if (row[5]) {
-          const obsText = pdf.splitTextToSize(row[5] as string, (tableWidth * 0.08));
-          pdf.setFontSize(6);
-          pdf.text(obsText, leftMargin + tableWidth * 0.9 + 0.5, yPos + 2);
-          pdf.setFontSize(7);
+        if (row[5] && typeof row[5] === 'string' && row[5].trim() !== '') {
+          drawTextInCell(row[5], leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, currentCellHeight, 6);
         }
         
         yPos += currentCellHeight;
       });
       
       // Celda separadora vacía con fondo negro
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, true);
+      checkNewPage(baseCellHeight);
+      drawTableBorder(leftMargin, yPos, tableWidth, baseCellHeight, true);
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("", leftMargin + 2, yPos + 4);
 
-      yPos += cellHeight;
+      yPos += baseCellHeight;
 
       // === SECCIÓN E) DATOS DEL NICHO ===
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, false);
+      const encabezadoE = "E) Datos del nicho/lote/sitio";
+      const encabezadoEHeight = calculateTextHeight(encabezadoE, tableWidth - 4, 8);
+      
+      checkNewPage(encabezadoEHeight);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth, encabezadoEHeight, false);
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
-      pdf.text("E) Datos del nicho/lote/sitio", leftMargin + (tableWidth / 2), yPos + 4, { align: "center" });
+      pdf.text(encabezadoE, leftMargin + (tableWidth / 2), yPos + encabezadoEHeight/2 + 1, { align: "center" });
       
-      yPos += cellHeight;
+      yPos += encabezadoEHeight;
       
       const nichoRows = [
-        ['Nombre del Propietario', exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA', 'Número de nicho', ''],
-        ['Fecha de adquisición', '17 DE NOVIEMBRE DE 1974', 'Lugar del nicho', exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL CENTRAL'],
-        ['Nombre del administrador', '', 'Lugar del sitio', ''],
-        ['Propio', 'X', 'Arrendado/a', '', 'Firma de aceptación de exhumación', '']
+        ['Nombre del Propietario', exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA', 'Número de nicho', ''], // TODO: Número debe venir del nicho relacionado
+        ['Fecha de adquisición', '17 DE NOVIEMBRE DE 1974', 'Lugar del nicho', exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL CENTRAL'], // TODO: Debe venir de BD - fecha adquisicion del nicho
+        ['Nombre del administrador', '', 'Lugar del sitio', ''], // TODO: Debe venir de BD - administrador del cementerio
+        ['Propio', 'X', 'Arrendado/a', '', 'Firma de aceptación de exhumación', ''] // TODO: Debe venir de BD - tipo de propiedad del nicho
       ];
       
       nichoRows.forEach((row, index) => {
         if (index === 3) { // Última fila con span adicional
-          drawTableBorder(leftMargin, yPos, tableWidth * 0.12, cellHeight);
+          const rowHeight = Math.max(
+            calculateTextHeight(row[0], tableWidth * 0.12 - 4, 7),
+            calculateTextHeight(row[1], tableWidth * 0.13 - 4, 7),
+            calculateTextHeight(row[2], tableWidth * 0.15 - 4, 7),
+            calculateTextHeight(row[3], tableWidth * 0.1 - 4, 7),
+            calculateTextHeight(row[4], tableWidth * 0.3 - 4, 7),
+            calculateTextHeight(row[5], tableWidth * 0.2 - 4, 7),
+            baseCellHeight
+          );
+          
+          checkNewPage(rowHeight);
+          
+          drawTableBorder(leftMargin, yPos, tableWidth * 0.12, rowHeight);
           pdf.setTextColor(0, 0, 0);
           pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(7);
-          pdf.text(row[0], leftMargin + 1, yPos + 4);
+          drawTextInCell(row[0], leftMargin, yPos, tableWidth * 0.12, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.12, yPos, tableWidth * 0.13, cellHeight);
-          pdf.text(row[1], leftMargin + tableWidth * 0.12 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.12, yPos, tableWidth * 0.13, rowHeight);
+          drawTextInCell(row[1], leftMargin + tableWidth * 0.12, yPos, tableWidth * 0.13, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.15, cellHeight);
-          pdf.text(row[2], leftMargin + tableWidth * 0.25 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.15, rowHeight);
+          drawTextInCell(row[2], leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.15, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.4, yPos, tableWidth * 0.1, cellHeight);
-          pdf.text(row[3], leftMargin + tableWidth * 0.4 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.4, yPos, tableWidth * 0.1, rowHeight);
+          drawTextInCell(row[3], leftMargin + tableWidth * 0.4, yPos, tableWidth * 0.1, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.3, cellHeight);
-          pdf.text(row[4], leftMargin + tableWidth * 0.5 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.3, rowHeight);
+          drawTextInCell(row[4], leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.3, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.2, cellHeight);
-          pdf.text(row[5], leftMargin + tableWidth * 0.8 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.2, rowHeight);
+          drawTextInCell(row[5], leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.2, rowHeight, 7);
+          
+          yPos += rowHeight;
         } else {
-          drawTableBorder(leftMargin, yPos, tableWidth * 0.25, cellHeight);
+          const rowHeight = Math.max(
+            calculateTextHeight(row[0], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[1], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[2], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[3], tableWidth * 0.25 - 4, 7),
+            baseCellHeight
+          );
+          
+          checkNewPage(rowHeight);
+          
+          drawTableBorder(leftMargin, yPos, tableWidth * 0.25, rowHeight);
           pdf.setTextColor(0, 0, 0);
           pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(7);
-          pdf.text(row[0], leftMargin + 1, yPos + 4);
+          drawTextInCell(row[0], leftMargin, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, cellHeight);
-          pdf.text(row[1], leftMargin + tableWidth * 0.25 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[1], leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.25, cellHeight);
-          pdf.text(row[2], leftMargin + tableWidth * 0.5 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[2], leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.75, yPos, tableWidth * 0.25, cellHeight);
-          pdf.text(row[3], leftMargin + tableWidth * 0.75 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.75, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[3], leftMargin + tableWidth * 0.75, yPos, tableWidth * 0.25, rowHeight, 7);
+          
+          yPos += rowHeight;
         }
-        
-        yPos += cellHeight;
       });
       
       // Celda separadora vacía con fondo negro
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, true);
+      checkNewPage(baseCellHeight);
+      drawTableBorder(leftMargin, yPos, tableWidth, baseCellHeight, true);
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("", leftMargin + 2, yPos + 4);
 
-      yPos += cellHeight;
+      yPos += baseCellHeight;
 
       // === SECCIÓN F) DATOS DEL FALLECIDO ===
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, false);
+      const encabezadoF = "F) DATOS DEL FALLECIDO";
+      const encabezadoFHeight = calculateTextHeight(encabezadoF, tableWidth - 4, 8);
+      
+      checkNewPage(encabezadoFHeight);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth, encabezadoFHeight, false);
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
-      pdf.text("F) DATOS DEL FALLECIDO", leftMargin + (tableWidth / 2), yPos + 4, { align: "center" });
+      pdf.text(encabezadoF, leftMargin + (tableWidth / 2), yPos + encabezadoFHeight/2 + 1, { align: "center" });
       
-      yPos += cellHeight;
+      yPos += encabezadoFHeight;
       
       const fallecidoRows = [
         ['Nombre/Apellido', `${exhumacion.inhumacion?.idFallecido?.nombres || 'LUZ EDELMIRA'} ${exhumacion.inhumacion?.idFallecido?.apellidos || 'PÁEZ RAMÍREZ'}`, 'FECHA DE EXHUMACIÓN', formatDateSafely(exhumacion.fechaExhumacion, "dd 'DE' MMMM 'DE' yyyy").toUpperCase()],
@@ -529,108 +759,143 @@ export default function ExhumacionDetailPage() {
       
       fallecidoRows.forEach((row, index) => {
         if (index === 4) { // Última fila con span especial
-          drawTableBorder(leftMargin, yPos, tableWidth * 0.25, cellHeight + 3);
+          const rowHeight = Math.max(
+            calculateTextHeight(row[0], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[1], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[2], tableWidth * 0.15 - 4, 7),
+            calculateTextHeight(row[3], tableWidth * 0.35 - 4, 7),
+            baseCellHeight
+          );
+          
+          checkNewPage(rowHeight);
+          
+          drawTableBorder(leftMargin, yPos, tableWidth * 0.25, rowHeight);
           pdf.setTextColor(0, 0, 0);
           pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(7);
-          pdf.text(row[0], leftMargin + 1, yPos + 4);
+          drawTextInCell(row[0], leftMargin, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, cellHeight + 3);
-          pdf.text(row[1], leftMargin + tableWidth * 0.25 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[1], leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.15, cellHeight + 3);
-          pdf.text(row[2], leftMargin + tableWidth * 0.5 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.15, rowHeight);
+          drawTextInCell(row[2], leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.15, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.65, yPos, tableWidth * 0.35, cellHeight + 3);
-          const splitText = pdf.splitTextToSize(row[3], (tableWidth * 0.33));
-          pdf.text(splitText, leftMargin + tableWidth * 0.65 + 1, yPos + 2);
+          drawTableBorder(leftMargin + tableWidth * 0.65, yPos, tableWidth * 0.35, rowHeight);
+          drawTextInCell(row[3], leftMargin + tableWidth * 0.65, yPos, tableWidth * 0.35, rowHeight, 7);
           
-          yPos += cellHeight + 3;
+          yPos += rowHeight;
         } else {
-          drawTableBorder(leftMargin, yPos, tableWidth * 0.25, cellHeight);
+          const rowHeight = Math.max(
+            calculateTextHeight(row[0], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[1], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[2], tableWidth * 0.25 - 4, 7),
+            calculateTextHeight(row[3], tableWidth * 0.25 - 4, 7),
+            baseCellHeight
+          );
+          
+          checkNewPage(rowHeight);
+          
+          drawTableBorder(leftMargin, yPos, tableWidth * 0.25, rowHeight);
           pdf.setTextColor(0, 0, 0);
           pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(7);
-          pdf.text(row[0], leftMargin + 1, yPos + 4);
+          drawTextInCell(row[0], leftMargin, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, cellHeight);
-          pdf.text(row[1], leftMargin + tableWidth * 0.25 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[1], leftMargin + tableWidth * 0.25, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.25, cellHeight);
-          pdf.text(row[2], leftMargin + tableWidth * 0.5 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[2], leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          drawTableBorder(leftMargin + tableWidth * 0.75, yPos, tableWidth * 0.25, cellHeight);
-          pdf.text(row[3], leftMargin + tableWidth * 0.75 + 1, yPos + 4);
+          drawTableBorder(leftMargin + tableWidth * 0.75, yPos, tableWidth * 0.25, rowHeight);
+          drawTextInCell(row[3], leftMargin + tableWidth * 0.75, yPos, tableWidth * 0.25, rowHeight, 7);
           
-          yPos += cellHeight;
+          yPos += rowHeight;
         }
       });
       
       
       
       // Celda separadora vacía con fondo negro
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight, true);
+      checkNewPage(baseCellHeight);
+      drawTableBorder(leftMargin, yPos, tableWidth, baseCellHeight, true);
       pdf.setTextColor(255, 255, 255);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("", leftMargin + 2, yPos + 4);
 
-      yPos += cellHeight;
+      yPos += baseCellHeight;
 
       // === AUTORIZACIÓN FINAL EN CELDA ===
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight);
+      const autorizationText = "A petición del solicitante y habiendo cumplido con los requisitos de Ley, Se AUTORIZA la EXHUMACIÓN EN EL CEMENTERIO MUNICIPAL CENTRAL";
+      const authHeight = calculateTextHeight(autorizationText, tableWidth - 4, 6);
+      
+      checkNewPage(authHeight);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth, authHeight);
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(6);
-      const autorizationText = "A petición del solicitante y habiendo cumplido con los requisitos de Ley, Se AUTORIZA la EXHUMACIÓN EN EL CEMENTERIO MUNICIPAL CENTRAL";
-      const splitAuth = pdf.splitTextToSize(autorizationText, tableWidth - 4);
-      pdf.text(splitAuth, pageWidth / 2, yPos + 4, { align: "center" });
+      drawTextInCell(autorizationText, leftMargin, yPos, tableWidth, authHeight, 6);
       
-      yPos += cellHeight;
+      yPos += authHeight;
       
       // === NOTA EN CELDA ===
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight);
+      const notaText = "Nota: Se debe indicar que se ha socializado con los deudos que para realizar exhumaciones está prohibido para todos los que fallecieron a partir del 2020.";
+      const notaHeight = calculateTextHeight(notaText, tableWidth - 4, 7);
+      
+      checkNewPage(notaHeight);
+      
+      drawTableBorder(leftMargin, yPos, tableWidth, notaHeight);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(7);
-      pdf.text("Nota: ", leftMargin + 2, yPos + 4);
+      pdf.text("Nota: ", leftMargin + 2, yPos + notaHeight/2 + 1);
       pdf.setFont("helvetica", "normal");
-      pdf.text("Se debe indicar que se ha socializado con los deudos que para realizar exhumaciones está prohibido para todos los que fallecieron a partir del 2020.", leftMargin + 15, yPos + 4);
+      const notaTextoSolo = "Se debe indicar que se ha socializado con los deudos que para realizar exhumaciones está prohibido para todos los que fallecieron a partir del 2020.";
+      drawTextInCell(notaTextoSolo, leftMargin + 12, yPos, tableWidth - 12, notaHeight, 7);
       
-      yPos += cellHeight;
+      yPos += notaHeight;
       
       // === TEXTO DE ORDENANZA EN CELDA ===
-      drawTableBorder(leftMargin, yPos, tableWidth, cellHeight + 8);
-      pdf.setFontSize(6);
       const ordenanzaText = "El solicitante, de ser el caso, deberá dar cumplimiento a la ORDENANZA QUE REGULA LA ADMINISTRACIÓN Y FUNCIONAMIENTO DE LOS CEMENTERIOS MUNICIPALES DEL CANTÓN SANTIAGO DE PÍLLARO CAPÍTULO IV DE LAS ÁREAS DE INHUMACIÓN ART.17 Terminados los trabajos, los concesionarios o en su defecto los titulares del derecho funerario correspondiente, estarán obligados a retirar las losas, piedras, escombros y en general cualquier residuo de los materiales empleados, para que sean depositados en la escombrera municipal ubicada en EL SECTOR DE YAMBO HUASALATI GRANDE. Nº Código de exhumación después de ejecutar que han vehiculado o cualquier año determinó hayan causado en las calles, instalaciones, construcciones, etc.";
-      const splitOrdenanza = pdf.splitTextToSize(ordenanzaText, tableWidth - 4);
-      pdf.text(splitOrdenanza, leftMargin + 2, yPos + 3);
+      const ordenanzaHeight = calculateTextHeight(ordenanzaText, tableWidth - 4, 6);
       
-      //yPos += cellHeight + 15;
+      checkNewPage(ordenanzaHeight);
       
-      // === FIRMAS EN CELDAS ===
-      // drawTableBorder(leftMargin, yPos, tableWidth, cellHeight);
-      // pdf.setFont("helvetica", "bold");
-      // pdf.setFontSize(8);
-      // pdf.text("Revisado y aprobado por:", pageWidth / 2, yPos + 4, { align: "center" });
+      drawTableBorder(leftMargin, yPos, tableWidth, ordenanzaHeight);
+      drawTextInCell(ordenanzaText, leftMargin, yPos, tableWidth, ordenanzaHeight, 6);
       
-      yPos += cellHeight + 3;
+      yPos += ordenanzaHeight + 3;
       
-      // Celda para firmas
-      //drawTableBorder(leftMargin, yPos, tableWidth * 0.5, cellHeight + 12);
+      // === FIRMAS ===
+      const firmasHeight = 25; // Altura fija para las firmas
+      
+      checkNewPage(firmasHeight);
+      
+      // Firmas lado a lado
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("Solicitante Responsable", leftMargin + tableWidth * 0.25, yPos + 10, { align: "center" });
       pdf.line(leftMargin + 10, yPos + 15, leftMargin + tableWidth * 0.5 - 10, yPos + 15);
       pdf.setFont("helvetica", "normal");
-      pdf.text(exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA', leftMargin + tableWidth * 0.25, yPos + 18, { align: "center" });
+      const solicitanteNombre = exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA';
+      pdf.text(solicitanteNombre, leftMargin + tableWidth * 0.25, yPos + 18, { align: "center" });
       
-      //drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.5, cellHeight + 12);
       pdf.setFont("helvetica", "bold");
       pdf.text("Directora de Servicios Públicos", leftMargin + tableWidth * 0.75, yPos + 10, { align: "center" });
       pdf.line(leftMargin + tableWidth * 0.5 + 10, yPos + 15, rightMargin - 10, yPos + 15);
       pdf.setFont("helvetica", "normal");
-      pdf.text("ING. JENNY CONSTANTE", leftMargin + tableWidth * 0.75, yPos + 18, { align: "center" });
+      pdf.text("ING. JENNY CONSTANTE", leftMargin + tableWidth * 0.75, yPos + 18, { align: "center" }); // TODO: Debe venir de BD - director de servicios públicos
       
+      // === BORDE FINAL DEL DOCUMENTO ===
+      // Dibujar borde completo en todas las páginas
+      const totalPages = (pdf.internal as { pages: unknown[] }).pages.length - 1; // -1 porque el array incluye un elemento vacío al inicio
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setDrawColor(0, 0, 0);
+        pdf.setLineWidth(0.5);
+        // Borde exterior de toda la página con margen
+        pdf.rect(leftMargin, 8, tableWidth, pageHeight - 16, 'D');
+      }
+
       // Descargar el PDF
       const filename = `autorizacion-exhumacion-${exhumacion.codigo || exhumacion.idExhumacion}.pdf`;
       pdf.save(filename);
@@ -638,9 +903,13 @@ export default function ExhumacionDetailPage() {
       console.log(' Autorización PDF descargada exitosamente');
     } catch (error) {
       console.error(' Error al generar autorización PDF:', error);
+      alert('Error al generar el PDF de autorización. Por favor, inténtalo nuevamente.');
+    } finally {
+      setGeneratingAuthorization(false);
     }
   };
 
+  // ===== FUNCIÓN PARA ORDEN DE PAGO (USA BACKEND ORIGINAL) =====
   const handleGeneratePaymentOrder = async () => {
     if (!exhumacion) {
       console.error('No hay datos de exhumación disponibles');
@@ -650,127 +919,102 @@ export default function ExhumacionDetailPage() {
     setGeneratingPayment(true);
 
     try {
-      // Crear nuevo documento PDF para la orden de pago
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      // 1. Verificar si ya existe un pago para esta exhumación
+      let paymentToUse = payments?.find(p => p.status === 'pending');
       
-      // Variables para posicionamiento
-      let yPos = 20;
-      const pageWidth = 210;
-      const leftMargin = 20;
-      const rightMargin = 190;
+      // 2. Si no existe pago pendiente, crear uno nuevo
+      if (!paymentToUse) {
+        console.log(' Creando nuevo pago para la exhumación...');
+        
+        // Crear datos completos del pago directamente
+        const fallecidoCompleto = `${exhumacion.inhumacion?.idFallecido?.nombres || ''} ${exhumacion.inhumacion?.idFallecido?.apellidos || ''}`.trim();
+        const buyerName = exhumacion.duenioNicho || 'Sin nombre';
+        
+        //  CAMPOS FALTANTES EN EL MODELO - Necesitan ser agregados a ExhumacionEntity:
+        // - cedulaDuenio: string (cédula del dueño del nicho)
+        // - direccionDuenio: string (dirección del dueño del nicho)
+        // - telefonoDuenio: string (teléfono del dueño del nicho)
+        // Mientras tanto, usar datos disponibles:
+        const buyerDocument = exhumacion.inhumacion?.idFallecido?.cedula || '1800846784'; // TEMPORAL: usar cédula del fallecido como fallback
+        const buyerDirection = exhumacion.inhumacion?.idFallecido?.direccion || 'PÍLLARO CENTRO'; // TEMPORAL: usar dirección del fallecido como fallback
+        const procedureTitle = 'ORDEN DE PAGO EXHUMACIÓN';
+        const causa = 'EXHUMACIÓN';
+        const ubicacion = exhumacion.ubicacion || 'Cementerio Municipal';
+        const concepto = 'EXHUMACIÓN DE RESTOS MORTALES';
+        
+        // Crear observaciones como JSON
+        // const observationsJson = JSON.stringify({
+        //   description: `Pago para exhumación de ${fallecidoCompleto}`,
+        //   buyerName,
+        //   buyerDocument,
+        //   buyerDirection,
+        //   causa,
+        //   procedureTitle,
+        //   ubicacion,
+        //   fallecidoNombre: fallecidoCompleto,
+        //   concepto
+        // });
+        
+        const paymentData = {
+          procedureType: 'exhumation' as const,
+          procedureId: exhumacion.idExhumacion,
+          amount: 150.00,
+          generatedBy: 'admin-user', // TODO: usar usuario actual
+          observations: `Pago para exhumación de ${fallecidoCompleto} - ${concepto}`, // Campo estándar de la API
+          // Campos REQUERIDOS que ya existen en la BD
+          buyerName,
+          buyerDocument,
+          buyerDirection,
+          // Campos adicionales para la generación del PDF
+          causa,
+          reason: causa, // Campo alternativo por si el backend lo busca así
+          procedureTitle,
+          title: procedureTitle, // Campo alternativo para el título
+          documentTitle: procedureTitle, // Otro campo alternativo
+          ubicacion,
+          fallecidoNombre: fallecidoCompleto,
+          concepto,
+          // Campos adicionales que el backend podría buscar
+          observacion: concepto, // Por si busca 'observacion' sin 's'
+          total: 150.00 // Campo alternativo para amount
+        };
+        
+        // Log para verificar los datos que enviamos
+        console.log(' Datos del pago a enviar:', {
+          ...paymentData,
+          '🔧 Campos críticos': {
+            buyerName: `"${buyerName}"`,
+            buyerDocument: `"${buyerDocument}"`, 
+            buyerDirection: `"${buyerDirection}"`,
+            procedureTitle: `"${procedureTitle}"`,
+            causa: `"${causa}"`
+          },
+          ' Campos usando datos temporales': {
+            buyerDocument_fuente: 'fallecido.cedula (debería ser dueño.cedula)',
+            buyerDirection_fuente: 'fallecido.direccion (debería ser dueño.direccion)',
+            campos_faltantes_en_BD: ['cedulaDuenio', 'direccionDuenio', 'telefonoDuenio']
+          }
+        });
+        
+        // Crear el pago en el backend
+        const paymentResult = await createPaymentMutation.mutateAsync(paymentData);
+        console.log(' Pago creado exitosamente:', paymentResult);
+        paymentToUse = paymentResult;
+      }
 
-      // === LOGO Y ENCABEZADO ===
-      // Logo municipal simulado
-      // pdf.setFillColor(50, 150, 50);
-      // pdf.rect(leftMargin, yPos, 30, 20, 'F');
-      
-      // // Texto del logo
-      // pdf.setTextColor(255, 255, 255);
-      // pdf.setFont("helvetica", "bold");
-      // pdf.setFontSize(8);
-      // pdf.text("GADM SANTIAGO", leftMargin + 2, yPos + 8);
-      // pdf.text("DE PÍLLARO", leftMargin + 2, yPos + 12);
-      
-      // Título principal
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
-      pdf.text("GADM SANTIAGO DE PÍLLARO", pageWidth / 2, yPos + 5, { align: "center" });
-      
-      pdf.setFontSize(12);
-      pdf.text("DEPARTAMENTO DE SERVICIOS PÚBLICOS", pageWidth / 2, yPos + 12, { align: "center" });
-      
-      pdf.setFontSize(14);
-      pdf.text("ORDEN DE PAGO EXHUMACIÓN", pageWidth / 2, yPos + 19, { align: "center" });
-
-      yPos += 35;
-      
-      // === INFORMACIÓN DE FECHA Y TÍTULO ===
-      pdf.setFontSize(10);
-      pdf.text(`FECHA : ${formatDateSafely(new Date(), "dd/MM/yyyy")}`, leftMargin, yPos);
-      pdf.text(formatDateSafely(new Date(), "HH:mm:ss"), rightMargin - 20, yPos);
-      
-      yPos += 10;
-      
-      // Título
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.text("TITULO :", leftMargin, yPos);
-      pdf.text("000317", leftMargin + 25, yPos);
-      
-      yPos += 15;
-      
-      // === INFORMACIÓN DEL CONTRIBUYENTE ===
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      
-      pdf.text(`CONTRIBUYENTE : ${exhumacion.duenioNicho || 'ALVAREZ BONILLA MARIA ERNESTINA'}`, leftMargin, yPos);
-      yPos += 7;
-      
-      pdf.text(`CEDULA : ${exhumacion.inhumacion?.idFallecido?.cedula || '1800522417'}`, leftMargin, yPos);
-      yPos += 7;
-      
-      pdf.text(`DIRECCION : ${exhumacion.ubicacion || ''}`, leftMargin, yPos);
-      yPos += 7;
-      
-      pdf.text("CAUSA : EXHUMACION", leftMargin, yPos);
-      yPos += 7;
-      
-      pdf.text(`OBSERVACION : EXHUMACION - ${exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL'}`, leftMargin, yPos);
-      yPos += 10;
-      
-      // === TOTAL ===
-      pdf.setFont("helvetica", "bold");
-      pdf.text("TOTAL : 150,00", leftMargin, yPos);
-      
-      yPos += 15;
-      
-      // === TABLA DE CUENTA Y VALOR ===
-      // Encabezados de tabla
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.text("CUENTA", leftMargin, yPos);
-      pdf.text("VALOR", leftMargin + 120, yPos);
-      
-      yPos += 8;
-      
-      // Contenido de la tabla
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "normal");
-      pdf.text("EXHUMACION DE RESTOS EN EL CEMENTERIO", leftMargin, yPos);
-      pdf.text("150,00", leftMargin + 120, yPos);
-      
-      yPos += 25;
-      
-      // === FIRMAS ===
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      
-      // Firma izquierda
-      pdf.text("ING. JENNY CONSTANTE", leftMargin + 20, yPos);
-      pdf.text("DIRECTOR(A) SERVICIOS PÚBLICOS", leftMargin + 5, yPos + 5);
-      
-      // Firma derecha
-      pdf.text(exhumacion.duenioNicho || 'ALVAREZ BONILLA MARIA ERNESTINA', rightMargin - 60, yPos);
-      pdf.text(exhumacion.inhumacion?.idFallecido?.cedula || '1800522417', rightMargin - 30, yPos + 5);
-      
-      // Líneas para firmas
-      //pdf.line(leftMargin, yPos - 5, leftMargin + 80, yPos - 5);
-      //pdf.line(rightMargin - 80, yPos - 5, rightMargin, yPos - 5);
-      
-      // Descargar el PDF
-      const filename = `orden-pago-exhumacion-${exhumacion.codigo || exhumacion.idExhumacion}.pdf`;
-      pdf.save(filename);
-      
-      console.log('✅ Orden de pago PDF generada exitosamente');
-      alert('¡Orden de pago generada exitosamente!\n\nEl PDF se ha descargado automáticamente.');
+      // 3. Descargar el PDF directamente del backend (SIN MODIFICAR NADA)
+      if (paymentToUse) {
+        console.log(' Descargando comprobante PDF del backend...');
+        await downloadReceiptMutation.mutateAsync(paymentToUse.paymentId);
+        console.log(' Comprobante descargado exitosamente');
+      }
       
     } catch (error) {
-      console.error("❌ Error al generar orden de pago:", error);
+      console.error(" Error al generar orden de pago:", error);
       alert(`Error al generar la orden de pago.\n\nError: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      // Fallback: recargar la página para intentar recuperar el estado
+      console.log(' Recargando página como fallback...');
+      window.location.reload();
     } finally {
       setGeneratingPayment(false);
     }
@@ -923,11 +1167,11 @@ export default function ExhumacionDetailPage() {
                   <div className="text-sm text-gray-600">
                     <span className="font-medium">Solicitante:</span> {exhumacion.inhumacion.solicitante || 'No disponible'}
                   </div>
-                  <Link href={`/inhumaciones/${exhumacion.inhumacion.idInhumacion}`}>
+                  {/* <Link href={`/inhumaciones/${exhumacion.inhumacion.idInhumacion}`}>
                     <Button variant="outline" size="sm" className="mt-2">
                       Ver Detalles de Inhumación
                     </Button>
-                  </Link>
+                  </Link> */}
                 </div>
               </div>
             </CardContent>
@@ -991,15 +1235,15 @@ export default function ExhumacionDetailPage() {
         </Card>
 
         {/* Estado de Pago */}
-        <Card className={exhumacion.estadoPago === 'finalizado' ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}>
+        <Card className={(exhumacion.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid')) ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}>
           <CardHeader>
-            <CardTitle className={`flex items-center gap-2 ${exhumacion.estadoPago === 'finalizado' ? 'text-green-800' : 'text-yellow-800'}`}>
+            <CardTitle className={`flex items-center gap-2 ${(exhumacion.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid')) ? 'text-green-800' : 'text-yellow-800'}`}>
               <DollarSign className="h-5 w-5" />
               Estado del Pago
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {exhumacion.estadoPago === 'finalizado' ? (
+            {(exhumacion.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid')) ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle className="h-5 w-5" />
@@ -1017,9 +1261,13 @@ export default function ExhumacionDetailPage() {
                     </Button>
                   </div>
                 )}
-                <Button className="w-full" onClick={handleDownloadAutorizacion}>
+                <Button 
+                  className="w-full" 
+                  onClick={handleDownloadAutorizacion}
+                  disabled={generatingAuthorization}
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  Descargar Autorización de Exhumación (PDF)
+                  {generatingAuthorization ? "Generando Autorización..." : "Descargar Autorización de Exhumación (PDF)"}
                 </Button>
               </div>
             ) : (
@@ -1032,7 +1280,7 @@ export default function ExhumacionDetailPage() {
                 <div className="bg-white p-4 rounded border border-yellow-200">
                   <div className="text-center mb-4">
                     <p className="font-medium text-yellow-800">Monto a Pagar</p>
-                    <p className="text-2xl font-bold text-yellow-900 mt-1">$150.00 USD</p>
+                    <p className="text-2xl font-bold text-yellow-900 mt-1">$150.00</p>
                     <p className="text-sm text-yellow-600 mt-2">
                       Costo de exhumación según normativa municipal
                     </p>
@@ -1041,14 +1289,53 @@ export default function ExhumacionDetailPage() {
 
                 <Separator />
 
+                {/* Debug: Información de ambos sistemas de pago */}
+                {/* <div className="bg-gray-50 p-3 rounded text-sm">
+                  <p className="font-medium text-gray-800">Estado de Sistemas de Pago:</p>
+                  <div className="mt-2 space-y-1">
+                     <div className="text-gray-700">
+                      <span className="font-medium">Tabla Exhumaciones:</span> 
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                        exhumacion.estadoPago === 'finalizado' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {exhumacion.estadoPago || 'pendiente'}
+                      </span>
+                    </div> */}
+                    {/* <div className="text-gray-700">
+                      <span className="font-medium">Módulo Payments:</span>
+                      {payments && payments.length > 0 ? (
+                        <div className="ml-2">
+                          {payments.map(payment => (
+                            <div key={payment.paymentId} className="text-xs">
+                              • {payment.paymentCode} - 
+                              <span className={`ml-1 px-1 py-0.5 rounded ${
+                                payment.status === 'paid' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {payment.status}
+                              </span>
+                              - ${payment.amount}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="ml-2 text-xs text-gray-500">Sin pagos registrados</span>
+                      )}
+                    </div> 
+                  </div>
+                </div> */}
+
                 <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
                     Generar Orden de Pago
                   </Label>
-                  <p className="text-sm text-gray-600">
+                  {/* <p className="text-sm text-gray-600">
                     Genera y descarga la orden de pago oficial para realizar el pago en tesorería
-                  </p>
+                  </p> */}
                   <Button 
                     onClick={handleGeneratePaymentOrder}
                     disabled={generatingPayment}
@@ -1058,6 +1345,9 @@ export default function ExhumacionDetailPage() {
                     <Download className="h-4 w-4 mr-2" />
                     {generatingPayment ? "Generando Orden de Pago..." : "Descargar Orden de Pago"}
                   </Button>
+                  {/* <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded mt-2">
+                     Este PDF viene directamente del backend para diagnosticar los datos vacíos
+                  </p> */}
                 </div>
 
                 <Separator />
@@ -1082,9 +1372,13 @@ export default function ExhumacionDetailPage() {
                       {uploading ? "Subiendo..." : "Subir"}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  {/* <p className="text-xs text-gray-500">
                     Formatos permitidos: PDF, JPG, PNG. Máximo 5MB.
-                  </p>
+                  </p> */}
+                  {/* <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                     El comprobante se guardará en la tabla de exhumaciones y actualizará el estado automáticamente.
+                    {payments?.find(p => p.status === 'pending') && ' También se actualizará en el módulo de payments.'}
+                  </p> */}
                 </div>
               </div>
             )}
