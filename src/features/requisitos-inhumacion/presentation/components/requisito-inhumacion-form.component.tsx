@@ -13,7 +13,6 @@ import RHFCheckbox from "@/shared/components/form/rhf/rhf-chechbox";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
 import RHFAutocompleteHuecoNicho from "@/shared/components/form/rhf/rhf-autocomplete-hueco-nicho";
 import { DocumentUploadCard } from "./document-upload-card.component";
-import { CreatePaymentForm } from "@/features/payment/presentation/components/create-payment-form";
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { API_ROUTES } from "@/core/constants/api-routes";
 import { useEffect } from "react";
@@ -56,14 +55,6 @@ const steps = [
   },
   {
     id: 3,
-    title: "Generar orden de pago",
-    description: "Generar orden de pago (vista previa)",
-    color: "bg-yellow-500",
-    requiredFields: [],
-    optionalFields: [],
-  },
-  {
-    id: 4,
     title: "Documentos",
     description: "Requisitos y documentación",
     color: "bg-red-500",
@@ -191,8 +182,7 @@ export function RequisitoInhumacionForm({
 
   const currentStepData = steps.find((step) => step.id === currentStep);
 
-  const [paymentProcedureId, setPaymentProcedureId] = useState<string | null>(null);
-  const [resolvingProcedureId, setResolvingProcedureId] = useState(false);
+  
 
   // Watch solicitante selection and, if a propietario/nicho exists for that person,
   // automatically set `idHuecoNicho` and `nombreAdministradorNicho` in the form.
@@ -253,7 +243,7 @@ export function RequisitoInhumacionForm({
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <div className="bg-white shadow-lg rounded-lg mb-6">
+      <div className="bg-white shadow-lg rounded-lg mb-6 min-h-[160px] flex flex-col justify-between">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800">
             Registro de Requisitos de Inhumación
@@ -264,39 +254,42 @@ export function RequisitoInhumacionForm({
         </div>
 
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center w-full">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <button
-                  onClick={() => goToStep(step.id)}
-                  className={`
-                    flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-200
-                    ${
-                      currentStep === step.id
-                        ? `${step.color} text-white shadow-lg`
-                        : currentStep > step.id
-                        ? "bg-gray-400 text-white cursor-pointer hover:bg-gray-500"
-                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    }
-                  `}
-                  disabled={currentStep < step.id}
-                >
-                  {currentStep > step.id ? "✓" : step.id}
-                </button>
-                <div className="ml-3 hidden md:block">
-                  <p
-                    className={`text-sm font-medium ${
-                      currentStep === step.id
-                        ? "text-gray-900"
-                        : "text-gray-500"
-                    }`}
+              <div key={step.id} className="flex items-center w-auto">
+                <div className="flex items-center flex-shrink-0">
+                  <button
+                    onClick={() => goToStep(step.id)}
+                    className={`
+                      flex items-center justify-center w-10 h-10 rounded-full font-semibold text-sm transition-all duration-200
+                      ${
+                        currentStep === step.id
+                          ? `${step.color} text-white shadow-lg`
+                          : currentStep > step.id
+                          ? "bg-gray-400 text-white cursor-pointer hover:bg-gray-500"
+                          : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      }
+                    `}
+                    disabled={currentStep < step.id}
                   >
-                    {step.title}
-                  </p>
+                    {currentStep > step.id ? "✓" : step.id}
+                  </button>
+                  <div className="ml-3 hidden md:block">
+                    <p
+                      className={`text-sm font-medium ${
+                        currentStep === step.id
+                          ? "text-gray-900"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {step.title}
+                    </p>
+                  </div>
                 </div>
+
                 {index < steps.length - 1 && (
                   <div
-                    className={`w-8 h-0.5 mx-4 ${
+                    className={`w-16 h-0.5 mx-4 ${
                       currentStep > step.id ? "bg-gray-400" : "bg-gray-200"
                     }`}
                   />
@@ -411,91 +404,9 @@ export function RequisitoInhumacionForm({
               </div>
             )}
 
-            {/* Paso 3: Generar orden de pago (placeholder) */}
+            
+            {/* Paso 3: Documentos */}
             {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="flex items-center mb-6">
-                  <span className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></span>
-                  <h3 className="text-xl font-semibold text-gray-800">
-                    Generar orden de pago
-                  </h3>
-                </div>
-
-                {/* Integración del formulario de creación de pago
-                    - Si podemos resolver un id de inhumación (procedureId) lo mostramos.
-                    - Si no, pedimos al usuario que guarde el requisito primero. */}
-                <div>
-                  {resolvingProcedureId ? (
-                    <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">Resolviendo trámite para generar la orden de pago...</div>
-                  ) : paymentProcedureId ? (
-                    <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">
-                      <CreatePaymentForm
-                        procedureType="burial"
-                        procedureId={paymentProcedureId}
-                        onSuccess={() => setCurrentStep(4)}
-                      />
-                    </div>
-                  ) : (
-                    <div className="p-4 border rounded-md bg-yellow-50 text-sm text-gray-700">
-                      <p className="mb-3">No se encontró una inhumación asociada todavía.</p>
-                      <p className="mb-3">Guarda primero el requisito para generar la orden de pago, o verifica que el fallecido esté registrado.</p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            // Intentar crear el requisito actual (intentará subir documento y navegar)
-                            await handleFormSubmit();
-                          }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded"
-                        >
-                          Guardar requisito y continuar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            // Intentar resolver de forma manual llamando al endpoint de búsqueda por fallecido
-                            setResolvingProcedureId(true);
-                            try {
-                              const idFallecido = methods.getValues().idFallecido;
-                              if (!idFallecido) {
-                                // nothing to do
-                                setResolvingProcedureId(false);
-                                return;
-                              }
-                              const http = AxiosClient.getInstance();
-                              // obtener cédula
-                              const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(idFallecido));
-                              const cedula: string | undefined = personaResp?.data?.data?.cedula;
-                              if (!cedula) {
-                                setResolvingProcedureId(false);
-                                return;
-                              }
-                              const inhResp = await http.get<any>(API_ROUTES.INHUMACIONES.SEARCH_FALLECIDOS(cedula));
-                              const payload = inhResp?.data?.data;
-                              const first = Array.isArray(payload?.fallecidos) ? payload.fallecidos[0] : null;
-                              const inhs = first?.inhumaciones || first?.persona?.inhumaciones || payload?.inhumaciones || [];
-                              if (Array.isArray(inhs) && inhs.length > 0) {
-                                const id = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
-                                if (id) setPaymentProcedureId(id);
-                              }
-                            } catch (e) {
-                              console.warn('Error resolviendo inhumación para pago:', e);
-                            } finally {
-                              setResolvingProcedureId(false);
-                            }
-                          }}
-                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded"
-                        >
-                          Intentar resolver ahora
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Paso 4: Documentos */}
-            {currentStep === 4 && (
               <div className="space-y-6">
                 <div className="flex items-center mb-6">
                   <span className="w-3 h-3 bg-red-500 rounded-full mr-3"></span>
