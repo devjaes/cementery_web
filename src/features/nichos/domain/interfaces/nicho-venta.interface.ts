@@ -1,9 +1,8 @@
 export interface NichoVenta {
   id: string;
-  sector: string;
-  fila: string;
-  numero: string;
-  estado: "Vendido" | "Reservado" | "Disponible";
+  fila: number;
+  columna: number;
+  estado: "Vendido" | "Reservado" | "Disponible" | "Deshabilitado";
   cementerio: string;
 }
 

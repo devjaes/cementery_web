@@ -37,19 +37,14 @@ export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
             value={nicho.idCementerio?.nombre || "No especificado"}
           />
           <InfoItem
-            icon={<Layers className="w-4 h-4" />}
-            label="Sector"
-            value={nicho.sector}
-          />
-          <InfoItem
             icon={<Hash className="w-4 h-4" />}
             label="Fila"
-            value={nicho.fila.toString()}
+            value={nicho.fila?.toString() || "No especificado"}
           />
           <InfoItem
             icon={<Hash className="w-4 h-4" />}
-            label="Número"
-            value={nicho.numero.toString()}
+            label="Columna"
+            value={nicho.columna?.toString() || "No especificado"}
           />
           <InfoItem
             icon={<Package className="w-4 h-4" />}
@@ -72,7 +67,7 @@ export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
           <InfoItem
             icon={<Grid3x3 className="w-4 h-4" />}
             label="Número de Huecos"
-            value={nicho.numHuecos.toString()}
+            value={nicho.numHuecos?.toString() || "0"}
           />
           <InfoItem
             icon={<Calendar className="w-4 h-4" />}

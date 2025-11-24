@@ -23,9 +23,6 @@ export function useNichoForm({ nicho, onSuccess }: UseNichoFormOptions = {}) {
     defaultValues: nicho
       ? {
           idCementerio: nicho.idCementerio?.idCementerio,
-          sector: nicho.sector,
-          fila: nicho.fila,
-          numero: nicho.numero,
           tipo: nicho.tipo as CreateNichoDTO["tipo"],
           fechaConstruccion: nicho.fechaConstruccion,
           observaciones: nicho.observaciones,

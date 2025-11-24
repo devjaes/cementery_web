@@ -2,9 +2,6 @@ import { z } from "zod";
 
 const NichoBaseSchema = z.object({
   idCementerio: z.string().uuid("El cementerio es requerido y debe ser un UUID válido"),
-  sector: z.string().min(1, "El sector es requerido").max(2, "Máximo 2 caracteres"),
-  fila: z.string().min(1, "La fila es requerida").max(3, "Máximo 3 caracteres"),
-  numero: z.string().min(1, "El número es requerido").max(4, "Máximo 4 caracteres"),
   tipo: z.enum(["Nicho", "Mausoleo", "Fosa"], { message: "Tipo inválido" }),
   fechaConstruccion: z.string().min(1, "La fecha de adquisición es requerida"),
   observaciones: z.string().max(500, "Máximo 500 caracteres").optional(),

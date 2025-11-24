@@ -46,9 +46,6 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RHFCementerySelect name="idCementerio" label="Cementerio" />
-          <RHFInput name="sector" label="Sector" />
-          <RHFInput name="fila" label="Fila" />
-          <RHFInput name="numero" label="Número" />
           <RHFSelect name="tipo" label="Tipo" options={tipoOptions} placeholder="Selecciona el tipo de nicho" />
           <RHFDatePickerCalendar name="fechaConstruccion" label="Fecha de adquisición" />
           <RHFInput

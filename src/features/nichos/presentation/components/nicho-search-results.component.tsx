@@ -107,7 +107,7 @@ export function NichoSearchResults({ results, searchTerm, selectedFallecido, onS
                           Cementerio
                         </span>
                       </TableHead>
-                      <TableHead>Sector</TableHead>
+                      
                       <TableHead>Fila</TableHead>
                       <TableHead>Número</TableHead>
                       <TableHead>Tipo</TableHead>
@@ -127,13 +127,13 @@ export function NichoSearchResults({ results, searchTerm, selectedFallecido, onS
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{nicho.sector}</Badge>
+                            <Badge variant="outline"></Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{nicho.fila}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{nicho.numero}</Badge>
+                            <Badge variant="outline">{nicho.columna}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{nicho.tipo}</Badge>
@@ -277,7 +277,7 @@ export function NichoSearchResults({ results, searchTerm, selectedFallecido, onS
                           Cementerio
                         </span>
                       </TableHead>
-                      <TableHead>Sector</TableHead>
+                      
                       <TableHead>Fila</TableHead>
                       <TableHead>Número</TableHead>
                       <TableHead>Tipo</TableHead>
@@ -297,13 +297,13 @@ export function NichoSearchResults({ results, searchTerm, selectedFallecido, onS
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{nicho.sector}</Badge>
+                            <Badge variant="outline"></Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{nicho.fila}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{nicho.numero}</Badge>
+                            <Badge variant="outline">{nicho.columna}</Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{nicho.tipo}</Badge>
@@ -405,7 +405,7 @@ export function NichoSearchResults({ results, searchTerm, selectedFallecido, onS
                           {nichos.length > 0 && cementerios[0] && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {cementerios[0].nombre} - Sector {nichos[0].sector}
+                              {cementerios[0].nombre} - 
                             </span>
                           )}
                         </div>

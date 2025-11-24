@@ -86,7 +86,7 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
   }
 
   return (
-    <ContainerApp title={`Nicho ${nicho.sector}-${nicho.fila}-${nicho.numero}`}>
+    <ContainerApp title={`Nicho Fila ${nicho.fila} - Columna ${nicho.columna}`}>
       <div className={"relative flex transition-all duration-300 " + (isPropietarioPanelOpen ? "pr-[420px]" : "pr-0")}>
         <div className="flex-1 min-w-0 space-y-6">
           {/* Back Button */}
