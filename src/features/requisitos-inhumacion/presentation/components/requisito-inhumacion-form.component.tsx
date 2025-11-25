@@ -364,6 +364,7 @@ export function RequisitoInhumacionForm({
                     label="Solicitante *"
                     placeholder="Selecciona un solicitante"
                     vivos={true}
+                    cementerioId={methods.watch("idCementerio")}
                   />
 
                   <RHFAutocompleteHuecoNicho

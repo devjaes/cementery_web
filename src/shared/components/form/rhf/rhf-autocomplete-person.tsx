@@ -4,6 +4,7 @@ import { useDebounce } from "@/shared/hooks/use-debounce";
 import { useFindPersonByIdQuery, useSearchPersonsQuery, useFindAllPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
 import { useSearchRequisitoInhumacionFallecidosQuery, useFindAllRequisitosInhumacionQuery } from "@/features/requisitos-inhumacion/presentation/hooks/use-requisito-inhumacion-queries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { PropietarioNichoRepositoryImpl } from "@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl";
 import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/shared/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -16,9 +17,10 @@ interface RHFAutocompletePersonProps {
   disabled?: boolean;
   vivos?: boolean; // true para personas vivas, false para fallecidas, undefined para todas
   onlyNotInhumed?: boolean; // cuando es fallecido, mostrar solo los fallecidos que NO están inhumados
+  cementerioId?: string; // optional filter: show only persons who are propietarios in this cementerio
 }
 
-export default function RHFAutocompletePerson({ name, label, placeholder, disabled, vivos, onlyNotInhumed }: RHFAutocompletePersonProps) {
+export default function RHFAutocompletePerson({ name, label, placeholder, disabled, vivos, onlyNotInhumed, cementerioId }: RHFAutocompletePersonProps) {
   const { control, watch } = useFormContext();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -40,6 +42,38 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
   const selectedValue = watch(name) as string | undefined;
   const selectedId = typeof selectedValue === "string" ? selectedValue : "";
   const { data: selectedPersonById } = useFindPersonByIdQuery(selectedId);
+  const [allowedPersonIds, setAllowedPersonIds] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAllowed = async () => {
+      if (!cementerioId) {
+        setAllowedPersonIds(null);
+        return;
+      }
+      try {
+        const repo = PropietarioNichoRepositoryImpl.getInstance();
+        const all = await repo.findAll();
+        if (cancelled) return;
+        const ids = new Set<string>();
+        for (const p of all) {
+          const nicho = (p as any)?.idNicho;
+          const persona = (p as any)?.idPersona || (p as any)?.id_persona || (p as any)?.idPersona?.id_persona;
+          const nichoCementerioId = nicho?.idCementerio?.idCementerio || nicho?.idCementerio;
+          if (nichoCementerioId && persona && String(nichoCementerioId) === String(cementerioId)) {
+            ids.add(String(persona?.id_persona || persona));
+          }
+        }
+        setAllowedPersonIds(ids);
+      } catch (e) {
+        console.warn("Error loading propietarios for cementerio filter:", e);
+        setAllowedPersonIds(new Set());
+      }
+    };
+
+    loadAllowed();
+    return () => { cancelled = true; };
+  }, [cementerioId]);
 
   // Refetch helpful queries when popover opens to ensure fresh data
   useEffect(() => {
@@ -146,6 +180,11 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
           }
         } catch (e) {
           // ignore any fallback errors
+        }
+
+        // Apply cemetery-owner filter if active: if allowedPersonIds is non-null we restrict to those ids
+        if (allowedPersonIds !== null) {
+          availablePersons = (availablePersons || []).filter((p: any) => allowedPersonIds.has(p.id_persona));
         }
 
         const selectedPerson = availablePersons?.find(p => p.id_persona === field.value) ?? selectedPersonById;
