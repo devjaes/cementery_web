@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormContext, Controller, useWatch } from "react-hook-form";
 import { useFindHuecosByCementerioQuery } from "@/features/huecos/presentation/hooks/use-hueco-queries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -14,6 +14,7 @@ interface RHFAutocompleteHuecoNichoProps {
     placeholder?: string;
     disabled?: boolean;
     isAvailable?: boolean;
+    ownerPersonId?: string;
 }
 
 export default function RHFAutocompleteHuecoNicho({
@@ -22,6 +23,7 @@ export default function RHFAutocompleteHuecoNicho({
     placeholder,
     disabled,
     isAvailable,
+    ownerPersonId,
 }: RHFAutocompleteHuecoNichoProps) {
     const { control, setValue } = useFormContext();
     const [open, setOpen] = useState(false);
@@ -29,13 +31,46 @@ export default function RHFAutocompleteHuecoNicho({
     const idCementerio = useWatch({ name: "idCementerio" });
 
     const { data: huecosNichos, isLoading } = useFindHuecosByCementerioQuery(idCementerio);
+    const [allowedNichoIds, setAllowedNichoIds] = useState<string[] | null>(null);
+
+    // When an owner is provided, resolve the nichos that belong to that person
+    useEffect(() => {
+        let cancelled = false;
+        if (!ownerPersonId) {
+            setAllowedNichoIds(null);
+            return;
+        }
+        (async () => {
+            try {
+                const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersona(ownerPersonId);
+                if (cancelled) return;
+                const nichoIds = (propietarios || []).map((p: any) => p.idNicho?.idNicho).filter(Boolean);
+                setAllowedNichoIds(nichoIds);
+            } catch (err) {
+                console.warn("No se pudieron resolver propietarios para persona:", err);
+                setAllowedNichoIds([]);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [ownerPersonId]);
 
     // Filtrar por texto de búsqueda
-    const filtered = (huecosNichos ?? []).filter(h => isAvailable ? h.estado === "Disponible" : true).filter(h =>
-        `${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`
-            .toLowerCase()
-            .includes(search.toLowerCase())
-    )
+    const baseList = (huecosNichos ?? []).filter(h => isAvailable ? h.estado === "Disponible" : true);
+
+    const filtered = baseList
+        .filter(h => {
+            if (!allowedNichoIds) return true; // no owner filter -> include all
+            const id = h.idNicho?.idNicho;
+            return id && allowedNichoIds.includes(id);
+        })
+        .filter(h =>
+            `${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`
+                .toLowerCase()
+                .includes(search.toLowerCase())
+        )
 
     return (
         <Controller

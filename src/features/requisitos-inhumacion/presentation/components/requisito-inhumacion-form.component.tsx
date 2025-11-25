@@ -352,6 +352,7 @@ export function RequisitoInhumacionForm({
                     label="Hueco/Nicho *"
                     placeholder="Selecciona un hueco o nicho"
                     isAvailable={true}
+                    ownerPersonId={solicitanteId}
                   />
 
                   {/* Keep nombreAdministradorNicho value but hide the visible input. Register as hidden so submission and mappers keep working */}
