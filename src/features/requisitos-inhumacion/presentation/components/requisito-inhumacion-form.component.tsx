@@ -203,9 +203,8 @@ export function RequisitoInhumacionForm({
         const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(cedula);
         if (!propietarios || propietarios.length === 0) return;
 
-        const activo = propietarios.find((p) => p.activo) || propietarios[0];
-        const ownerName = activo?.idPersona
-          ? [activo.idPersona.nombres || "", activo.idPersona.apellidos || ""].filter(Boolean).join(" ")
+        const ownerName = (propietarios[0]?.idPersona)
+          ? [propietarios[0].idPersona.nombres || "", propietarios[0].idPersona.apellidos || ""].filter(Boolean).join(" ")
           : "";
 
         // set owner name always when found
@@ -215,21 +214,37 @@ export function RequisitoInhumacionForm({
           // ignore if field missing
         }
 
-        const idNicho = activo?.idNicho?.idNicho || undefined;
-        if (!idNicho) return;
+        // Collect all huecos across all nichos owned by the person and pick the first available
+        const nichoIds = propietarios.map((p) => p.idNicho?.idNicho).filter(Boolean) as string[];
+        if (!nichoIds || nichoIds.length === 0) return;
 
-        const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(idNicho);
-        if (cancelled) return;
-        if (Array.isArray(huecos) && huecos.length > 0) {
-          // Only auto-select a hueco if there is one explicitly marked as 'Disponible'.
-          // Do NOT fall back to selecting the first (which might be ocupado/ocupado).
-          const disponible = huecos.find((h) => String(h.estado || "").toLowerCase() === "disponible");
-          if (disponible && disponible.idDetalleHueco) {
-            methods.setValue("idHuecoNicho", disponible.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
-          } else {
-            // No disponible found: do not auto-assign any hueco to avoid selecting an occupied one.
-            // Leave the field empty so the user must pick a valid available hueco manually.
+        let firstDisponible: any = null;
+        for (const nid of nichoIds) {
+          try {
+            const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(nid);
+            if (cancelled) return;
+            if (Array.isArray(huecos) && huecos.length > 0) {
+              // Prefer the lowest-numbered hueco (numHueco) among available ones.
+              const sorted = [...huecos].sort((a: any, b: any) => {
+                const na = Number(a?.numHueco ?? a?.num_hueco ?? Infinity);
+                const nb = Number(b?.numHueco ?? b?.num_hueco ?? Infinity);
+                if (isNaN(na)) return 1;
+                if (isNaN(nb)) return -1;
+                return na - nb;
+              });
+              const disponible = sorted.find((h: any) => String(h.estado || "").toLowerCase() === "disponible");
+              if (disponible) {
+                firstDisponible = disponible;
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn("Error fetching huecos for nicho", nid, e);
           }
+        }
+
+        if (firstDisponible && firstDisponible.idDetalleHueco) {
+          methods.setValue("idHuecoNicho", firstDisponible.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
         }
       } catch (err) {
         console.warn("Error resolviendo hueco desde solicitante:", err);
