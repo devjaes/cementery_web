@@ -221,10 +221,14 @@ export function RequisitoInhumacionForm({
         const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(idNicho);
         if (cancelled) return;
         if (Array.isArray(huecos) && huecos.length > 0) {
-          // Prefer a hueco disponible or the first one
-          const chosen = huecos.find((h) => h.estado === "Disponible") || huecos[0];
-          if (chosen && chosen.idDetalleHueco) {
-            methods.setValue("idHuecoNicho", chosen.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
+          // Only auto-select a hueco if there is one explicitly marked as 'Disponible'.
+          // Do NOT fall back to selecting the first (which might be ocupado/ocupado).
+          const disponible = huecos.find((h) => String(h.estado || "").toLowerCase() === "disponible");
+          if (disponible && disponible.idDetalleHueco) {
+            methods.setValue("idHuecoNicho", disponible.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
+          } else {
+            // No disponible found: do not auto-assign any hueco to avoid selecting an occupied one.
+            // Leave the field empty so the user must pick a valid available hueco manually.
           }
         }
       } catch (err) {

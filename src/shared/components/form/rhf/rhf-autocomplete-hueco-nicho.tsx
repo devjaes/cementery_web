@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import AxiosClient from "@/core/infrastructure/axios-client";
+import { API_ROUTES } from "@/core/constants/api-routes";
 import { useFormContext, Controller, useWatch } from "react-hook-form";
 import { useFindHuecosByCementerioQuery } from "@/features/huecos/presentation/hooks/use-hueco-queries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -42,7 +44,17 @@ export default function RHFAutocompleteHuecoNicho({
         }
         (async () => {
             try {
-                const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersona(ownerPersonId);
+                // Resolve cedula for the selected person id, because backend endpoint
+                // expects cedula for propietario lookups (por-persona/:cedula)
+                const http = AxiosClient.getInstance();
+                const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(ownerPersonId));
+                const cedula: string | undefined = personaResp?.data?.data?.cedula;
+                if (!cedula) {
+                    setAllowedNichoIds([]);
+                    return;
+                }
+
+                const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(cedula);
                 if (cancelled) return;
                 const nichoIds = (propietarios || []).map((p: any) => p.idNicho?.idNicho).filter(Boolean);
                 setAllowedNichoIds(nichoIds);
@@ -58,7 +70,8 @@ export default function RHFAutocompleteHuecoNicho({
     }, [ownerPersonId]);
 
     // Filtrar por texto de búsqueda
-    const baseList = (huecosNichos ?? []).filter(h => isAvailable ? h.estado === "Disponible" : true);
+    const isAvailableState = (s: any) => String(s || "").toLowerCase() === "disponible";
+    const baseList = (huecosNichos ?? []).filter(h => isAvailable ? isAvailableState(h.estado) : true);
 
     const filtered = baseList
         .filter(h => {
