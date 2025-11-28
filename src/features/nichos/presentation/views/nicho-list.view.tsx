@@ -1,8 +1,16 @@
 "use client";
 import { useState, useMemo } from "react";
 import ContainerApp from "@/core/layout/container-app";
-import { NichoSearchBar, SearchType, NichoSearchFilters } from "../components/nicho-search-bar.component";
+import { NichoSearchBar } from "../components/nicho-search-bar.component";
+
+type NichoSearchFilters = {
+  cementerio?: string;
+  fila?: string;
+  numero?: string;
+};
 import { NichoSearchResults } from "../components/nicho-search-results.component";
+
+type SearchType = "fallecido" | "nicho";
 import { NichoListTable } from "../components/nicho-table.component";
 import { NichoForm } from "../components/nicho-form.component";
 import { useSearchFallecidosQuery, useFindAllNichosQuery, useFindNichoByIdQuery } from "../hooks/use-nicho-queries";
@@ -66,25 +74,22 @@ export default function NichoListView() {
   } = useFindAllNichosQuery();
 
   // Filter nichos based on search criteria
-  const filteredNichos = useMemo(() => {
-    if (!nichoFilters || !allNichos) return allNichos;
-
-    return allNichos.filter((nicho) => {
-      const matchesCementerio = !nichoFilters.cementerio ||
-        nicho.idCementerio?.nombre?.toLowerCase().includes(nichoFilters.cementerio.toLowerCase());
-
-      const matchesSector = !nichoFilters.sector ||
-        nicho.sector.toLowerCase().includes(nichoFilters.sector.toLowerCase());
-
-      const matchesFila = !nichoFilters.fila ||
-        nicho.fila.toLowerCase().includes(nichoFilters.fila.toLowerCase());
-
-      const matchesNumero = !nichoFilters.numero ||
-        nicho.numero.toLowerCase().includes(nichoFilters.numero.toLowerCase());
-
-      return matchesCementerio && matchesSector && matchesFila && matchesNumero;
-    });
-  }, [allNichos, nichoFilters]);
+    const filteredNichos = useMemo(() => {
+      if (!nichoFilters || !allNichos) return allNichos;
+  
+      return allNichos.filter((nicho) => {
+        const matchesCementerio = !nichoFilters.cementerio ||
+          String(nicho.idCementerio?.nombre ?? '').toLowerCase().includes(nichoFilters.cementerio.toLowerCase());
+  
+        const matchesFila = !nichoFilters.fila ||
+          String(nicho.fila ?? '').toLowerCase().includes(nichoFilters.fila.toLowerCase());
+  
+        const matchesNumero = !nichoFilters.numero ||
+          String(nicho.columna ?? '').toLowerCase().includes(nichoFilters.numero.toLowerCase());
+  
+        return matchesCementerio && matchesFila && matchesNumero;
+      });
+    }, [allNichos, nichoFilters]);
 
   const handleSearchFallecido = (busqueda: string) => {
     setSearchTerm(busqueda);
@@ -132,6 +137,9 @@ export default function NichoListView() {
 
   const isSearching = searchType === "fallecido" ? isSearchingFallecidos : isLoadingNichos;
 
+  // Cast the imported component to any to allow passing extra prop names not present in its TS props type
+  const SearchBar = NichoSearchBar as unknown as any;
+
   return (
     <ContainerApp title="Gestión de Nichos">
       <div className="space-y-6">
@@ -145,13 +153,10 @@ export default function NichoListView() {
               Administra nichos y busca la ubicación de fallecidos
             </p>
           </div>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> Nuevo Nicho
-          </Button>
         </div>
 
         {/* Search Bar */}
-        <NichoSearchBar
+        <SearchBar
           onSearchFallecido={handleSearchFallecido}
           onSearchNicho={handleSearchNicho}
           onClear={handleClearSearch}
@@ -307,13 +312,10 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
               <TableRow key={nicho.idNicho}>
                 <TableCell className="font-medium">{nicho.idCementerio?.nombre || "N/A"}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{nicho.sector}</Badge>
-                </TableCell>
-                <TableCell>
                   <Badge variant="outline">{nicho.fila}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{nicho.numero}</Badge>
+                  <Badge variant="outline">{nicho.columna}</Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{nicho.tipo}</Badge>
@@ -323,21 +325,39 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Link href={`/nichos/${nicho.idNicho}`}>
-                      <Button size="icon" variant="ghost">
+                    {nicho.estadoVenta === 'Deshabilitado' ? (
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        disabled
+                      >
                         <Eye className="w-4 h-4" />
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link href={`/nichos/${nicho.idNicho}`}>
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => onEditClick(nicho.idNicho!)}
+                      disabled={nicho.estadoVenta === 'Deshabilitado'}
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost">
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                          disabled={nicho.estadoVenta === 'Deshabilitado'}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>

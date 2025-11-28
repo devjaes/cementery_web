@@ -39,9 +39,16 @@ export const useBloquesWithNichos = (idCementerio: string) => {
 
   // Convertir bloques con sus nichos y estadísticas reales
   const bloquesWithNichos: BloqueWithNichos[] = useMemo(() => {
-    return bloques
+    // Primero ordenar bloques por fecha de creación
+    const sortedBloques = [...bloques].sort((a, b) => 
+      new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime()
+    );
+
+    let nichoGlobalCounter = 1; // Contador global para todos los nichos
+
+    return sortedBloques
       .map((bloque, index) => {
-        const queryResult = bloquesNichosQueries[index];
+        const queryResult = bloquesNichosQueries[bloques.indexOf(bloque)];
         
         if (!queryResult.data) {
           return {
@@ -54,9 +61,23 @@ export const useBloquesWithNichos = (idCementerio: string) => {
           };
         }
 
-        // Ordenar nichos por fecha_creacion (más antiguos primero)
+        // Ordenar nichos por fila y columna: primero por fila, luego por columna
         const nichos = (queryResult.data.nichos as NichoEntity[])
-          .sort((a, b) => new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime());
+          .sort((a, b) => {
+            if (a.fila !== b.fila) {
+              return a.fila - b.fila;
+            }
+            return a.columna - b.columna;
+          })
+          .map((nicho) => {
+            // Asignar número global consecutivo
+            const nichoWithNumber = {
+              ...nicho,
+              numeroGlobal: nichoGlobalCounter
+            };
+            nichoGlobalCounter++;
+            return nichoWithNumber;
+          });
         
         const disponibles = nichos.filter(n => n.estadoVenta === 'Disponible' || !n.estadoVenta).length;
         const reservados = nichos.filter(n => n.estadoVenta === 'Reservado').length;
@@ -70,9 +91,7 @@ export const useBloquesWithNichos = (idCementerio: string) => {
           reservados,
           vendidos
         };
-      })
-      // Ordenar bloques por fecha_creacion (más antiguos primero)
-      .sort((a, b) => new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime());
+      });
   }, [bloques, bloquesNichosQueries]);
 
   // Cuando hay un bloque seleccionado y se cargaron los nichos, crear el objeto completo
@@ -84,9 +103,25 @@ export const useBloquesWithNichos = (idCementerio: string) => {
     
     // Si tenemos datos frescos del query individual, usarlos
     if (bloqueWithNichosData) {
-      // Ordenar nichos por fecha_creacion (más antiguos primero)
+      // Calcular el offset de numeración global para este bloque
+      const bloqueIndex = bloquesWithNichos.findIndex(b => b.idBloque === selectedBloqueId);
+      let nichoOffset = 1;
+      for (let i = 0; i < bloqueIndex; i++) {
+        nichoOffset += bloquesWithNichos[i].totalNichos;
+      }
+
+      // Ordenar nichos por fila y columna
       const nichos = (bloqueWithNichosData.nichos as NichoEntity[])
-        .sort((a, b) => new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime());
+        .sort((a, b) => {
+          if (a.fila !== b.fila) {
+            return a.fila - b.fila;
+          }
+          return a.columna - b.columna;
+        })
+        .map((nicho, idx) => ({
+          ...nicho,
+          numeroGlobal: nichoOffset + idx
+        }));
       
       const disponibles = nichos.filter(n => n.estadoVenta === 'Disponible' || !n.estadoVenta).length;
       const reservados = nichos.filter(n => n.estadoVenta === 'Reservado').length;

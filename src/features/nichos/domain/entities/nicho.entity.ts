@@ -3,15 +3,14 @@ import { HuecoEntity } from "@/features/huecos/domain/entities/hueco.entity";
 import { PersonEntity } from "@/features/person/domain/entities/person.entity";
 import { PropietarioNichoEntity } from "@/features/propietarios-nichos/domain/entities/propietario-nicho.entity";
 
-export type EstadoVentaNicho = "Vendido" | "Reservado" | "Disponible";
+export type EstadoVentaNicho = 'Vendido' | 'Reservado' | 'Disponible' | 'Deshabilitado';
 
 export interface NichoEntity {
   idNicho?: string;
   idCementerio?: CementeryEntity;
   idBloque?: string;
-  sector: string;
   fila: number;
-  numero: string;
+  columna: number;
   tipo: string;
   estado: string;
   estadoVenta: EstadoVentaNicho;
@@ -41,9 +40,6 @@ export interface SearchFallecidosEntity {
 
 export interface CreateNichoEntity {
   idCementerio: string;
-  sector: string;
-  fila: number | string;
-  numero: string | number;
   tipo: string;
   fechaConstruccion: string;
   observaciones?: string | null;
@@ -52,11 +48,15 @@ export interface CreateNichoEntity {
 
 export interface UpdateNichoEntity {
   idNicho: string;
-  sector?: string;
-  fila?: number | string;
-  numero?: string | number;
   tipo?: string;
   fechaConstruccion?: string;
   observaciones?: string | null;
   numHuecos?: number;
+}
+
+export interface EnableNichoEntity {
+  tipo: string;
+  fecha_construccion: string;
+  num_huecos: number;
+  observaciones?: string;
 }

@@ -53,6 +53,13 @@ const estadosNicho: Record<EstadoVentaNicho, {
     ring: 'ring-rose-500/20',
     label: 'Vendido',
     badgeVariant: 'destructive'
+  },
+  'Deshabilitado': {
+    color: 'bg-gray-400',
+    hover: 'hover:bg-gray-500',
+    ring: 'ring-gray-400/20',
+    label: 'Deshabilitado',
+    badgeVariant: 'secondary'
   }
 };
 
@@ -161,22 +168,25 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery, onStatisticsCh
             <TooltipProvider>
               {niches.map((niche) => {
                 const colorStatus = getNicheColorByEstado(niche);
+                const isDisabled = niche.estadoVenta === 'Deshabilitado';
                 return (
                   <Tooltip key={niche.idNicho}>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => handleNicheClick(niche.idNicho!)}
+                        onClick={() => !isDisabled && handleNicheClick(niche.idNicho!)}
+                        disabled={isDisabled}
                         className={clsx(
                           'relative w-10 h-10 rounded-md font-semibold text-white text-xs',
                           'transition-all duration-200 ease-in-out',
-                          'hover:scale-110 hover:shadow-lg hover:z-10',
+                          !isDisabled && 'hover:scale-110 hover:shadow-lg hover:z-10',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                           colorStatus.color,
-                          colorStatus.hover,
-                          `focus-visible:${colorStatus.ring}`
+                          !isDisabled && colorStatus.hover,
+                          !isDisabled && `focus-visible:${colorStatus.ring}`,
+                          isDisabled && 'cursor-not-allowed opacity-60'
                         )}
                       >
-                        {niche.numero}
+                        {niche.columna}
                       </button>
                     </TooltipTrigger>
                     <TooltipContent
@@ -195,7 +205,7 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery, onStatisticsCh
                         colorStatus.badgeVariant === 'destructive' && 'bg-rose-500/10'
                       )}>
                         <div className="flex items-center justify-between gap-3">
-                          <p className="font-bold text-base text-foreground">Nicho {niche.numero}</p>
+                          <p className="font-bold text-base text-foreground">Nicho {niche.columna}</p>
                           <Badge
                             variant={colorStatus.badgeVariant}
                             className={clsx(
@@ -214,11 +224,11 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery, onStatisticsCh
                         <div className="grid grid-cols-2 gap-3">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 rounded bg-muted">
-                              <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                              <Hash className="w-3.5 h-3.5 text-muted-foreground" />
                             </div>
                             <div>
-                              <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Sector</p>
-                              <p className="text-sm font-semibold text-foreground leading-none">{niche.sector}</p>
+                              <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Fila</p>
+                              <p className="text-sm font-semibold text-foreground leading-none">{niche.fila}</p>
                             </div>
                           </div>
 
@@ -227,8 +237,8 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery, onStatisticsCh
                               <Hash className="w-3.5 h-3.5 text-muted-foreground" />
                             </div>
                             <div>
-                              <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Fila</p>
-                              <p className="text-sm font-semibold text-foreground leading-none">{niche.fila}</p>
+                              <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Columna</p>
+                              <p className="text-sm font-semibold text-foreground leading-none">{niche.columna}</p>
                             </div>
                           </div>
 
@@ -313,7 +323,7 @@ export const NichesGrid: React.FC<NichesGridProps> = ({ cemetery, onStatisticsCh
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              {selectedForSale ? `Vender Nicho ${selectedForSale.numero}` : 'Vender Nicho'}
+              {selectedForSale ? `Vender Nicho ${selectedForSale.columna}` : 'Vender Nicho'}
             </DialogTitle>
           </DialogHeader>
 

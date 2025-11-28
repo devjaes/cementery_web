@@ -115,13 +115,13 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
               <TableRow key={nicho.idNicho}>
                 <TableCell className="font-medium">{nicho.idCementerio?.nombre || "N/A"}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{nicho.sector}</Badge>
+                  <Badge variant="outline"></Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{nicho.fila}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{nicho.numero}</Badge>
+                  <Badge variant="outline">{nicho.columna}</Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{nicho.tipo}</Badge>
@@ -131,29 +131,58 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Link href={`/nichos/${nicho.idNicho}`}>
-                      <Button size="icon" variant="ghost">
+                    {nicho.estadoVenta === 'Deshabilitado' ? (
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        disabled
+                      >
                         <Eye className="w-4 h-4" />
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link href={`/nichos/${nicho.idNicho}`}>
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
                     {onEditClick ? (
                       <Button
                         size="icon"
                         variant="ghost"
                         onClick={() => onEditClick(nicho.idNicho!)}
+                        disabled={nicho.estadoVenta === 'Deshabilitado'}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    ) : nicho.estadoVenta === 'Deshabilitado' ? (
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        disabled
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
                     ) : (
                       <Link href={`/nichos/${nicho.idNicho}/editar`}>
-                        <Button size="icon" variant="ghost">
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                        >
                           <Pencil className="w-4 h-4" />
                         </Button>
                       </Link>
                     )}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost">
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                          disabled={nicho.estadoVenta === 'Deshabilitado'}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>

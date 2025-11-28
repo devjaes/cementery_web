@@ -19,7 +19,8 @@ import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity
 import { HuecoTooltip } from './hole-tooltip.component';
 import { CreatePaymentForm } from '@/features/payment';
 import { ReservationActions } from '@/features/nichos/presentation/components/reservation-actions.component';
-import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { EnableNichoForm } from '@/features/nichos/presentation/components/enable-nicho-form.component';
+import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, ShoppingCart, ArrowLeft, Power } from 'lucide-react';
 import clsx from 'clsx';
 
 interface BlocksWithNichesMapProps {
@@ -54,6 +55,13 @@ const estadosNicho: Record<EstadoVentaNicho, {
     ring: 'ring-rose-500/20',
     label: 'Vendido',
     badgeVariant: 'destructive'
+  },
+  'Deshabilitado': {
+    color: 'bg-gray-400',
+    hover: 'hover:bg-gray-500',
+    ring: 'ring-gray-400/20',
+    label: 'Deshabilitado',
+    badgeVariant: 'secondary'
   }
 };
 
@@ -70,6 +78,8 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   const [selectedForSale, setSelectedForSale] = useState<NichoEntity | null>(null);
   const [viewReservationOpen, setViewReservationOpen] = useState<boolean>(false);
   const [reservationNichoId, setReservationNichoId] = useState<string | null>(null);
+  const [enableDialogOpen, setEnableDialogOpen] = useState<boolean>(false);
+  const [selectedForEnable, setSelectedForEnable] = useState<string | null>(null);
   const prevStatisticsRef = useRef<string>('');
 
   const filteredBloques = useMemo(() => {
@@ -126,6 +136,11 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   const openSellDialog = (nicho: NichoEntity) => {
     setSelectedForSale(nicho);
     setSellDialogOpen(true);
+  };
+
+  const openEnableDialog = (nichoId: string) => {
+    setSelectedForEnable(nichoId);
+    setEnableDialogOpen(true);
   };
 
   const getBlockColor = (bloque: BloqueWithNichos) => {
@@ -291,20 +306,24 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                     {selectedBloque.nichos.map((niche) => {
                       const colorStatus = getNicheColorByEstado(niche);
                       const isNextForSale = nextAvailableNichoForSale === niche.idNicho;
+                      const isDisabled = niche.estadoVenta === 'Deshabilitado';
+                      const nichoNumber = (niche as any).numeroGlobal || niche.columna;
                       return (
                         <Tooltip key={niche.idNicho}>
                           <TooltipTrigger asChild>
                             <button
-                              onClick={() => handleNicheClick(niche.idNicho!)}
+                              onClick={() => !isDisabled && handleNicheClick(niche.idNicho!)}
+                              disabled={isDisabled}
                               className={clsx(
                                 'relative w-12 h-12 rounded-md font-semibold text-white text-xs',
                                 'transition-all duration-200 ease-in-out',
-                                'hover:scale-110 hover:shadow-lg hover:z-10',
+                                !isDisabled && 'hover:scale-110 hover:shadow-lg hover:z-10',
                                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                                 colorStatus.color,
-                                colorStatus.hover,
-                                `focus-visible:${colorStatus.ring}`,
-                                isNextForSale && 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse'
+                                !isDisabled && colorStatus.hover,
+                                !isDisabled && `focus-visible:${colorStatus.ring}`,
+                                isNextForSale && 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse',
+                                isDisabled && 'cursor-not-allowed opacity-60'
                               )}
                             >
                               {isNextForSale && (
@@ -313,7 +332,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                   <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
                                 </span>
                               )}
-                              {niche.numero}
+                              {nichoNumber}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent
@@ -332,7 +351,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                               colorStatus.badgeVariant === 'destructive' && 'bg-rose-500/10'
                             )}>
                               <div className="flex items-center justify-between gap-3">
-                                <p className="font-bold text-base text-foreground">Nicho {niche.numero}</p>
+                                <p className="font-bold text-base text-foreground">Nicho {nichoNumber}</p>
                                 <Badge
                                   variant={colorStatus.badgeVariant}
                                   className={clsx(
@@ -351,11 +370,11 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="flex items-center gap-2">
                                   <div className="p-1.5 rounded bg-muted">
-                                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <Hash className="w-3.5 h-3.5 text-muted-foreground" />
                                   </div>
                                   <div>
-                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Sector</p>
-                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.sector}</p>
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Fila</p>
+                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.fila}</p>
                                   </div>
                                 </div>
 
@@ -364,8 +383,8 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                     <Hash className="w-3.5 h-3.5 text-muted-foreground" />
                                   </div>
                                   <div>
-                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Fila</p>
-                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.fila}</p>
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Columna</p>
+                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.columna}</p>
                                   </div>
                                 </div>
 
@@ -463,6 +482,20 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                     Detalles
                                   </Button>
                                 )}
+                                {niche.estadoVenta === 'Deshabilitado' && (
+                                  <Button
+                                    size="sm"
+                                    className="w-full gap-2"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      openEnableDialog(niche.idNicho!);
+                                    }}
+                                  >
+                                    <Power className="w-4 h-4" />
+                                    Habilitar
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </TooltipContent>
@@ -490,7 +523,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>
-                {selectedForSale ? `Vender Nicho ${selectedForSale.numero}` : 'Vender Nicho'}
+                {selectedForSale ? `Vender Nicho ${(selectedForSale as any).numeroGlobal || selectedForSale.columna}` : 'Vender Nicho'}
               </DialogTitle>
             </DialogHeader>
 
@@ -524,6 +557,28 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
             }}
           />
         )}
+
+        {/* Modal de habilitar nicho */}
+        <Dialog open={enableDialogOpen} onOpenChange={(open) => { setEnableDialogOpen(open); if (!open) setSelectedForEnable(null); }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Power className="w-5 h-5" />
+                Habilitar Nicho
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedForEnable && (
+              <EnableNichoForm
+                nichoId={selectedForEnable}
+                onSuccess={() => {
+                  setEnableDialogOpen(false);
+                  setSelectedForEnable(null);
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

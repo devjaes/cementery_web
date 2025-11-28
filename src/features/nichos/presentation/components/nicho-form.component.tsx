@@ -49,26 +49,9 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RHFCementerySelect
-            name="idCementerio"
-            label="Cementerio"
-            disabled={true}
-          />
-          <RHFInput name="sector" label="Sector" />
-          <RHFInput name="fila" label="Fila" type="number" />
-          <RHFInput name="numero" label="Número" type="number" />
-          <RHFSelect
-            name="tipo"
-            label="Tipo"
-            options={tipoOptions}
-            placeholder="Selecciona el tipo de nicho"
-          />
-          <RHFDatePickerCalendar
-            name="fechaConstruccion"
-            label="Fecha de adquisición"
-          />
-
-          {/* 🔒 Ahora sí: bloquear numHuecos al editar */}
+          <RHFCementerySelect name="idCementerio" label="Cementerio" />
+          <RHFSelect name="tipo" label="Tipo" options={tipoOptions} placeholder="Selecciona el tipo de nicho" />
+          <RHFDatePickerCalendar name="fechaConstruccion" label="Fecha de adquisición" />
           <RHFInput
             name="numHuecos"
             label="Número de Huecos"
