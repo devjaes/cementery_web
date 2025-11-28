@@ -1,7 +1,7 @@
 import { API_ROUTES } from "@/core/constants/api-routes";
 import { NichoModel, NichosFallecidosModel, SearchFallecidosModel } from "../models/nicho.model";
 import { NichoRepository, NichoPropietariosResponse } from "../../domain/repositories/nicho.repository";
-import { NichoEntity, CreateNichoEntity, UpdateNichoEntity, NichoFallecidosEntity, SearchFallecidosEntity } from "../../domain/entities/nicho.entity";
+import { NichoEntity, CreateNichoEntity, UpdateNichoEntity, NichoFallecidosEntity, SearchFallecidosEntity, EnableNichoEntity } from "../../domain/entities/nicho.entity";
 import { NichoMapper } from "../mappers/nicho.mapper";
 import AxiosClient from "@/core/infrastructure/axios-client";
 import { NichoFallecidosMapper, SearchFallecidosMapper } from "../mappers/nicho-facellido.mapper";
@@ -59,5 +59,13 @@ export class NichoRepositoryImpl implements NichoRepository {
   async searchFallecidos(busqueda: string): Promise<SearchFallecidosEntity> {
     const { data } = await this.httpClient.get<SearchFallecidosModel>(API_ROUTES.NICHOS.SEARCH_FALLECIDOS(busqueda));
     return SearchFallecidosMapper.toEntity(data.data);
+  }
+
+  async enable(id: string, enableData: EnableNichoEntity): Promise<NichoEntity> {
+    const { data } = await this.httpClient.post<NichoModel>(
+      API_ROUTES.NICHOS.ENABLE(id),
+      enableData
+    );
+    return NichoMapper.toEntity(data.data);
   }
 }

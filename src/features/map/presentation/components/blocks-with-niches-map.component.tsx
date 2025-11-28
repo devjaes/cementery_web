@@ -19,7 +19,8 @@ import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity
 import { HuecoTooltip } from './hole-tooltip.component';
 import { CreatePaymentForm } from '@/features/payment';
 import { ReservationActions } from '@/features/nichos/presentation/components/reservation-actions.component';
-import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { EnableNichoForm } from '@/features/nichos/presentation/components/enable-nicho-form.component';
+import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, ShoppingCart, ArrowLeft, Power } from 'lucide-react';
 import clsx from 'clsx';
 
 interface BlocksWithNichesMapProps {
@@ -77,6 +78,8 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   const [selectedForSale, setSelectedForSale] = useState<NichoEntity | null>(null);
   const [viewReservationOpen, setViewReservationOpen] = useState<boolean>(false);
   const [reservationNichoId, setReservationNichoId] = useState<string | null>(null);
+  const [enableDialogOpen, setEnableDialogOpen] = useState<boolean>(false);
+  const [selectedForEnable, setSelectedForEnable] = useState<string | null>(null);
   const prevStatisticsRef = useRef<string>('');
 
   const filteredBloques = useMemo(() => {
@@ -133,6 +136,11 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   const openSellDialog = (nicho: NichoEntity) => {
     setSelectedForSale(nicho);
     setSellDialogOpen(true);
+  };
+
+  const openEnableDialog = (nichoId: string) => {
+    setSelectedForEnable(nichoId);
+    setEnableDialogOpen(true);
   };
 
   const getBlockColor = (bloque: BloqueWithNichos) => {
@@ -299,6 +307,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                       const colorStatus = getNicheColorByEstado(niche);
                       const isNextForSale = nextAvailableNichoForSale === niche.idNicho;
                       const isDisabled = niche.estadoVenta === 'Deshabilitado';
+                      const nichoNumber = (niche as any).numeroGlobal || niche.columna;
                       return (
                         <Tooltip key={niche.idNicho}>
                           <TooltipTrigger asChild>
@@ -323,7 +332,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                   <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
                                 </span>
                               )}
-                              {niche.columna}
+                              {nichoNumber}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent
@@ -342,7 +351,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                               colorStatus.badgeVariant === 'destructive' && 'bg-rose-500/10'
                             )}>
                               <div className="flex items-center justify-between gap-3">
-                                <p className="font-bold text-base text-foreground">Nicho {niche.columna}</p>
+                                <p className="font-bold text-base text-foreground">Nicho {nichoNumber}</p>
                                 <Badge
                                   variant={colorStatus.badgeVariant}
                                   className={clsx(
@@ -473,6 +482,20 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                     Detalles
                                   </Button>
                                 )}
+                                {niche.estadoVenta === 'Deshabilitado' && (
+                                  <Button
+                                    size="sm"
+                                    className="w-full gap-2"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      openEnableDialog(niche.idNicho!);
+                                    }}
+                                  >
+                                    <Power className="w-4 h-4" />
+                                    Habilitar
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </TooltipContent>
@@ -500,7 +523,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>
-                {selectedForSale ? `Vender Nicho ${selectedForSale.columna}` : 'Vender Nicho'}
+                {selectedForSale ? `Vender Nicho ${(selectedForSale as any).numeroGlobal || selectedForSale.columna}` : 'Vender Nicho'}
               </DialogTitle>
             </DialogHeader>
 
@@ -534,6 +557,28 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
             }}
           />
         )}
+
+        {/* Modal de habilitar nicho */}
+        <Dialog open={enableDialogOpen} onOpenChange={(open) => { setEnableDialogOpen(open); if (!open) setSelectedForEnable(null); }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Power className="w-5 h-5" />
+                Habilitar Nicho
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedForEnable && (
+              <EnableNichoForm
+                nichoId={selectedForEnable}
+                onSuccess={() => {
+                  setEnableDialogOpen(false);
+                  setSelectedForEnable(null);
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

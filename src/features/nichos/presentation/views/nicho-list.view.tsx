@@ -153,9 +153,6 @@ export default function NichoListView() {
               Administra nichos y busca la ubicación de fallecidos
             </p>
           </div>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> Nuevo Nicho
-          </Button>
         </div>
 
         {/* Search Bar */}

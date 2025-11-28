@@ -53,3 +53,10 @@ export interface UpdateNichoEntity {
   observaciones?: string;
   numHuecos?: number;
 }
+
+export interface EnableNichoEntity {
+  tipo: string;
+  fecha_construccion: string;
+  num_huecos: number;
+  observaciones?: string;
+}

@@ -43,6 +43,7 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.NICHOS,
     UPDATE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
+    ENABLE: (id: string) => `${AR_KEYS.NICHOS}/${id}/habilitar`,
   },
   PERSONS: {
     LIST: AR_KEYS.PERSON,
