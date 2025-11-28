@@ -27,6 +27,12 @@ interface GeneratePaymentButtonProps {
   observations?: string;
   disabled?: boolean;
   onSuccess?: (paymentId: string) => void;
+  // Optional buyer fields to include in the payment payload when available
+  buyerDocument?: string | null;
+  buyerName?: string | null;
+  buyerDirection?: string | null;
+  /** Called when the PDF preview dialog is closed after generation */
+  onPreviewClose?: (paymentId: string) => void;
 }
 
 export const GeneratePaymentButton = ({
@@ -37,6 +43,10 @@ export const GeneratePaymentButton = ({
   observations,
   disabled,
   onSuccess,
+  buyerDocument,
+  buyerName,
+  buyerDirection,
+  onPreviewClose,
 }: GeneratePaymentButtonProps) => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -53,6 +63,9 @@ export const GeneratePaymentButton = ({
       amount,
       generatedBy,
       observations,
+      buyerDocument: buyerDocument ?? "",
+      buyerName: buyerName ?? "",
+      buyerDirection: buyerDirection ?? "",
     };
 
     createPayment.mutate(paymentData, {
@@ -71,6 +84,7 @@ export const GeneratePaymentButton = ({
   return (
     <>
       <Button
+        type="button"
         onClick={() => setShowConfirmDialog(true)}
         disabled={disabled || isLoading}
         className="gap-2"
@@ -84,7 +98,7 @@ export const GeneratePaymentButton = ({
           <DialogHeader>
             <DialogTitle>Generar Comprobante de Pago</DialogTitle>
             <DialogDescription>
-              Se generará un comprobante de pago por ${amount.toFixed(2)}. El
+              Se generará un comprobante de pago por {"$" + amount.toFixed(2)}. El
               trámite quedará en estado pendiente hasta que se suba el
               comprobante pagado.
             </DialogDescription>
@@ -93,7 +107,7 @@ export const GeneratePaymentButton = ({
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Monto:</span>
-              <span className="font-semibold">${amount.toFixed(2)}</span>
+              <span className="font-semibold">{"$" + amount.toFixed(2)}</span>
             </div>
             {observations && (
               <div className="flex flex-col gap-1">
@@ -105,13 +119,14 @@ export const GeneratePaymentButton = ({
 
           <DialogFooter>
             <Button
+              type="button"
               variant="outline"
               onClick={() => setShowConfirmDialog(false)}
               disabled={isLoading}
             >
               Cancelar
             </Button>
-            <Button onClick={handleGeneratePayment} disabled={isLoading}>
+            <Button type="button" onClick={handleGeneratePayment} disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Generar y Descargar
             </Button>
@@ -121,7 +136,12 @@ export const GeneratePaymentButton = ({
 
       <PdfPreviewDialog
         open={showPdfPreview}
-        onOpenChange={setShowPdfPreview}
+        onOpenChange={(open) => {
+          setShowPdfPreview(open);
+          if (!open && createdPayment) {
+            onPreviewClose?.(createdPayment.paymentId);
+          }
+        }}
         pdfBlob={pdfBlob}
         payment={createdPayment}
       />

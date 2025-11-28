@@ -26,6 +26,12 @@ export interface CreatePaymentModel {
   buyerName: string;
   buyerDirection?: string;
   observations?: string;
+  // Campos adicionales para la generación del PDF
+  causa?: string;
+  procedureTitle?: string;
+  ubicacion?: string;
+  fallecidoNombre?: string;
+  concepto?: string;
 }
 
 export interface UpdatePaymentModel {

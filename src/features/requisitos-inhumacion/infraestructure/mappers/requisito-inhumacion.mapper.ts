@@ -6,6 +6,45 @@ import { HuecoMapper } from "@/features/huecos/infrastructure/mappers/hueco.mapp
 
 
 export class RequisitoInhumacionMapper {
+    static toModel(entity: import("../../domain/entities/requisito-inhumacion.entity").CreateRequisitoInhumacionEntity): import("../models/requisito-inhumacion.model").CreateRequisitoInhumacionModel {
+        // Map Create entity -> Create model, keeping backend naming (snake/Pascal as defined in model)
+        return {
+            id_cementerio: entity.idCementerio,
+            pantoneroACargo: entity.pantoneroACargo,
+            // model has a small typo 'metodoSolictud' — map from entity.metodoSolicitud
+            metodoSolictud: entity.metodoSolicitud,
+            id_solicitante: entity.idSolicitante,
+            observacionSolicitante: entity.observacionSolicitante || undefined,
+            codigo_inhumacion: entity.codigoInhumacion || undefined,
+
+            copiaCertificadoDefuncion: !!entity.copiaCertificadoDefuncion,
+            observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || undefined,
+
+            informeEstadisticoINEC: !!entity.informeEstadisticoINEC,
+            observacionInformeEstadisticoINEC: entity.observacionInformeEstadisticoINEC || undefined,
+
+            copiaCedula: !!entity.copiaCedula,
+            observacionCopiaCedula: entity.observacionCopiaCedula || undefined,
+
+            pagoTasaInhumacion: !!entity.pagoTasaInhumacion,
+            observacionPagoTasaInhumacion: entity.observacionPagoTasaInhumacion || undefined,
+
+            copiaTituloPropiedadNicho: !!entity.copiaTituloPropiedadNicho,
+            observacionCopiaTituloPropiedadNicho: entity.observacionCopiaTituloPropiedadNicho || undefined,
+
+            autorizacionDeMovilizacionDelCadaver: !!entity.autorizacionDeMovilizacionDelCadaver,
+            observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || undefined,
+
+            OficioDeSolicitud: !!entity.oficioDeSolicitud,
+            observacionOficioSolicitud: entity.observacionOficioSolicitud || undefined,
+
+            id_hueco_nicho: entity.idHuecoNicho,
+            id_fallecido: entity.idFallecido,
+            fechaInhumacion: entity.fechaInhumacion,
+            horaInhumacion: entity.horaInhumacion,
+            nombreAdministradorNicho: entity.nombreAdministradorNicho,
+        };
+    }
     static toEntity(data: RequisitoInhumacionModel): RequisitoInhumacionEntity {
         // Safely extract codigoInhumacion supporting both API shapes: codigoInhumacion or codigo_inhumacion
         const maybeCodigo = ((): string | undefined => {
@@ -30,10 +69,19 @@ export class RequisitoInhumacionMapper {
         // Helper to read boolean-like fields supporting multiple naming conventions
         const readBool = (rec: Record<string, unknown>, keyCamel: string, keySnake?: string): boolean => {
             const snake = keySnake ?? keyCamel.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+            // also support PascalCase keys returned by some backends (e.g. `OficioDeSolicitud`)
+            const pascal = keyCamel.charAt(0).toUpperCase() + keyCamel.slice(1);
+
             const a = rec[keyCamel];
             if (typeof a === "boolean") return a;
             if (a === "true" || a === "1") return true;
             if (a === "false" || a === "0") return false;
+
+            const p = rec[pascal];
+            if (typeof p === "boolean") return p;
+            if (p === "true" || p === "1") return true;
+            if (p === "false" || p === "0") return false;
+
             const b = rec[snake];
             if (typeof b === "boolean") return b;
             if (b === "true" || b === "1") return true;
@@ -73,69 +121,72 @@ export class RequisitoInhumacionMapper {
         };
     }
 
-    static toModel(entity: CreateRequisitoInhumacionEntity): CreateRequisitoInhumacionModel{
-        return {
-            codigo_inhumacion: entity.codigoInhumacion,
-            id_cementerio: entity.idCementerio,
-            pantoneroACargo: entity.pantoneroACargo,
-            metodoSolictud: entity.metodoSolicitud,
-            id_solicitante: entity.idSolicitante,
-            observacionSolicitante: entity.observacionSolicitante || "",
-
-            copiaCertificadoDefuncion: entity.copiaCertificadoDefuncion ,
-            observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || "",
-
-            informeEstadisticoINEC: entity.informeEstadisticoINEC ,
-            observacionInformeEstadisticoINEC: entity.observacionInformeEstadisticoINEC,
-
-            copiaCedula: entity.copiaCedula ,
-            observacionCopiaCedula: entity.observacionCopiaCedula || "",
-
-            pagoTasaInhumacion: entity.pagoTasaInhumacion,
-            observacionPagoTasaInhumacion: entity.observacionPagoTasaInhumacion || "",
-
-            copiaTituloPropiedadNicho: entity.copiaTituloPropiedadNicho,
-            observacionCopiaTituloPropiedadNicho: entity.observacionCopiaTituloPropiedadNicho || "",
-
-            autorizacionDeMovilizacionDelCadaver: entity.autorizacionDeMovilizacionDelCadaver,
-            observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || "",
-
-            OficioDeSolicitud: entity.oficioDeSolicitud,
-            observacionOficioSolicitud: entity.observacionOficioSolicitud || "",
-            
-            id_hueco_nicho: entity.idHuecoNicho,
-            id_fallecido: entity.idFallecido,
-            fechaInhumacion: entity.fechaInhumacion,
-            horaInhumacion: entity.horaInhumacion,
-            
-            nombreAdministradorNicho: entity.nombreAdministradorNicho,
-        }
-    }
-
     static toUpdateModel(entity: UpdateRequisitoInhumacionEntity): UpdateRequisitoInhumacionModel{
-        return {
-            id_requisitoInhumacion: entity.idRequisitoInhumacion,
+        // Build a flexible payload (as any) to support multiple backend naming conventions
+        const out: any = {
+            // Ensure the identifier is present for the update endpoint
+            id_requisitoInhumacion: entity.idRequisitoInhumacion ?? (entity as any).idRequsitoInhumacion ?? (entity as any).id,
+            // Basic editable fields (ensure these are sent so backend persists them)
+            pantoneroACargo: (entity as any).pantoneroACargo,
+            pantonero_a_cargo: (entity as any).pantoneroACargo ?? undefined,
+            metodoSolictud: (entity as any).metodoSolicitud || (entity as any).metodoSolictud,
+            id_solicitante: (entity as any).idSolicitante ?? (entity as any).id_solicitante,
+            observacionSolicitante: (entity as any).observacionSolicitante || undefined,
+            id_cementerio: (entity as any).idCementerio ?? undefined,
+            codigo_inhumacion: (entity as any).codigoInhumacion ?? undefined,
             copiaCertificadoDefuncion: entity.copiaCertificadoDefuncion,
             observacionCertificadoDefuncion: entity.observacionCertificadoDefuncion || "",
+            observacion_certificado_defuncion: entity.observacionCertificadoDefuncion || "",
 
             informeEstadisticoINEC: entity.informeEstadisticoINEC,
             observacionInformeEstadisticoINEC: entity.observacionInformeEstadisticoINEC || "",
+            observacion_informe_estadistico_inec: entity.observacionInformeEstadisticoINEC || "",
 
             copiaCedula: entity.copiaCedula,
             observacionCopiaCedula: entity.observacionCopiaCedula || "",
+            observacion_copia_cedula: entity.observacionCopiaCedula || "",
 
             pagoTasaInhumacion: entity.pagoTasaInhumacion,
             observacionPagoTasaInhumacion: entity.observacionPagoTasaInhumacion || "",
+            observacion_pago_tasa_inhumacion: entity.observacionPagoTasaInhumacion || "",
 
             copiaTituloPropiedadNicho: entity.copiaTituloPropiedadNicho,
             observacionCopiaTituloPropiedadNicho: entity.observacionCopiaTituloPropiedadNicho || "",
+            observacion_copia_titulo_propiedad_nicho: entity.observacionCopiaTituloPropiedadNicho || "",
 
             autorizacionDeMovilizacionDelCadaver: entity.autorizacionDeMovilizacionDelCadaver,
             observacionAutorizacionMovilizacion: entity.observacionAutorizacionMovilizacion || "",
+            observacion_autorizacion_movilizacion: entity.observacionAutorizacionMovilizacion || "",
+        };
 
-            OficioDeSolicitud: entity.oficioDeSolicitud,
-            observacionOficioSolicitud: entity.observacionOficioSolicitud || "",
-        }
+        // Support multiple naming conventions for the backend: camelCase, snake_case and legacy PascalCase
+        out.OficioDeSolicitud = entity.oficioDeSolicitud;
+        out.oficioDeSolicitud = entity.oficioDeSolicitud;
+        out.oficio_de_solicitud = entity.oficioDeSolicitud;
+        out.observacionOficioSolicitud = entity.observacionOficioSolicitud || "";
+        out.observacion_oficio_solicitud = entity.observacionOficioSolicitud || "";
 
+        // Include related fields so backend can update linked inhumación if required
+        out.id_hueco_nicho = (entity as any).idHuecoNicho ?? undefined;
+        out.id_fallecido = (entity as any).idFallecido ?? undefined;
+        out.fechaInhumacion = (entity as any).fechaInhumacion ?? undefined;
+        out.horaInhumacion = (entity as any).horaInhumacion ?? undefined;
+        out.nombreAdministradorNicho = (entity as any).nombreAdministradorNicho ?? undefined;
+        out.codigoInhumacion = (entity as any).codigoInhumacion ?? undefined;
+
+        // mirror observation fields with snake_case aliases to improve backend compatibility
+        out.observacion_certificado_defuncion = out.observacion_certificado_defuncion || out.observacionCertificadoDefuncion;
+        out.observacion_informe_estadistico_inec = out.observacion_informe_estadistico_inec || out.observacionInformeEstadisticoINEC;
+        out.observacion_copia_cedula = out.observacion_copia_cedula || out.observacionCopiaCedula;
+        out.observacion_pago_tasa_inhumacion = out.observacion_pago_tasa_inhumacion || out.observacionPagoTasaInhumacion;
+        out.observacion_copia_titulo_propiedad_nicho = out.observacion_copia_titulo_propiedad_nicho || out.observacionCopiaTituloPropiedadNicho;
+        out.observacion_autorizacion_movilizacion = out.observacion_autorizacion_movilizacion || out.observacionAutorizacionMovilizacion;
+        out.observacion_oficio_solicitud = out.observacion_oficio_solicitud || out.observacionOficioSolicitud;
+
+        // ensure pantonero also available in snake_case
+        out.pantonero_a_cargo = out.pantonero_a_cargo || out.pantoneroACargo;
+
+        return out as UpdateRequisitoInhumacionModel;
     }
+
 }

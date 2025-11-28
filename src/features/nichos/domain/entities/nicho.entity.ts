@@ -42,7 +42,7 @@ export interface CreateNichoEntity {
   idCementerio: string;
   tipo: string;
   fechaConstruccion: string;
-  observaciones?: string;
+  observaciones?: string | null;
   numHuecos: number;
 }
 
@@ -50,7 +50,7 @@ export interface UpdateNichoEntity {
   idNicho: string;
   tipo?: string;
   fechaConstruccion?: string;
-  observaciones?: string;
+  observaciones?: string | null;
   numHuecos?: number;
 }
 

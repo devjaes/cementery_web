@@ -4,9 +4,21 @@ import RHFInput from "@/shared/components/form/rhf/rhf-input";
 import { Button } from "@/shared/components/ui/button";
 import clsx from "clsx";
 import { useBloqueForm } from "../hooks/use-bloque-form";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
 
-export function BloqueForm({ idCementerio }: { idCementerio: string }) {
-  const { methods, onSubmit, isPending } = useBloqueForm(idCementerio);
+export function BloqueForm() {
+  const { getActiveCemeteryId } = useActiveCemetery();
+  const idCementerio = getActiveCemeteryId();
+  const { methods, onSubmit, isPending } = useBloqueForm(idCementerio || "", undefined);
+
+  if (!idCementerio) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        Selecciona un cementerio para crear bloques
+      </div>
+    );
+  }
+
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-4">
@@ -25,3 +37,4 @@ export function BloqueForm({ idCementerio }: { idCementerio: string }) {
     </FormProvider>
   );
 }
+

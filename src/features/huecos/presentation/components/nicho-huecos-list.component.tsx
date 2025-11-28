@@ -110,6 +110,7 @@ export function NichoHuecosList({ nichoId }: NichoHuecosListProps) {
               <TableHead><span className="flex items-center gap-1"><BadgeCheck className="w-4 h-4" />Estado</span></TableHead>
               <TableHead><span className="flex items-center gap-1"><User2 className="w-4 h-4" />Fallecido</span></TableHead>
               <TableHead><span className="flex items-center gap-1">Archivo PDF</span></TableHead>
+              <TableHead><span className="flex items-center gap-1">Observaciòn </span></TableHead>
               <TableHead><span className="flex items-center gap-1">Acciones</span></TableHead>
             </TableRow>
           </TableHeader>
@@ -155,6 +156,17 @@ export function NichoHuecosList({ nichoId }: NichoHuecosListProps) {
                     <span className="text-gray-400">-</span>
                   )}
                 </TableCell>
+ <TableCell className="max-w-[200px] whitespace-pre-wrap break-words">
+  {hueco.observacionAmpliacion ? (
+    <span className="block whitespace-pre-wrap break-words">
+      {hueco.observacionAmpliacion}
+    </span>
+  ) : (
+    <span className="text-gray-400">-</span>
+  )}
+</TableCell>
+
+
                 <TableCell>
                   <div className="flex gap-2">
                     {canDeleteHueco(hueco) ? (

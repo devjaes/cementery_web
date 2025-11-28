@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  BellIcon,
-  CreditCardIcon,
-  LogOutIcon,
-  MoreVerticalIcon,
-  UserCircleIcon,
-} from "lucide-react";
+import { LogOutIcon, MoreVerticalIcon } from "lucide-react";
 
 import {
   Avatar,
@@ -16,7 +10,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -28,7 +21,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/shared/components/ui/sidebar";
-import { signOut } from "next-auth/react";
+import { useAuth } from "@/features/auth/hooks/use-current-user";
 
 export function NavUser({
   user,
@@ -40,6 +33,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { logout } = useAuth();
 
   return (
     <SidebarMenu>
@@ -84,26 +78,9 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <UserCircleIcon />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/sign-in" })}
-            >
+            <DropdownMenuItem onClick={logout}>
               <LogOutIcon />
-              Log out
+              Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -95,14 +95,10 @@ export const PaymentStatusCard = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Monto:</span>
-              <p className="font-semibold">
-                ${latestPayment.amount.toFixed(2)}
-              </p>
+              <p className="font-semibold">${latestPayment.amount.toFixed(2)}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">
-                Fecha de generación:
-              </span>
+              <span className="text-muted-foreground">Fecha de generación:</span>
               <p className="font-semibold">
                 {new Date(latestPayment.generatedDate).toLocaleDateString()}
               </p>
@@ -115,12 +111,7 @@ export const PaymentStatusCard = ({
                 </p>
               </div>
             )}
-            {latestPayment.validatedBy && (
-              <div>
-                <span className="text-muted-foreground">Validado por:</span>
-                <p className="font-semibold">{latestPayment.validatedBy}</p>
-              </div>
-            )}
+            {/** 'Validado por' removido por requerimiento del producto. */}
           </div>
 
           {latestPayment.observations && (
@@ -132,6 +123,7 @@ export const PaymentStatusCard = ({
 
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               className="gap-2"
               onClick={() => downloadReceipt.mutate(latestPayment.paymentId)}
@@ -146,6 +138,7 @@ export const PaymentStatusCard = ({
             </Button>
 
             <Button
+              type="button"
               variant="outline"
               className="gap-2"
               onClick={async () => {

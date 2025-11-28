@@ -72,16 +72,33 @@ export class PaymentRepositoryImpl implements PaymentRepository {
     const baseURL =
       process.env.NEXT_PUBLIC_BACKEND_API_URL ||
       "https://backend-cementerio-pillaro.onrender.com";
-    const url = `${baseURL}${API_ROUTES.PAYMENTS.CREATE}`;
+    const url = `${baseURL.endsWith('/') ? baseURL : baseURL + '/'}${API_ROUTES.PAYMENTS.CREATE}`;
 
     const token = await this.getAuthToken();
-    const response = await axios.post(url, model, {
-      responseType: "blob",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+
+    // Log request payload for debugging server 500 errors
+    // eslint-disable-next-line no-console
+    console.debug("Creating payment, POST", url, model);
+
+    let response;
+    try {
+      response = await axios.post(url, model, {
+        responseType: "blob",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch (err: any) {
+      // If server responded, try to include server message for easier debugging
+      // eslint-disable-next-line no-console
+      console.error("Payment create request failed", err?.response || err);
+      const serverMessage = err?.response?.data
+        ? // try to parse if blob or json
+          (typeof err.response.data === 'string' ? err.response.data : JSON.stringify(err.response.data))
+        : err?.message || String(err);
+      throw new Error(`Payment create failed: ${serverMessage}`);
+    }
 
     const paymentDataHeader =
       response.headers["x-payment-data"] ||

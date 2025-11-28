@@ -1,6 +1,15 @@
 import { PersonEntity } from "../../domain/entities/person.entity";
 import { Button } from "@/shared/components/ui/button";
-import { Pencil, IdCard, Calendar, Phone, Mail, MapPin, Globe, Heart } from "lucide-react";
+import {
+  Pencil,
+  IdCard,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  Globe,
+  Heart,
+} from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
 import { DateFormatter } from "@/shared/lib/date-formatter";
 import clsx from "clsx";
@@ -33,7 +42,12 @@ export function PersonDetails({ person, onEdit }: PersonDetailsProps) {
             </Badge>
           </div>
           {onEdit && (
-            <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={onEdit}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={onEdit}
+            >
               <Pencil className="w-4 h-4" />
               Editar
             </Button>
@@ -112,7 +126,9 @@ export function PersonDetails({ person, onEdit }: PersonDetailsProps) {
                 <InfoItem
                   icon={<Calendar className="w-4 h-4" />}
                   label="Fecha de Defunción"
-                  value={DateFormatter.toLocaleDateString(person.fecha_defuncion)}
+                  value={DateFormatter.toLocaleDateString(
+                    person.fecha_defuncion
+                  )}
                 />
               )}
               {person.lugar_defuncion && (
@@ -127,13 +143,6 @@ export function PersonDetails({ person, onEdit }: PersonDetailsProps) {
                   icon={<Heart className="w-4 h-4" />}
                   label="Causa de Defunción"
                   value={person.causa_defuncion}
-                />
-              )}
-              {person.fecha_inhumacion && (
-                <InfoItem
-                  icon={<Calendar className="w-4 h-4" />}
-                  label="Fecha de Inhumación"
-                  value={DateFormatter.toLocaleDateString(person.fecha_inhumacion)}
                 />
               )}
             </div>
@@ -160,7 +169,9 @@ function InfoItem({
         <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">
           {label}
         </p>
-        <p className="text-sm text-foreground break-words leading-relaxed">{value}</p>
+        <p className="text-sm text-foreground break-words leading-relaxed">
+          {value}
+        </p>
       </div>
     </div>
   );

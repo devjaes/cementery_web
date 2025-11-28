@@ -6,7 +6,6 @@ import {
   LoginSchema,
   loginSchema,
 } from "../domain/schemas/login.schema";
-import { signIn } from "next-auth/react";
 
 export function useLoginForm() {
   const methods = useForm<LoginSchema>({
@@ -17,11 +16,6 @@ export function useLoginForm() {
   const { login } = useLogin();
 
   const onSubmit: SubmitHandler<LoginSchema> = async (data) => {
-    await signIn("credentials", {
-      cedula: data.cedula,
-      password: data.password,
-      redirect: false,
-    });
     login(data);
   };
 

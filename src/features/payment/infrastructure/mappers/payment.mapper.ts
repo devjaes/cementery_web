@@ -43,6 +43,12 @@ export class PaymentMapper {
       buyerName: entity.buyerName,
       buyerDirection: entity.buyerDirection,
       observations: entity.observations,
+      // Campos adicionales para la generación del PDF
+      causa: entity.causa,
+      procedureTitle: entity.procedureTitle,
+      ubicacion: entity.ubicacion,
+      fallecidoNombre: entity.fallecidoNombre,
+      concepto: entity.concepto,
     };
   }
 

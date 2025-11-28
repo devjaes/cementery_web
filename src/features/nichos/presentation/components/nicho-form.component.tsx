@@ -7,7 +7,6 @@ import RHFSelect from "@/shared/components/form/rhf/rhf-select";
 import RHFCementerySelect from "@/shared/components/form/rhf/rhf-cementery-select";
 import { useNichoForm } from "../hooks/use-nicho-form";
 import clsx from "clsx";
-// import RHFCalendar from "@/shared/components/form/rhf/rhf-calendar";
 import { useEffect } from "react";
 import { useWatch } from "react-hook-form";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
@@ -28,7 +27,12 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
 
   const tipo = useWatch({ control: methods.control, name: "tipo" });
 
+  const isEditMode = Boolean(nicho);
+
   useEffect(() => {
+    // Si está editando, NO debe sobrescribir numHuecos
+    if (isEditMode) return;
+
     if (tipo === "Nicho" || tipo === "Fosa") {
       methods.setValue("numHuecos", 1);
     } else if (tipo === "Mausoleo") {
@@ -37,7 +41,7 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
         methods.setValue("numHuecos", 1);
       }
     }
-  }, [tipo, methods]);
+  }, [tipo, methods, isEditMode]);
 
   const isFixedOne = tipo === "Nicho" || tipo === "Fosa";
 
@@ -52,13 +56,26 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
             name="numHuecos"
             label="Número de Huecos"
             type="number"
-            disabled={isFixedOne}
+            disabled={isEditMode || isFixedOne}
           />
-          <RHFInput name="observaciones" label="Observaciones" />
+
+          <RHFInput
+            name="observaciones"
+            label="Observaciones"
+            textArea={true}
+            required={false}
+          />
         </div>
         <div className="flex justify-end pt-2">
-          <Button type="submit" size="lg" className={clsx("px-8", isPending && "opacity-50 cursor-not-allowed")}
-            disabled={isPending}>
+          <Button
+            type="submit"
+            size="lg"
+            className={clsx(
+              "px-8",
+              isPending && "opacity-50 cursor-not-allowed"
+            )}
+            disabled={isPending}
+          >
             {isPending ? "Guardando..." : "Guardar"}
           </Button>
         </div>
@@ -66,4 +83,3 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
     </FormProvider>
   );
 }
-

@@ -23,6 +23,7 @@ export const useCreatePayment = () => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.all() });
     },
     onError: (error: Error) => {
+      console.log("Error creating payment:", error);
       toast.error("Error al generar el pago", {
         description: error.message,
       });
@@ -97,6 +98,16 @@ export const useUploadReceipt = () => {
         queryKey: PAYMENT_QUERY_KEYS.byId(payment.paymentId),
       });
       toast.success("Comprobante subido y pago confirmado exitosamente");
+      // Force-set the validatedBy on the payment using the server confirm endpoint
+      // This ensures the value the user provided (or the fallback from requisito) is persisted
+      try {
+        const repository = (await import("../../infrastructure/repositories/payment.repository.impl")).PaymentRepositoryImpl.getInstance();
+        await repository.confirmPayment(payment.paymentId, variables.validatedBy);
+        // invalidate again to pick up updated validatedBy
+        queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.byId(payment.paymentId) });
+      } catch (err) {
+        console.warn("Could not force-confirm payment with provided validatedBy:", err);
+      }
 
       // Si el pago corresponde a una venta de nicho, intentar confirmar la venta
       try {
@@ -105,6 +116,7 @@ export const useUploadReceipt = () => {
           const nichoSalesRepository = new NichoSalesRepository({
             post: axiosClient.post.bind(axiosClient),
             patch: axiosClient.patch.bind(axiosClient),
+            delete: axiosClient.delete.bind(axiosClient),
           });
 
           // llamar al endpoint de confirmar venta para que el backend marque el nicho como VENDIDO

@@ -4,7 +4,10 @@ import { NichoRepository, NichoPropietariosResponse } from "../../domain/reposit
 import { NichoEntity, CreateNichoEntity, UpdateNichoEntity, NichoFallecidosEntity, SearchFallecidosEntity, EnableNichoEntity } from "../../domain/entities/nicho.entity";
 import { NichoMapper } from "../mappers/nicho.mapper";
 import AxiosClient from "@/core/infrastructure/axios-client";
-import { NichoFallecidosMapper, SearchFallecidosMapper } from "../mappers/nicho-facellido.mapper";
+import {
+  NichoFallecidosMapper,
+  SearchFallecidosMapper,
+} from "../mappers/nicho-facellido.mapper";
 
 export class NichoRepositoryImpl implements NichoRepository {
   private httpClient: AxiosClient;
@@ -17,19 +20,31 @@ export class NichoRepositoryImpl implements NichoRepository {
     return new NichoRepositoryImpl();
   }
 
-  async findAll(): Promise<NichoEntity[]> {
-    const { data } = await this.httpClient.get<NichoModel[]>(API_ROUTES.NICHOS.LIST);
+  async findAll(idCementerio: string | undefined): Promise<NichoEntity[]> {
+    const { data } = await this.httpClient.get<NichoModel[]>(
+      API_ROUTES.NICHOS.LIST,
+      {
+        params: {
+          idCementerio,
+        },
+      }
+    );
     return data.data.map(NichoMapper.toEntity);
   }
 
   async findById(id: string): Promise<NichoEntity> {
-    const { data } = await this.httpClient.get<NichoModel>(API_ROUTES.NICHOS.GET_BY_ID(id));
+    const { data } = await this.httpClient.get<NichoModel>(
+      API_ROUTES.NICHOS.GET_BY_ID(id)
+    );
     return NichoMapper.toEntity(data.data);
   }
 
   async create(nicho: CreateNichoEntity): Promise<NichoEntity> {
     const model = NichoMapper.toModel(nicho);
-    const { data } = await this.httpClient.post<NichoModel>(API_ROUTES.NICHOS.CREATE, model);
+    const { data } = await this.httpClient.post<NichoModel>(
+      API_ROUTES.NICHOS.CREATE,
+      model
+    );
     return NichoMapper.toEntity(data.data);
   }
 
@@ -46,18 +61,26 @@ export class NichoRepositoryImpl implements NichoRepository {
     await this.httpClient.delete(API_ROUTES.NICHOS.DELETE(id));
   }
 
-  async findPropietariosByNichoId(id: string): Promise<NichoPropietariosResponse> {
-    const { data } = await this.httpClient.get<NichoPropietariosResponse>(API_ROUTES.NICHOS.GET_PROPIETARIOS(id));
+  async findPropietariosByNichoId(
+    id: string
+  ): Promise<NichoPropietariosResponse> {
+    const { data } = await this.httpClient.get<NichoPropietariosResponse>(
+      API_ROUTES.NICHOS.GET_PROPIETARIOS(id)
+    );
     return data.data;
   }
 
   async findByCedulaFallecido(cedula: string): Promise<NichoFallecidosEntity> {
-    const { data } = await this.httpClient.get<NichosFallecidosModel>(API_ROUTES.NICHOS.GET_BY_CEDULA_FALLECIDO(cedula));
+    const { data } = await this.httpClient.get<NichosFallecidosModel>(
+      API_ROUTES.NICHOS.GET_BY_CEDULA_FALLECIDO(cedula)
+    );
     return NichoFallecidosMapper.toEntity(data.data);
   }
 
   async searchFallecidos(busqueda: string): Promise<SearchFallecidosEntity> {
-    const { data } = await this.httpClient.get<SearchFallecidosModel>(API_ROUTES.NICHOS.SEARCH_FALLECIDOS(busqueda));
+    const { data } = await this.httpClient.get<SearchFallecidosModel>(
+      API_ROUTES.NICHOS.SEARCH_FALLECIDOS(busqueda)
+    );
     return SearchFallecidosMapper.toEntity(data.data);
   }
 

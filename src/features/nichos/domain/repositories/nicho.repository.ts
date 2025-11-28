@@ -7,7 +7,7 @@ export interface NichoPropietariosResponse {
 }
 
 export interface NichoRepository {
-  findAll(): Promise<NichoEntity[]>;
+  findAll(idCementerio: string | undefined): Promise<NichoEntity[]>;
   findById(id: string): Promise<NichoEntity>;
   findPropietariosByNichoId(id: string): Promise<NichoPropietariosResponse>;
   findByCedulaFallecido(cedula: string): Promise<NichoFallecidosEntity>;

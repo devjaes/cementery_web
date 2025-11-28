@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -17,20 +17,31 @@ export function ModalCrearHueco({ open, onClose, onConfirm, isLoading }: ModalCr
   const [file, setFile] = useState<File | null>(null);
   const [observacion, setObservacion] = useState("");
 
+  // 🔥 Resetear campos automáticamente cada vez que se abre el modal
+  useEffect(() => {
+    if (open) {
+      setFile(null);
+      setObservacion("");
+    }
+  }, [open]);
+
   const handleSubmit = () => {
     if (!file) {
       alert("Por favor selecciona un PDF");
       return;
     }
-    // Logs de depuración
+
     console.log("[ModalCrearHueco] Archivo seleccionado:", {
       name: file.name,
       type: file.type,
       size: file.size,
     });
     console.log("[ModalCrearHueco] Observación:", observacion);
+
     onConfirm({ file, observacion });
   };
+
+  const chars = observacion.length;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -48,11 +59,16 @@ export function ModalCrearHueco({ open, onClose, onConfirm, isLoading }: ModalCr
           />
 
           <label className="text-sm font-medium">Observación</label>
+
           <Textarea
-            placeholder="Escribe una observación..."
+            placeholder="Máximo 100 caracteres..."
             value={observacion}
+            maxLength={100}
             onChange={(e) => setObservacion(e.target.value)}
+            className="w-full min-h-[100px] max-h-[300px] resize-y overflow-y-auto"
           />
+
+          <p className="text-xs text-gray-500 text-right">{chars}/100 caracteres</p>
         </div>
 
         <DialogFooter className="flex justify-end gap-2 mt-4">
