@@ -37,7 +37,10 @@ const exhumacionSchema = z.object({
   duenioNicho: z.string().min(1, "El dueño del nicho es requerido"),
   causa: z.string().min(1, "La causa es requerida"),
   observacion: z.string().optional(),
-  archivo: z.instanceof(File).optional(),
+  archivo: z.instanceof(File, { message: "Es obligatorio subir un archivo PDF" })
+    .refine(file => file.type === "application/pdf", {
+      message: "El archivo debe ser un PDF"
+    }),
 });
 
 type ExhumacionFormData = z.infer<typeof exhumacionSchema>;
@@ -74,11 +77,20 @@ export default function NuevaExhumacionPage() {
 
   // Sincronizar archivo con el formulario
   useEffect(() => {
-    setValue("archivo", uploadedFile || undefined);
+    if (uploadedFile) {
+      setValue("archivo", uploadedFile);
+    }
   }, [uploadedFile, setValue]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
+    
+    if (file && file.type !== "application/pdf") {
+      alert("Error: Solo se permiten archivos PDF para la documentación de exhumación.");
+      event.target.value = ''; // Limpiar el input
+      return;
+    }
+    
     setUploadedFile(file);
   };
 
@@ -108,11 +120,22 @@ export default function NuevaExhumacionPage() {
       return;
     }
 
-    console.log("📋 Datos del formulario:", data);
-    console.log("📁 Archivo subido:", uploadedFile);
-    console.log("🏠 Inhumación completa:", inhumacion);
+    // Validación obligatoria del archivo PDF
+    if (!uploadedFile) {
+      alert("Error: Es obligatorio subir un archivo PDF antes de proceder con la exhumación.");
+      return;
+    }
 
-    const ubicacion = `${inhumacion.idNicho?.idCementerio?.nombre} - Sector ${inhumacion.idNicho?.sector} - Fila ${inhumacion.idNicho?.fila} - Nicho ${inhumacion.idNicho?.numero}`;
+    if (uploadedFile.type !== "application/pdf") {
+      alert("Error: El archivo debe ser un PDF.");
+      return;
+    }
+
+    console.log(" Datos del formulario:", data);
+    console.log(" Archivo subido:", uploadedFile);
+    console.log(" Inhumación completa:", inhumacion);
+
+    const ubicacion = `${inhumacion.idNicho?.idCementerio?.nombre} - Fila ${inhumacion.idNicho?.fila} - Columna ${inhumacion.idNicho?.columna}`;
 
     // Crear FormData para enviar archivo junto con datos
     const formData = new FormData();
@@ -135,34 +158,34 @@ export default function NuevaExhumacionPage() {
       formData.append('archivos', uploadedFile);
     }
 
-    console.log("📋 Datos a enviar:");
-    console.log("  • nicho_original_id:", inhumacion.idNicho.idNicho);
-    console.log("  • inhumacion_id:", inhumacion.idInhumacion);
-    console.log("  • archivo:", uploadedFile ? uploadedFile.name : 'Sin archivo');
-    console.log("  • ubicacion:", ubicacion);
+    // console.log(" Datos a enviar:");
+    // console.log("  • nicho_original_id:", inhumacion.idNicho.idNicho);
+    // console.log("  • inhumacion_id:", inhumacion.idInhumacion);
+    // console.log("  • archivo:", uploadedFile ? uploadedFile.name : 'Sin archivo');
+    // console.log("  • ubicacion:", ubicacion);
 
     try {
       // Crear la exhumación
-      console.log("🔄 Iniciando creación de exhumación...");
+      //console.log(" Iniciando creación de exhumación...");
       const exhumacionResult = await createExhumacionMutation.mutateAsync(formData);
-      console.log("✅ Exhumación creada exitosamente:", exhumacionResult);
-      console.log("🔍 Estructura completa del resultado:", JSON.stringify(exhumacionResult, null, 2));
-      console.log("🆔 ID de exhumación:", exhumacionResult?.idExhumacion);
-      console.log("🔑 Propiedades del resultado:", Object.keys(exhumacionResult || {}));
+      //console.log(" Exhumación creada exitosamente:", exhumacionResult);
+      //console.log(" Estructura completa del resultado:", JSON.stringify(exhumacionResult, null, 2));
+      //console.log(" ID de exhumación:", exhumacionResult?.idExhumacion);
+      //console.log(" Propiedades del resultado:", Object.keys(exhumacionResult || {}));
       
       // Verificar que tenemos el ID antes de redirigir
       if (!exhumacionResult?.idExhumacion) {
-        console.error("❌ ERROR: No se recibió el ID de exhumación en la respuesta");
-        console.error("📦 Respuesta completa:", exhumacionResult);
+        console.error(" ERROR: No se recibió el ID de exhumación en la respuesta");
+        console.error(" Respuesta completa:", exhumacionResult);
         alert("Error: No se pudo obtener el ID de la exhumación creada. Revisa la consola para más detalles.");
         return;
       }
       
       // Redirigir a la página de detalles de la exhumación
-      console.log(`✅ Redirigiendo a: /exhumaciones/${exhumacionResult.idExhumacion}`);
+      console.log(` Redirigiendo a: /exhumaciones/${exhumacionResult.idExhumacion}`);
       router.push(`/exhumaciones/${exhumacionResult.idExhumacion}`);
     } catch (error) {
-      console.error("❌ Error al crear exhumación:", error);
+      console.error(" Error al crear exhumación:", error);
       alert("Error al crear la exhumación. Por favor, intenta nuevamente.");
     }
   };
@@ -205,14 +228,14 @@ export default function NuevaExhumacionPage() {
   }
 
   // Verificar que tenemos todos los datos necesarios
-  console.log("🔍 Verificando datos de la inhumación:", {
-    inhumacion: inhumacion,
-    idInhumacion: inhumacion?.idInhumacion,
-    idNicho: inhumacion?.idNicho,
-    idNichoValue: inhumacion?.idNicho?.idNicho,
-    propiedades: Object.keys(inhumacion || {}),
-    propiedadesNicho: inhumacion?.idNicho ? Object.keys(inhumacion.idNicho) : []
-  });
+  // console.log(" Verificando datos de la inhumación:", {
+  //   inhumacion: inhumacion,
+  //   idInhumacion: inhumacion?.idInhumacion,
+  //   idNicho: inhumacion?.idNicho,
+  //   idNichoValue: inhumacion?.idNicho?.idNicho,
+  //   propiedades: Object.keys(inhumacion || {}),
+  //   propiedadesNicho: inhumacion?.idNicho ? Object.keys(inhumacion.idNicho) : []
+  // });
 
   if (!inhumacion?.idInhumacion || !inhumacion?.idNicho?.idNicho) {
     return (
@@ -299,9 +322,8 @@ export default function NuevaExhumacionPage() {
                   <MapPin className="h-3 w-3" />
                   <span className="font-medium">Ubicación:</span>
                   {inhumacion.idNicho?.idCementerio?.nombre} - 
-                  Sector {inhumacion.idNicho?.sector} - 
                   Fila {inhumacion.idNicho?.fila} - 
-                  Nicho {inhumacion.idNicho?.numero}
+                  Columna {inhumacion.idNicho?.columna}
                 </div>
                 <div className="text-sm text-gray-600">
                   <span className="font-medium">Solicitante:</span> {inhumacion.solicitante}
@@ -397,24 +419,31 @@ export default function NuevaExhumacionPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Documentación de Respaldo
+                Documentación de Respaldo *
               </CardTitle>
               <CardDescription>
-                Sube un archivo con la documentación necesaria para la exhumación (opcional)
+                Es obligatorio subir un archivo PDF con la documentación necesaria para proceder con la exhumación
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="archivo">Subir Archivo</Label>
+                <Label htmlFor="archivo" className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  Subir Archivo PDF *
+                </Label>
                 <Input
                   id="archivo"
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
+                  accept=".pdf"
                   onChange={handleFileUpload}
                   className="cursor-pointer"
+                  required
                 />
+                <p className="text-xs text-red-600 font-medium">
+                  * Es obligatorio subir un archivo PDF con la documentación de respaldo para proceder con la exhumación.
+                </p>
                 <p className="text-xs text-gray-500">
-                  Formatos permitidos: PDF, JPG, PNG. Máximo 5MB por archivo.
+                  Solo archivos PDF. Máximo 5MB.
                 </p>
               </div>
 
@@ -441,6 +470,15 @@ export default function NuevaExhumacionPage() {
                 </div>
               )}
 
+              {!uploadedFile && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-red-600">
+                    <strong>Atención:</strong> Debes subir un archivo PDF para poder proceder con la exhumación.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {errors.archivo && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
@@ -461,7 +499,7 @@ export default function NuevaExhumacionPage() {
             <CardContent>
               <div className="text-blue-700">
                 <p className="mb-3 font-semibold">
-                  <span className="text-lg">Costo de Exhumación:</span> $150.00 USD
+                  {/* <span className="text-lg">Costo de Exhumación:</span> $150.00 USD */}
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
@@ -488,12 +526,16 @@ export default function NuevaExhumacionPage() {
             </Link>
             <Button 
               type="submit" 
-              disabled={createExhumacionMutation.isPending}
+              disabled={createExhumacionMutation.isPending || !uploadedFile || uploadedFile.type !== "application/pdf"}
               className="min-w-40"
             >
               {createExhumacionMutation.isPending 
                 ? "Registrando Exhumación..." 
-                : "Registrar Exhumación"
+                : !uploadedFile 
+                  ? "Sube un PDF para continuar"
+                  : uploadedFile.type !== "application/pdf"
+                    ? "Solo se permiten archivos PDF"
+                    : "Registrar Exhumación"
               }
             </Button>
           </div>
