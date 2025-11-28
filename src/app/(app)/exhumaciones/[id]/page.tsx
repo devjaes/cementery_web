@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ContainerApp from "@/core/layout/container-app";
 import { Button } from "@/shared/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Separator } from "@/shared/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/components/ui/dialog";
 import { 
   ArrowLeft, 
   FileText, 
@@ -32,7 +33,7 @@ import { useFindExhumacionByIdQuery } from "@/features/exhumaciones/presentation
 import { useUploadComprobanteMutation, useDeleteExhumacionMutation } from "@/features/exhumaciones/presentation/hooks/use-exhumacion-mutations";
 import { 
   useCreatePayment, 
-  useDownloadReceipt, 
+  useDownloadReceipt,
   useUploadReceipt 
 } from "@/features/payment/presentation/hooks/use-payment-mutation";
 import { usePaymentsByProcedure } from "@/features/payment/presentation/hooks/use-payment-query";
@@ -66,7 +67,111 @@ const formatDateSafely = (dateValue: string | Date | null | undefined, formatStr
   }
 };
 
-export default function ExhumacionDetailPage() {
+// Componente para la sección de archivos
+const ArchivosSection = ({ exhumacion, handleDownloadArchivo }: { 
+  exhumacion: { archivos?: { type: string; data: number[] } | null }, 
+  handleDownloadArchivo: () => void 
+}): React.JSX.Element => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <FileText className="h-5 w-5" />
+        Documentación de Respaldo
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      {exhumacion.archivos && 
+       exhumacion.archivos.type === 'Buffer' && 
+       exhumacion.archivos.data && 
+       Array.isArray(exhumacion.archivos.data) && 
+       exhumacion.archivos.data.length > 0 ? (
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Archivo de Documentación</span>
+                <span className="text-xs text-gray-500">
+                  Tamaño: {(exhumacion.archivos.data.length / 1024).toFixed(1)} KB
+                  {exhumacion.archivos.data[0] === 37 && exhumacion.archivos.data[1] === 80 ? ' • PDF' : ' • Archivo binario'}
+                </span>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleDownloadArchivo}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-gray-500 text-center py-4">No hay archivos cargados</p>
+      )}
+    </CardContent>
+  </Card>
+);
+
+// Componente para la configuración de monto
+const ConfigMontoSection = ({ 
+  exhumacion, 
+  payments, 
+  paymentAmount, 
+  setPaymentAmount 
+}: {
+  exhumacion: { estadoPago: string },
+  payments: { status: string }[],
+  paymentAmount: number,
+  setPaymentAmount: (amount: number) => void
+}): React.JSX.Element | null => {
+  if (exhumacion.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid')) {
+    return null;
+  }
+  
+  return (
+    <Card className="border-blue-200 bg-blue-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-blue-800">
+          <DollarSign className="h-5 w-5" />
+          Establecer Monto de Exhumación
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="text-center">
+            <p className="text-sm text-blue-700 mb-4">
+              Ingresa el monto correspondiente para esta exhumación
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xl font-bold text-blue-900">$</span>
+              <Input
+                type="number"
+                value={paymentAmount || ""}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setPaymentAmount(isNaN(value) || value < 0 ? 0 : value);
+                }}
+                className="w-40 text-center text-xl font-bold"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+              />
+            </div>
+            {paymentAmount <= 0 && (
+              <p className="text-xs text-red-600 mt-2">
+                El monto debe ser mayor a $0.00
+              </p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default function ExhumacionDetailPage(): React.JSX.Element {
   const params = useParams();
   const router = useRouter();
   const exhumacionId = params.id as string;
@@ -75,6 +180,11 @@ export default function ExhumacionDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [generatingPayment, setGeneratingPayment] = useState(false);
   const [generatingAuthorization, setGeneratingAuthorization] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0); // Estado para el monto editable - inicia en 0
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentPdfUrl, setPaymentPdfUrl] = useState<string | null>(null);
+  const [showAuthorizationModal, setShowAuthorizationModal] = useState(false);
+  const [authorizationPdfUrl, setAuthorizationPdfUrl] = useState<string | null>(null);
 
   const { data: exhumacion, isLoading, error } = useFindExhumacionByIdQuery(exhumacionId);
   const uploadComprobanteMutation = useUploadComprobanteMutation();
@@ -91,6 +201,17 @@ export default function ExhumacionDetailPage() {
     exhumacionId,
     !!exhumacionId
   );
+
+  // useEffect para monitorear cambios en el estado del modal
+  useEffect(() => {
+    console.log(' useEffect - Estado del modal cambió:', {
+      showPaymentModal,
+      paymentPdfUrl,
+      showAuthorizationModal,
+      authorizationPdfUrl,
+      timestamp: new Date().toISOString()
+    });
+  }, [showPaymentModal, paymentPdfUrl, showAuthorizationModal, authorizationPdfUrl]);
 
   // Debug: Log para ver la estructura de datos
   if (exhumacion) {
@@ -130,18 +251,6 @@ export default function ExhumacionDetailPage() {
       }
     });
   }
-
-  // Debug: Log de pagos
-  // if (payments) {
-  //   console.log(" Pagos encontrados para esta exhumación:", payments);
-  //   console.log(" Pago pendiente:", payments.find(p => p.status === 'pending'));
-  //   console.log("Pago pagado:", payments.find(p => p.status === 'paid'));
-  //   console.log(" Estado combinado de pago:", {
-  //     estadoExhumacion: exhumacion?.estadoPago,
-  //     tienePagoPaid: payments?.some(p => p.status === 'paid'),
-  //     estadoFinal: (exhumacion?.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid'))
-  //   });
-  // }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -896,11 +1005,17 @@ export default function ExhumacionDetailPage() {
         pdf.rect(leftMargin, 8, tableWidth, pageHeight - 16, 'D');
       }
 
-      // Descargar el PDF
-      const filename = `autorizacion-exhumacion-${exhumacion.codigo || exhumacion.idExhumacion}.pdf`;
-      pdf.save(filename);
+      // Generar PDF como blob y mostrar en modal
+      const pdfBlob = pdf.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
       
-      console.log(' Autorización PDF descargada exitosamente');
+      console.log(' Autorización PDF generada en memoria:', { size: pdfBlob.size, type: pdfBlob.type, url: pdfUrl });
+      
+      // Mostrar en modal
+      setAuthorizationPdfUrl(pdfUrl);
+      setShowAuthorizationModal(true);
+      
+      console.log(' Modal de autorización mostrado exitosamente');
     } catch (error) {
       console.error(' Error al generar autorización PDF:', error);
       alert('Error al generar el PDF de autorización. Por favor, inténtalo nuevamente.');
@@ -909,10 +1024,15 @@ export default function ExhumacionDetailPage() {
     }
   };
 
-  // ===== FUNCIÓN PARA ORDEN DE PAGO (USA BACKEND ORIGINAL) =====
+  // ===== FUNCIÓN PARA ORDEN DE PAGO CON VISUALIZACIÓN EN MODAL =====
   const handleGeneratePaymentOrder = async () => {
     if (!exhumacion) {
       console.error('No hay datos de exhumación disponibles');
+      return;
+    }
+
+    if (paymentAmount <= 0) {
+      alert('Error: Debes establecer un monto mayor a $0.00 antes de generar la orden de pago.');
       return;
     }
 
@@ -942,23 +1062,10 @@ export default function ExhumacionDetailPage() {
         const ubicacion = exhumacion.ubicacion || 'Cementerio Municipal';
         const concepto = 'EXHUMACIÓN DE RESTOS MORTALES';
         
-        // Crear observaciones como JSON
-        // const observationsJson = JSON.stringify({
-        //   description: `Pago para exhumación de ${fallecidoCompleto}`,
-        //   buyerName,
-        //   buyerDocument,
-        //   buyerDirection,
-        //   causa,
-        //   procedureTitle,
-        //   ubicacion,
-        //   fallecidoNombre: fallecidoCompleto,
-        //   concepto
-        // });
-        
         const paymentData = {
           procedureType: 'exhumation' as const,
           procedureId: exhumacion.idExhumacion,
-          amount: 150.00,
+          amount: paymentAmount,
           generatedBy: 'admin-user', // TODO: usar usuario actual
           observations: `Pago para exhumación de ${fallecidoCompleto} - ${concepto}`, // Campo estándar de la API
           // Campos REQUERIDOS que ya existen en la BD
@@ -976,7 +1083,7 @@ export default function ExhumacionDetailPage() {
           concepto,
           // Campos adicionales que el backend podría buscar
           observacion: concepto, // Por si busca 'observacion' sin 's'
-          total: 150.00 // Campo alternativo para amount
+          total: paymentAmount // Campo alternativo para amount
         };
         
         // Log para verificar los datos que enviamos
@@ -1002,11 +1109,138 @@ export default function ExhumacionDetailPage() {
         paymentToUse = paymentResult.payment; // Extraer solo la entidad del pago de la respuesta
       }
 
-      // 3. Descargar el PDF directamente del backend (SIN MODIFICAR NADA)
+      // 3. Interceptar URL.createObjectURL para capturar el PDF
       if (paymentToUse) {
-        console.log(' Descargando comprobante PDF del backend...');
-        await downloadReceiptMutation.mutateAsync(paymentToUse.paymentId);
-        console.log(' Comprobante descargado exitosamente');
+        console.log(' Interceptando creación de URLs para PDF...');
+        
+        // Guardar funciones originales
+        const originalCreateObjectURL = URL.createObjectURL;
+        const originalAppendChild = document.body.appendChild;
+        const originalRemoveChild = document.body.removeChild;
+        const originalCreateElement = document.createElement;
+        
+        let interceptedPdfUrl: string | null = null;
+        let downloadIntercepted = false;
+        
+        // Interceptar createElement para evitar creación de enlaces de descarga automática
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (document.createElement as any) = function(tagName: string, options?: ElementCreationOptions): any {
+          const element = originalCreateElement.call(document, tagName, options);
+          
+          if (tagName.toLowerCase() === 'a' && interceptedPdfUrl) {
+            console.log(' Enlace <a> creado durante interceptación - modificando comportamiento');
+            
+            // Interceptar el click para evitar descarga automática
+            const originalClick = element.click;
+            element.click = function() {
+              const anchor = this as HTMLAnchorElement;
+              if (anchor.href && anchor.href.startsWith('blob:') && anchor.download) {
+                console.log(' EVITANDO click automático de descarga');
+                return false;
+              }
+              return originalClick.call(this);
+            };
+          }
+          
+          return element;
+        };
+        
+        // Interceptar URL.createObjectURL
+        URL.createObjectURL = function(object: Blob | MediaSource): string {
+          const url = originalCreateObjectURL(object);
+          
+          if (object instanceof Blob && 
+              (object.type === 'application/pdf' || object.size > 5000)) { // Probablemente un PDF
+            console.log('  PDF Blob detectado y interceptado:', { type: object.type, size: object.size, url });
+            
+            // ¡CREAR NUESTRO PROPIO BLOB URL INDEPENDIENTE!
+            const ourBlobUrl = originalCreateObjectURL(object);
+            console.log('  Creando URL independiente para modal:', ourBlobUrl);
+            
+            interceptedPdfUrl = ourBlobUrl;
+            downloadIntercepted = true;
+            
+            // Establecer estados inmediatamente para mostrar el modal
+            console.log('  Estableciendo estados con URL independiente...');
+            
+            setPaymentPdfUrl(ourBlobUrl);
+            setShowPaymentModal(true);
+            console.log('  Estados establecidos con URL independiente - Modal debería aparecer ahora');
+          }
+          
+          return url;
+        };
+        
+        // Interceptar appendChild para evitar que se agregue el enlace de descarga
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (document.body.appendChild as any) = function(node: Node): Node {
+          if (node instanceof HTMLAnchorElement) {
+            console.log(' Enlace detectado:', {
+              href: node.href,
+              download: node.download,
+              startsWith_blob: node.href?.startsWith('blob:'),
+              interceptedPdfUrl: !!interceptedPdfUrl
+            });
+            
+            if (node.href && 
+                node.href.startsWith('blob:') &&
+                node.download &&
+                interceptedPdfUrl) {
+              
+              console.log(' BLOQUEANDO descarga automática - Solo mostrar en modal');
+              downloadIntercepted = true;
+              
+              // IMPORTANTE: No agregar el enlace al DOM para evitar descarga
+              // Interceptar también el clic automático si ocurre
+              node.click = function() {
+                console.log(' Click de descarga interceptado y bloqueado');
+                return false;
+              };
+              
+              return node; // Devolver pero sin agregarlo al DOM
+            }
+          }
+          
+          return originalAppendChild.call(document.body, node);
+        };
+        
+        // Interceptar removeChild también
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (document.body.removeChild as any) = function(node: Node): Node {
+          if (node instanceof HTMLAnchorElement && downloadIntercepted) {
+            // Si es un enlace que interceptamos, simplemente retornarlo sin error
+            return node;
+          }
+          
+          return originalRemoveChild.call(document.body, node);
+        };
+        
+        try {
+          // Usar el hook original para generar el PDF
+          console.log(' Ejecutando downloadReceiptMutation...');
+          await downloadReceiptMutation.mutateAsync(paymentToUse.paymentId);
+          
+          // Esperar un poco más para asegurar interceptación
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          if (interceptedPdfUrl && downloadIntercepted) {
+            console.log('  PDF interceptado exitosamente!');
+            console.log('  URL del PDF:', interceptedPdfUrl);
+            console.log('  Los estados ya fueron establecidos en la interceptación');
+            
+          } else {
+            console.log('  No se interceptó el PDF, verificar implementación del hook');
+          }
+          
+        } finally {
+          // Restaurar todas las funciones originales EXCEPTO revokeObjectURL para mantener el blob
+          URL.createObjectURL = originalCreateObjectURL;
+          // NO restauramos revokeObjectURL para evitar que se revoque el blob antes de cargarse
+          // URL.revokeObjectURL = originalRevokeObjectURL;
+          document.body.appendChild = originalAppendChild;
+          document.body.removeChild = originalRemoveChild;
+          document.createElement = originalCreateElement;
+        }
       }
       
     } catch (error) {
@@ -1017,6 +1251,62 @@ export default function ExhumacionDetailPage() {
       window.location.reload();
     } finally {
       setGeneratingPayment(false);
+    }
+  };
+
+  // Función para descargar el PDF desde el modal
+  const handleDownloadPaymentPdf = () => {
+    if (paymentPdfUrl) {
+      const link = document.createElement('a');
+      link.href = paymentPdfUrl;
+      link.download = `orden-pago-exhumacion-${exhumacion?.codigo || exhumacion?.idExhumacion}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // Función para cerrar el modal y limpiar recursos
+  const handleClosePaymentModal = (open: boolean) => {
+    console.log(' handleClosePaymentModal llamado con open:', open, 'paymentPdfUrl actual:', paymentPdfUrl);
+    
+    if (!open) { // Solo cerrar cuando open es false
+      console.log(' Cerrando modal y limpiando recursos...');
+      if (paymentPdfUrl) {
+        URL.revokeObjectURL(paymentPdfUrl);
+        setPaymentPdfUrl(null);
+      }
+      setShowPaymentModal(false);
+    } else {
+      console.log(' Modal abriéndose, no hacer nada');
+    }
+  };
+
+  // Función para cerrar el modal de autorización y limpiar recursos
+  const handleCloseAuthorizationModal = (open: boolean) => {
+    console.log(' handleCloseAuthorizationModal llamado con open:', open, 'authorizationPdfUrl actual:', authorizationPdfUrl);
+    
+    if (!open) { // Solo cerrar cuando open es false
+      console.log(' Cerrando modal de autorización y limpiando recursos...');
+      if (authorizationPdfUrl) {
+        URL.revokeObjectURL(authorizationPdfUrl);
+        setAuthorizationPdfUrl(null);
+      }
+      setShowAuthorizationModal(false);
+    } else {
+      console.log(' Modal de autorización abriéndose, no hacer nada');
+    }
+  };
+
+  // Función para descargar el PDF de autorización desde el modal
+  const handleDownloadAuthorizationPdf = () => {
+    if (authorizationPdfUrl) {
+      const link = document.createElement('a');
+      link.href = authorizationPdfUrl;
+      link.download = `autorizacion-exhumacion-${exhumacion?.codigo || exhumacion?.idExhumacion}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -1167,11 +1457,7 @@ export default function ExhumacionDetailPage() {
                   <div className="text-sm text-gray-600">
                     <span className="font-medium">Solicitante:</span> {exhumacion.inhumacion.solicitante || 'No disponible'}
                   </div>
-                  {/* <Link href={`/inhumaciones/${exhumacion.inhumacion.idInhumacion}`}>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Ver Detalles de Inhumación
-                    </Button>
-                  </Link> */}
+                  
                 </div>
               </div>
             </CardContent>
@@ -1194,45 +1480,15 @@ export default function ExhumacionDetailPage() {
         )}
 
         {/* Archivos de Documentación */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Documentación de Respaldo
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {exhumacion.archivos && 
-             exhumacion.archivos.type === 'Buffer' && 
-             exhumacion.archivos.data && 
-             Array.isArray(exhumacion.archivos.data) ? (
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">Archivo de Documentación</span>
-                      <span className="text-xs text-gray-500">
-                        Tamaño: {(exhumacion.archivos.data.length / 1024).toFixed(1)} KB
-                        {exhumacion.archivos.data[0] === 37 && exhumacion.archivos.data[1] === 80 ? ' • PDF' : ' • Archivo binario'}
-                      </span>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleDownloadArchivo}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No hay archivos cargados</p>
-            )}
-          </CardContent>
-        </Card>
+        <ArchivosSection exhumacion={exhumacion} handleDownloadArchivo={handleDownloadArchivo} />
+
+        {/* Configuración de Monto */}
+        <ConfigMontoSection 
+          exhumacion={exhumacion} 
+          payments={payments || []} 
+          paymentAmount={paymentAmount} 
+          setPaymentAmount={setPaymentAmount} 
+        />
 
         {/* Estado de Pago */}
         <Card className={(exhumacion.estadoPago === 'finalizado' || payments?.some(p => p.status === 'paid')) ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}>
@@ -1266,8 +1522,8 @@ export default function ExhumacionDetailPage() {
                   onClick={handleDownloadAutorizacion}
                   disabled={generatingAuthorization}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  {generatingAuthorization ? "Generando Autorización..." : "Descargar Autorización de Exhumación (PDF)"}
+                  <FileText className="h-4 w-4 mr-2" />
+                  {generatingAuthorization ? "Generando Autorización..." : "Visualizar Autorización de Exhumación"}
                 </Button>
               </div>
             ) : (
@@ -1277,77 +1533,54 @@ export default function ExhumacionDetailPage() {
                   <span className="font-medium">Pago Pendiente</span>
                 </div>
                 
-                <div className="bg-white p-4 rounded border border-yellow-200">
-                  <div className="text-center mb-4">
-                    <p className="font-medium text-yellow-800">Monto a Pagar</p>
-                    <p className="text-2xl font-bold text-yellow-900 mt-1">$150.00</p>
-                    <p className="text-sm text-yellow-600 mt-2">
-                      Costo de exhumación según normativa municipal
+                {paymentAmount > 0 && (
+                  <div className="bg-white p-4 rounded border border-yellow-200">
+                    <div className="space-y-3">
+                      <div className="text-center">
+                        <p className="font-medium text-yellow-800 mb-2">Monto a Pagar</p>
+                        <p className="text-2xl font-bold text-yellow-900">
+                          ${paymentAmount.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentAmount === 0 && (
+                  <div className="bg-orange-50 p-4 rounded border border-orange-200 text-center">
+                    <p className="text-orange-700 text-sm">
+                      ⚠️ Establece primero el monto de la exhumación en la sección anterior
                     </p>
                   </div>
-                </div>
+                )}
 
                 <Separator />
-
-                {/* Debug: Información de ambos sistemas de pago */}
-                {/* <div className="bg-gray-50 p-3 rounded text-sm">
-                  <p className="font-medium text-gray-800">Estado de Sistemas de Pago:</p>
-                  <div className="mt-2 space-y-1">
-                     <div className="text-gray-700">
-                      <span className="font-medium">Tabla Exhumaciones:</span> 
-                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                        exhumacion.estadoPago === 'finalizado' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {exhumacion.estadoPago || 'pendiente'}
-                      </span>
-                    </div> */}
-                    {/* <div className="text-gray-700">
-                      <span className="font-medium">Módulo Payments:</span>
-                      {payments && payments.length > 0 ? (
-                        <div className="ml-2">
-                          {payments.map(payment => (
-                            <div key={payment.paymentId} className="text-xs">
-                              • {payment.paymentCode} - 
-                              <span className={`ml-1 px-1 py-0.5 rounded ${
-                                payment.status === 'paid' 
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {payment.status}
-                              </span>
-                              - ${payment.amount}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="ml-2 text-xs text-gray-500">Sin pagos registrados</span>
-                      )}
-                    </div> 
-                  </div>
-                </div> */}
 
                 <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
                     Generar Orden de Pago
                   </Label>
-                  {/* <p className="text-sm text-gray-600">
-                    Genera y descarga la orden de pago oficial para realizar el pago en tesorería
-                  </p> */}
                   <Button 
                     onClick={handleGeneratePaymentOrder}
-                    disabled={generatingPayment}
+                    disabled={generatingPayment || paymentAmount <= 0}
                     className="w-full"
                     variant="default"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    {generatingPayment ? "Generando Orden de Pago..." : "Descargar Orden de Pago"}
+                    <FileText className="h-4 w-4 mr-2" />
+                    {generatingPayment 
+                      ? "Generando Orden de Pago..." 
+                      : paymentAmount <= 0 
+                        ? "Establece un monto para generar la orden de pago"
+                        : "Visualizar Orden de Pago"
+                    }
                   </Button>
-                  {/* <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded mt-2">
-                     Este PDF viene directamente del backend para diagnosticar los datos vacíos
-                  </p> */}
+                  {paymentAmount <= 0 && (
+                    <p className="text-xs text-red-600 bg-red-50 p-2 rounded">
+                      ⚠️ Debes establecer un monto mayor a $0.00 antes de generar la orden de pago
+                    </p>
+                  )}
+                  
                 </div>
 
                 <Separator />
@@ -1372,13 +1605,7 @@ export default function ExhumacionDetailPage() {
                       {uploading ? "Subiendo..." : "Subir"}
                     </Button>
                   </div>
-                  {/* <p className="text-xs text-gray-500">
-                    Formatos permitidos: PDF, JPG, PNG. Máximo 5MB.
-                  </p> */}
-                  {/* <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                     El comprobante se guardará en la tabla de exhumaciones y actualizará el estado automáticamente.
-                    {payments?.find(p => p.status === 'pending') && ' También se actualizará en el módulo de payments.'}
-                  </p> */}
+                  
                 </div>
               </div>
             )}
@@ -1400,6 +1627,100 @@ export default function ExhumacionDetailPage() {
             Editar
           </Button>
         </div>
+
+        {/* Modal de Visualización de Orden de Pago */}
+        {console.log('🎭 Renderizando modal - showPaymentModal:', showPaymentModal, 'paymentPdfUrl:', paymentPdfUrl)}
+        <Dialog open={showPaymentModal} onOpenChange={handleClosePaymentModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Orden de Pago - Exhumación
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 min-h-0">
+              {paymentPdfUrl ? (
+                <iframe
+                  src={paymentPdfUrl}
+                  className="w-full h-full min-h-[500px] border rounded"
+                  title="Orden de Pago PDF"
+                  onLoad={() => console.log(' IFRAME: PDF cargado exitosamente')}
+                  onError={(e) => console.error(' IFRAME: Error al cargar PDF', e)}
+                  onAbort={() => console.log(' IFRAME: Carga abortada')}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <p className="text-gray-500">Cargando PDF...</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex justify-between sm:justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => handleClosePaymentModal(false)}
+              >
+                Cerrar
+              </Button>
+              <Button 
+                onClick={handleDownloadPaymentPdf}
+                disabled={!paymentPdfUrl}
+                className="ml-2"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Visualización de Autorización de Exhumación */}
+        {console.log('📋 Renderizando modal autorización - showAuthorizationModal:', showAuthorizationModal, 'authorizationPdfUrl:', authorizationPdfUrl)}
+        <Dialog open={showAuthorizationModal} onOpenChange={handleCloseAuthorizationModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Autorización de Exhumación
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="flex-1 min-h-0">
+              {authorizationPdfUrl ? (
+                <iframe
+                  src={authorizationPdfUrl}
+                  className="w-full h-full min-h-[500px] border rounded"
+                  title="Autorización de Exhumación PDF"
+                  onLoad={() => console.log('📋 IFRAME: Autorización PDF cargada exitosamente')}
+                  onError={(e) => console.error('❌ IFRAME: Error al cargar Autorización PDF', e)}
+                  onAbort={() => console.log('⏹️ IFRAME: Carga de autorización abortada')}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <p className="text-gray-500">Generando PDF...</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex justify-between sm:justify-between">
+              <Button 
+                variant="outline" 
+                onClick={() => handleCloseAuthorizationModal(false)}
+              >
+                Cerrar
+              </Button>
+              <Button 
+                onClick={handleDownloadAuthorizationPdf}
+                disabled={!authorizationPdfUrl}
+                className="ml-2"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ContainerApp>
   );
