@@ -6,6 +6,8 @@ type AuthStore = {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isHydrated: boolean;
+  setHydrated: () => void;
   login: (user: User, token: string) => void;
   logout: () => void;
   setUser: (user: User) => void;
@@ -18,6 +20,8 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      isHydrated: false,
+      setHydrated: () => set({ isHydrated: true }),
       login: (user, token) =>
         set({ user, token, isAuthenticated: !!user && !!token }),
       logout: () => set({ user: null, token: null, isAuthenticated: false }),
@@ -35,6 +39,9 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: "auth-store",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated();
+      },
     }
   )
 );

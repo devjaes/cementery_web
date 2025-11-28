@@ -174,15 +174,13 @@ export function RequisitoInhumacionForm({
         }
       }
     }
-    
+
     // Si todas las validaciones pasan, obtener los datos y enviar
     const formData = methods.getValues();
     onSubmit(formData, selectedDocument || undefined);
   };
 
   const currentStepData = steps.find((step) => step.id === currentStep);
-
-  
 
   // Watch solicitante selection and, if a propietario/nicho exists for that person,
   // automatically set `idHuecoNicho` and `nombreAdministradorNicho` in the form.
@@ -195,33 +193,50 @@ export function RequisitoInhumacionForm({
       try {
         // First, resolve the person's cedula because backend endpoint expects cedula (por-persona/:cedula)
         const http = AxiosClient.getInstance();
-        const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(solicitanteId));
+        const personaResp = await http.get<any>(
+          API_ROUTES.PERSONS.GET_BY_ID(solicitanteId)
+        );
         const cedula: string | undefined = personaResp?.data?.data?.cedula;
         if (!cedula) return;
 
         // Use the cedula-based endpoint which exists on the backend
-        const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(cedula);
+        const propietarios =
+          await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(
+            cedula
+          );
         if (!propietarios || propietarios.length === 0) return;
 
-        const ownerName = (propietarios[0]?.idPersona)
-          ? [propietarios[0].idPersona.nombres || "", propietarios[0].idPersona.apellidos || ""].filter(Boolean).join(" ")
+        const ownerName = propietarios[0]?.idPersona
+          ? [
+              propietarios[0].idPersona.nombres || "",
+              propietarios[0].idPersona.apellidos || "",
+            ]
+              .filter(Boolean)
+              .join(" ")
           : "";
 
         // set owner name always when found
         try {
-          methods.setValue("nombreAdministradorNicho", ownerName, { shouldValidate: true, shouldDirty: true });
+          methods.setValue("nombreAdministradorNicho", ownerName, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
         } catch (e) {
           // ignore if field missing
         }
 
         // Collect all huecos across all nichos owned by the person and pick the first available
-        const nichoIds = propietarios.map((p) => p.idNicho?.idNicho).filter(Boolean) as string[];
+        const nichoIds = propietarios
+          .map((p) => p.idNicho?.idNicho)
+          .filter(Boolean) as string[];
         if (!nichoIds || nichoIds.length === 0) return;
 
         let firstDisponible: any = null;
         for (const nid of nichoIds) {
           try {
-            const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(nid);
+            const huecos = await HuecoRepositoryImpl.getInstance().findByNicho(
+              nid
+            );
             if (cancelled) return;
             if (Array.isArray(huecos) && huecos.length > 0) {
               // Prefer the lowest-numbered hueco (numHueco) among available ones.
@@ -232,7 +247,10 @@ export function RequisitoInhumacionForm({
                 if (isNaN(nb)) return -1;
                 return na - nb;
               });
-              const disponible = sorted.find((h: any) => String(h.estado || "").toLowerCase() === "disponible");
+              const disponible = sorted.find(
+                (h: any) =>
+                  String(h.estado || "").toLowerCase() === "disponible"
+              );
               if (disponible) {
                 firstDisponible = disponible;
                 break;
@@ -244,7 +262,10 @@ export function RequisitoInhumacionForm({
         }
 
         if (firstDisponible && firstDisponible.idDetalleHueco) {
-          methods.setValue("idHuecoNicho", firstDisponible.idDetalleHueco, { shouldValidate: true, shouldDirty: true });
+          methods.setValue("idHuecoNicho", firstDisponible.idDetalleHueco, {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
         }
       } catch (err) {
         console.warn("Error resolviendo hueco desde solicitante:", err);
@@ -340,6 +361,7 @@ export function RequisitoInhumacionForm({
                     name="idCementerio"
                     label="Cementerio *"
                     placeholder="Selecciona un cementerio"
+                    disabled
                   />
                   <RHFInput
                     name="pantoneroACargo"
@@ -409,10 +431,9 @@ export function RequisitoInhumacionForm({
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 
                   <RHFDatePickerCalendar
-                  name="fechaInhumacion"
-                    label="Fecha de Inhumación *" 
+                    name="fechaInhumacion"
+                    label="Fecha de Inhumación *"
                   />
 
                   <RHFInput
@@ -425,7 +446,6 @@ export function RequisitoInhumacionForm({
               </div>
             )}
 
-            
             {/* Paso 3: Documentos */}
             {currentStep === 3 && (
               <div className="space-y-6">
@@ -707,7 +727,7 @@ export function RequisitoInhumacionForm({
 
                 {/* Carga de documento (compacto) */}
                 <div className="mt-2">
-                  <DocumentUploadCard 
+                  <DocumentUploadCard
                     onFileSelect={setSelectedDocument}
                     selectedFile={selectedDocument}
                   />
@@ -719,9 +739,11 @@ export function RequisitoInhumacionForm({
                     Resumen de la Solicitud
                   </h4>
                   <p className="text-blue-700 text-sm mb-4">
-                    Ha completado todos los pasos necesarios. Revise la información y haga clic en &quot;Guardar&quot; para finalizar el registro.
+                    Ha completado todos los pasos necesarios. Revise la
+                    información y haga clic en &quot;Guardar&quot; para
+                    finalizar el registro.
                   </p>
-                  
+
                   <button
                     type="button"
                     onClick={handleFormSubmit}
