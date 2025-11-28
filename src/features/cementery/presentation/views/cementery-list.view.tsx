@@ -20,8 +20,12 @@ import { BloqueForm } from "@/features/bloques/presentation/components/bloque-fo
 
 export default function CementeryListView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingCementeryId, setEditingCementeryId] = useState<string | null>(null);
-  const [selectedCementeryId, setSelectedCementeryId] = useState<string | null>(null);
+  const [editingCementeryId, setEditingCementeryId] = useState<string | null>(
+    null
+  );
+  const [selectedCementeryId, setSelectedCementeryId] = useState<string | null>(
+    null
+  );
   const queryClient = useQueryClient();
 
   const handleCreateSuccess = () => {
@@ -39,7 +43,7 @@ export default function CementeryListView() {
   };
 
   const handleViewBlocks = (id: string) => {
-    setSelectedCementeryId((prev) => prev === id ? null : id);
+    setSelectedCementeryId((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -47,20 +51,19 @@ export default function CementeryListView() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Catastro de Cementerio</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              Catastro de Cementerio
+            </h2>
             <p className="text-sm text-muted-foreground mt-1">
               Administra los cementerios registrados en el sistema
             </p>
           </div>
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Cementerio
-          </Button>
         </div>
-        <CementeryListTable onEditClick={handleEditClick} onViewBlocksClick={handleViewBlocks} selectedId={selectedCementeryId} />
+        <CementeryListTable
+          onEditClick={handleEditClick}
+          onViewBlocksClick={handleViewBlocks}
+          selectedId={selectedCementeryId}
+        />
 
         {selectedCementeryId && (
           <div className="space-y-4">
@@ -76,7 +79,7 @@ export default function CementeryListView() {
               <div className="xl:col-span-1">
                 <div className="rounded-lg border bg-card p-6">
                   <h4 className="text-lg font-semibold mb-4">Nuevo Bloque</h4>
-                  <BloqueForm idCementerio={selectedCementeryId} />
+                  <BloqueForm />
                 </div>
               </div>
             </div>
@@ -127,7 +130,9 @@ function CementeryEditModal({
           <DialogTitle>Editar Cementerio</DialogTitle>
         </DialogHeader>
         {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+          <div className="text-center py-8 text-muted-foreground">
+            Cargando...
+          </div>
         ) : cementery ? (
           <CementeryForm cementery={cementery} onSuccess={onSuccess} />
         ) : (
@@ -138,4 +143,4 @@ function CementeryEditModal({
       </DialogContent>
     </Dialog>
   );
-} 
+}

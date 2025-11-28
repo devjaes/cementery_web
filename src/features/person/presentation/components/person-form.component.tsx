@@ -37,7 +37,9 @@ export function PersonForm({ person, onSuccess }: PersonFormProps) {
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8">
         <div className="space-y-6">
           <div>
-            <h4 className="text-base font-semibold text-foreground mb-4">Información Básica</h4>
+            <h4 className="text-base font-semibold text-foreground mb-4">
+              Información Básica
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <RHFInput
                 name="cedula"
@@ -72,14 +74,20 @@ export function PersonForm({ person, onSuccess }: PersonFormProps) {
                 name="fallecido"
                 label="Fallecido"
                 disabled={isFallecidoDisabled}
-                description={isFallecidoDisabled ? "No se puede cambiar el estado de una persona fallecida" : undefined}
+                description={
+                  isFallecidoDisabled
+                    ? "No se puede cambiar el estado de una persona fallecida"
+                    : undefined
+                }
               />
             </div>
           </div>
 
           {!fallecido && (
             <div className="border-t pt-6 space-y-4">
-              <h4 className="text-base font-semibold text-foreground mb-4">Información de Contacto</h4>
+              <h4 className="text-base font-semibold text-foreground mb-4">
+                Información de Contacto
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <RHFInput
                   name="direccion"
@@ -104,17 +112,14 @@ export function PersonForm({ person, onSuccess }: PersonFormProps) {
 
           {fallecido && (
             <div className="border-t pt-6 space-y-4">
-              <h4 className="text-base font-semibold text-foreground mb-4">Datos de Defunción</h4>
+              <h4 className="text-base font-semibold text-foreground mb-4">
+                Datos de Defunción
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <RHFDatePickerCalendar
                   name="fecha_defuncion"
                   label="Fecha de Defunción"
                   placeholder="Selecciona la fecha de defunción"
-                />
-                <RHFDatePickerCalendar
-                  name="fecha_inhumacion"
-                  label="Fecha de Inhumación"
-                  placeholder="Selecciona la fecha de inhumación"
                 />
                 <RHFInput
                   name="lugar_defuncion"

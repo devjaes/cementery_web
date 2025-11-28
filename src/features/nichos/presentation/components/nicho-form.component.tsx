@@ -27,7 +27,6 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
 
   const tipo = useWatch({ control: methods.control, name: "tipo" });
 
-  // 🔥 Detectar si estamos editando
   const isEditMode = Boolean(nicho);
 
   useEffect(() => {
@@ -50,12 +49,24 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RHFCementerySelect name="idCementerio" label="Cementerio" />
+          <RHFCementerySelect
+            name="idCementerio"
+            label="Cementerio"
+            disabled={true}
+          />
           <RHFInput name="sector" label="Sector" />
-          <RHFInput name="fila" label="Fila" />
-          <RHFInput name="numero" label="Número" />
-          <RHFSelect name="tipo" label="Tipo" options={tipoOptions} placeholder="Selecciona el tipo de nicho" />
-          <RHFDatePickerCalendar name="fechaConstruccion" label="Fecha de adquisición" />
+          <RHFInput name="fila" label="Fila" type="number" />
+          <RHFInput name="numero" label="Número" type="number" />
+          <RHFSelect
+            name="tipo"
+            label="Tipo"
+            options={tipoOptions}
+            placeholder="Selecciona el tipo de nicho"
+          />
+          <RHFDatePickerCalendar
+            name="fechaConstruccion"
+            label="Fecha de adquisición"
+          />
 
           {/* 🔒 Ahora sí: bloquear numHuecos al editar */}
           <RHFInput
@@ -65,13 +76,21 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
             disabled={isEditMode || isFixedOne}
           />
 
-          <RHFInput name="observaciones" label="Observaciones" />
+          <RHFInput
+            name="observaciones"
+            label="Observaciones"
+            textArea={true}
+            required={false}
+          />
         </div>
         <div className="flex justify-end pt-2">
           <Button
             type="submit"
             size="lg"
-            className={clsx("px-8", isPending && "opacity-50 cursor-not-allowed")}
+            className={clsx(
+              "px-8",
+              isPending && "opacity-50 cursor-not-allowed"
+            )}
             disabled={isPending}
           >
             {isPending ? "Guardando..." : "Guardar"}

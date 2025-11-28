@@ -10,7 +10,7 @@ import {
   FileText,
   Grid3x3,
   ShoppingCart,
-  Package
+  Package,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -39,17 +39,17 @@ export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
           <InfoItem
             icon={<Layers className="w-4 h-4" />}
             label="Sector"
-            value={nicho.sector}
+            value={nicho?.sector || "No especificado"}
           />
           <InfoItem
             icon={<Hash className="w-4 h-4" />}
             label="Fila"
-            value={nicho.fila.toString()}
+            value={nicho?.fila?.toString() || "No especificado"}
           />
           <InfoItem
             icon={<Hash className="w-4 h-4" />}
             label="Número"
-            value={nicho.numero.toString()}
+            value={nicho?.numero?.toString() || "No especificado"}
           />
           <InfoItem
             icon={<Package className="w-4 h-4" />}
@@ -62,11 +62,11 @@ export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
             value={nicho.estadoVenta}
             badge={true}
             badgeVariant={
-              nicho.estadoVenta === 'Vendido'
-                ? 'destructive'
-                : nicho.estadoVenta === 'Reservado'
-                  ? 'secondary'
-                  : 'default'
+              nicho.estadoVenta === "Vendido"
+                ? "destructive"
+                : nicho.estadoVenta === "Reservado"
+                ? "secondary"
+                : "default"
             }
           />
           <InfoItem
@@ -121,17 +121,21 @@ function InfoItem({
             variant={badgeVariant}
             className={clsx(
               "w-fit",
-              badgeVariant === 'destructive' && 'bg-destructive/10 text-destructive',
-              badgeVariant === 'secondary' && 'bg-secondary/10 text-secondary-foreground',
-              badgeVariant === 'default' && 'bg-primary/10 text-primary'
+              badgeVariant === "destructive" &&
+                "bg-destructive/10 text-destructive",
+              badgeVariant === "secondary" &&
+                "bg-secondary/10 text-secondary-foreground",
+              badgeVariant === "default" && "bg-primary/10 text-primary"
             )}
           >
             {value}
           </Badge>
         ) : (
-          <p className="text-sm text-foreground break-words leading-relaxed">{value}</p>
+          <p className="text-sm text-foreground break-words leading-relaxed">
+            {value}
+          </p>
         )}
       </div>
     </div>
   );
-} 
+}

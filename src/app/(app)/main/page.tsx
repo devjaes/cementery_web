@@ -1,7 +1,7 @@
 "use client";
 
 import ContainerApp from "@/core/layout/container-app";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 import Link from "next/link";
 import {
   Card,
@@ -24,7 +24,8 @@ const features = [
   },
   {
     title: "Gestión de Nichos y Huecos",
-    description: "Administra los nichos y huecos del cementerio de forma eficiente.",
+    description:
+      "Administra los nichos y huecos del cementerio de forma eficiente.",
     href: "/nichos",
   },
   {
@@ -39,15 +40,16 @@ const features = [
   },
   {
     title: "Exhumaciones",
-    description: "Gestiona las exhumaciones basadas en inhumaciones existentes.",
+    description:
+      "Gestiona las exhumaciones basadas en inhumaciones existentes.",
     href: "/exhumaciones",
     accent: "border-orange-500 bg-orange-50 hover:bg-orange-100",
   },
 ];
 
 export default function MainPage() {
-  const { data: session } = useSession();
-  const userName = session?.user?.username || "Usuario";
+  const { user } = useCurrentUser();
+  const userName = user?.nombre || "Usuario";
 
   return (
     <ContainerApp title="Dashboard">
@@ -60,7 +62,8 @@ export default function MainPage() {
             ¿Cómo podemos ayudarte hoy?
           </p>
           <p className="text-sm text-muted-foreground">
-            Accede a las diferentes secciones del sistema para gestionar tu cementerio
+            Accede a las diferentes secciones del sistema para gestionar tu
+            cementerio
           </p>
         </div>
 
