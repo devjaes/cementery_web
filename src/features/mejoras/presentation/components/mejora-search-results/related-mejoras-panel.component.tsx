@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { MejoraEntity } from "../../../domain/entities/mejora.entity";
+import { MejoraDocumento, MejoraEntity } from "../../../domain/entities/mejora.entity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Button } from "@/shared/components/ui/button";
@@ -20,6 +20,12 @@ import {
 } from "@/shared/components/ui/alert-dialog";
 import {
   Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@/shared/components/ui/dialog";
 import { Check, Download, Eye, FileText, Loader2, MapPin, Pencil } from "lucide-react";
@@ -39,6 +45,92 @@ const DOCUMENT_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "").replac
 const buildDocumentUrl = (relative?: string) => {
   if (!relative) return undefined;
   return `${DOCUMENT_BASE_URL}${relative}`;
+};
+
+const formatBytes = (value: number) => {
+  if (value === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const exponent = Math.floor(Math.log(value) / Math.log(1024));
+  const formatted = (value / Math.pow(1024, exponent)).toFixed(1);
+  return `${formatted} ${units[exponent]}`;
+};
+
+type MejoraDocumentListDialogProps = {
+  documents: MejoraDocumento[];
+};
+
+const MejoraDocumentListDialog = ({ documents }: MejoraDocumentListDialogProps) => {
+  if (!documents.length) {
+    return null;
+  }
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          title="Ver documentos adjuntos"
+        >
+          <FileText className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Documentos adjuntos</DialogTitle>
+          <DialogDescription>
+            {documents.length} archivo{documents.length === 1 ? "" : "s"} disponibles para consultar.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pt-3">
+          {documents.map((doc) => {
+            const url = buildDocumentUrl(doc.url);
+            const uploadedAt = doc.uploadedAt
+              ? new Date(doc.uploadedAt).toLocaleString()
+              : "Fecha desconocida";
+
+            return (
+              <div
+                key={doc.filename}
+                className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{doc.originalName}</p>
+                    <p className="text-xs text-muted-foreground">Subido el {uploadedAt}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!url}
+                    className="gap-2"
+                    onClick={() => url && window.open(url, "_blank")}
+                  >
+                    <Eye className="h-4 w-4" />
+                    Ver
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{formatBytes(doc.size)}</span>
+                  <span>{doc.contentType}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cerrar
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 /**
@@ -203,21 +295,7 @@ export const RelatedMejorasPanel = ({
                           </Button>
                         ) : null}
                         {mejora.documentos && mejora.documentos.length > 0 ? (
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            title="Ver documentos adjuntos"
-                            onClick={() => {
-                              const url = buildDocumentUrl(mejora.documentos?.[0]?.url);
-                              if (url) {
-                                window.open(url, "_blank");
-                              }
-                            }}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
+                          <MejoraDocumentListDialog documents={mejora.documentos} />
                         ) : null}
                       </div>
                     </TableCell>
