@@ -82,7 +82,22 @@ export default function MejoraDocumentUpload({
       setError(`Puedes añadir hasta ${remainingSlots} archivo(s) más.`);
     }
 
-    onFilesChange(allowed);
+    const newFiles = [] as File[];
+
+    allowed.forEach((file) => {
+      const id = buildSelectedFileId(file);
+      if (!selectedFiles.some((existing) => buildSelectedFileId(existing) === id)) {
+        newFiles.push(file);
+      }
+    });
+
+    if (newFiles.length === 0) {
+      setError("Ya seleccionaste esos archivos.");
+      event.target.value = "";
+      return;
+    }
+
+    onFilesChange([...selectedFiles, ...newFiles]);
     event.target.value = "";
   };
 
