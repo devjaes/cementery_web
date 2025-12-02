@@ -32,6 +32,38 @@ export default function RHFAutocompleteHuecoNicho({
     const [search, setSearch] = useState("");
     const idCementerio = useWatch({ name: "idCementerio" });
 
+    // Map of bloqueId -> nombre (fallback when hueco/nicho doesn't include bloque name)
+    const [blockMap, setBlockMap] = useState<Record<string, string>>({});
+
+    // Load bloques for the selected cementerio so we can resolve names client-side
+    useEffect(() => {
+        let cancelled = false;
+        if (!idCementerio) {
+            setBlockMap({});
+            return;
+        }
+        (async () => {
+            try {
+                const http = AxiosClient.getInstance();
+                const resp = await http.get<any>(API_ROUTES.BLOQUES.GET_BY_CEMENTERIO(idCementerio));
+                const bloques = resp?.data?.data || resp?.data || [];
+                if (cancelled) return;
+                const map: Record<string, string> = {};
+                (bloques || []).forEach((b: any) => {
+                    const id = b?.idBloque || b?.id_bloque || b?.id || b?.id_bloque;
+                    const nombre = b?.nombre || b?.nombreBloque || b?.nombre_bloque || String(b?.numero) || id;
+                    if (id) map[String(id)] = nombre;
+                });
+                setBlockMap(map);
+            } catch (err) {
+                console.warn('No se pudieron cargar bloques para cementerio', idCementerio, err);
+                setBlockMap({});
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [idCementerio]);
+
     const { data: huecosNichos, isLoading } = useFindHuecosByCementerioQuery(idCementerio);
     const [allowedNichoIds, setAllowedNichoIds] = useState<string[] | null>(null);
 
@@ -74,16 +106,17 @@ export default function RHFAutocompleteHuecoNicho({
     const baseList = (huecosNichos ?? []).filter(h => isAvailable ? isAvailableState(h.estado) : true);
 
     const filtered = baseList
-        .filter(h => {
+            .filter(h => {
             if (!allowedNichoIds) return true; // no owner filter -> include all
             const id = h.idNicho?.idNicho;
             return id && allowedNichoIds.includes(id);
         })
-        .filter(h =>
-            `${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""}`
-                .toLowerCase()
-                .includes(search.toLowerCase())
-        )
+            .filter(h => {
+                const bloqueName = (h as any)?.bloque?.nombre || h.idNicho?.idBloque?.nombre || h.idNicho?.id_bloque?.nombre || h.idNicho?.bloqueNombre || blockMap[String(h.idNicho?.idBloque || h.idNicho?.id_bloque)] || h.idNicho?.idBloque || h.idNicho?.id_bloque || "";
+                return `${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""} ${String(bloqueName)}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase());
+            })
 
     return (
         <Controller
@@ -103,9 +136,19 @@ export default function RHFAutocompleteHuecoNicho({
                                     className="w-full justify-between"
                                     disabled={disabled || isLoading || !idCementerio}
                                 >
-                                    {selected ? (
+                                            {selected ? (
                                         <span className="font-normal">
-                                            {`Fila: ${selected.idNicho?.fila ?? "-"} - Columna: ${selected.idNicho?.columna ?? "-"} - Hueco: ${selected.numHueco} - Tipo: ${selected.idNicho?.tipo ?? "-"}`}
+                                            {(() => {
+                                                const bloqueName = (selected as any)?.bloque?.nombre ||
+                                                    selected.idNicho?.idBloque?.nombre ||
+                                                    selected.idNicho?.id_bloque?.nombre ||
+                                                    selected.idNicho?.bloqueNombre ||
+                                                    (selected.idNicho ? blockMap[String(selected.idNicho?.idBloque || selected.idNicho?.id_bloque)] : undefined) ||
+                                                    selected.idNicho?.idBloque ||
+                                                    selected.idNicho?.id_bloque ||
+                                                    "-";
+                                                return `Bloque: ${bloqueName} - Fila: ${selected.idNicho?.fila ?? "-"} - Columna: ${selected.idNicho?.columna ?? "-"} - Hueco: ${selected.numHueco} - Tipo: ${selected.idNicho?.tipo ?? "-"}`;
+                                            })()}
                                         </span>
                                     ) : (
                                         <span className="text-gray-400 font-normal">
@@ -182,7 +225,17 @@ export default function RHFAutocompleteHuecoNicho({
                                                                 )}
                                                             />
                                                             <span className="font-normal">
-                                                                Fila: {h.idNicho?.fila ?? "-"} - Columna: {h.idNicho?.columna ?? "-"} - Hueco: {h.numHueco} - Tipo: {h.idNicho?.tipo ?? "-"}
+                                                                    {(() => {
+                                                                    const bloqueName = (h as any)?.bloque?.nombre ||
+                                                                        h.idNicho?.idBloque?.nombre ||
+                                                                        h.idNicho?.id_bloque?.nombre ||
+                                                                        h.idNicho?.bloqueNombre ||
+                                                                        (h.idNicho ? blockMap[String(h.idNicho?.idBloque || h.idNicho?.id_bloque)] : undefined) ||
+                                                                        h.idNicho?.idBloque ||
+                                                                        h.idNicho?.id_bloque ||
+                                                                        "-";
+                                                                    return `Bloque: ${bloqueName} - Fila: ${h.idNicho?.fila ?? "-"} - Columna: ${h.idNicho?.columna ?? "-"} - Hueco: ${h.numHueco} - Tipo: ${h.idNicho?.tipo ?? "-"}`;
+                                                                })()}
                                                             </span>
                                                         </CommandItem>
                                                     ))

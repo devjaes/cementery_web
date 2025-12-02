@@ -30,9 +30,9 @@ type InhumacionData = {
   solicitante?: string;
   idNicho?: {
     idCementerio?: { nombre?: string };
-    sector?: string | number;
+    idBloque?: string | number;
     fila?: number;
-    numero?: string | number;
+    columna?: string | number;
   };
 } & Record<string, unknown>;
 
