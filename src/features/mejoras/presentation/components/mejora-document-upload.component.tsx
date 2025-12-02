@@ -104,7 +104,7 @@ export default function MejoraDocumentUpload({
                   <p className="text-sm font-semibold text-slate-900">{preview.name}</p>
                   <p className="text-xs text-muted-foreground">{formatBytes(preview.size)}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => window.open(preview.url, "_blank")}>
+                <Button type="button" variant="outline" size="sm" onClick={() => window.open(preview.url, "_blank")}>
                   Abrir PDF
                 </Button>
               </div>

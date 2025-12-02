@@ -22,7 +22,7 @@ import {
   Dialog,
   DialogTrigger,
 } from "@/shared/components/ui/dialog";
-import { Check, Download, Eye, Loader2, MapPin, Pencil } from "lucide-react";
+import { Check, Download, Eye, FileText, Loader2, MapPin, Pencil } from "lucide-react";
 import { useApproveMejoraMutation, useDownloadMejoraPdfMutation } from "../../hooks/use-mejora-mutation";
 import { formatDate, fullName } from "./formatters";
 import { DEFAULT_APPROVER_ID } from "./constants";
@@ -33,6 +33,13 @@ interface RelatedMejorasPanelProps {
   isLoading?: boolean;
   searchTerm: string;
 }
+
+const DOCUMENT_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "").replace(/\/$/, "");
+
+const buildDocumentUrl = (relative?: string) => {
+  if (!relative) return undefined;
+  return `${DOCUMENT_BASE_URL}${relative}`;
+};
 
 /**
  * Panel that displays mejoras related to the search results
@@ -193,6 +200,23 @@ export const RelatedMejorasPanel = ({
                             ) : (
                               <Download className="h-4 w-4" />
                             )}
+                          </Button>
+                        ) : null}
+                        {mejora.documentos && mejora.documentos.length > 0 ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Ver documentos adjuntos"
+                            onClick={() => {
+                              const url = buildDocumentUrl(mejora.documentos?.[0]?.url);
+                              if (url) {
+                                window.open(url, "_blank");
+                              }
+                            }}
+                          >
+                            <FileText className="h-4 w-4" />
                           </Button>
                         ) : null}
                       </div>
