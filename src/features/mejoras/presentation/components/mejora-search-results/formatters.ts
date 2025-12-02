@@ -14,16 +14,14 @@ export const fullName = (person?: { nombres?: string; apellidos?: string }): str
   return parts.length ? parts.join(" ") : "Sin información";
 };
 
-export const formatNichoLocation = (nicho?: { 
-  sector?: string; 
-  fila?: string; 
-  numero?: string; 
-  idCementerio?: { nombre?: string } 
+export const formatNichoLocation = (nicho?: {
+  fila?: string;
+  columna?: string;
+  idCementerio?: { nombre?: string };
 }): string => {
   if (!nicho) return "Sin información";
-  const parts = [];
-  if (nicho.sector) parts.push(`Sector ${nicho.sector}`);
+  const parts: string[] = [];
   if (nicho.fila) parts.push(`Fila ${nicho.fila}`);
-  if (nicho.numero) parts.push(`Nicho ${nicho.numero}`);
+  if (nicho.columna) parts.push(`Columna ${nicho.columna}`);
   return parts.length > 0 ? parts.join(" • ") : "Sin ubicación";
 };

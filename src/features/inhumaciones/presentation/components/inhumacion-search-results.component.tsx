@@ -220,33 +220,22 @@ export function InhumacionSearchResults({
                       <TableRow key={inhumacion.idInhumacion}>
                         <TableCell>{inhumacion.codigoInhumacion}</TableCell>
                         <TableCell>
-                          {inhumacion.idFallecido.nombres +
-                            " " +
-                            inhumacion.idFallecido.apellidos}
+                          {inhumacion.idFallecido.nombres + " " + inhumacion.idFallecido.apellidos}
                         </TableCell>
                         <TableCell>
-                          {inhumacion.idNicho?.sector} - Fila:{" "}
-                          {inhumacion.idNicho?.fila} - Número:{" "}
-                          {inhumacion.idNicho?.numero} - Tipo:{" "}
-                          {inhumacion.idNicho?.tipo}
+                          Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
                         </TableCell>
                         <TableCell>
-                          {new Date(
-                            inhumacion.fechaInhumacion
-                          ).toLocaleDateString()}
+                          {new Date(inhumacion.fechaInhumacion).toLocaleDateString()}
                         </TableCell>
                         <TableCell>{inhumacion.solicitante}</TableCell>
-                        <TableCell>
-                          {inhumacion.responsableInhumacion}
-                        </TableCell>
+                        <TableCell>{inhumacion.responsableInhumacion}</TableCell>
                         <TableCell>
                           <StatusChip estado={inhumacion.estado} />
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Link
-                              href={`/inhumaciones/${inhumacion.idInhumacion}/editar`}
-                            >
+                            <Link href={`/inhumaciones/${inhumacion.idInhumacion}/editar`}>
                               <Button size="icon" variant="ghost">
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -259,28 +248,17 @@ export function InhumacionSearchResults({
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    ¿Eliminar inhumacion?
-                                  </AlertDialogTitle>
+                                  <AlertDialogTitle>¿Eliminar inhumacion?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. ¿Deseas
-                                    eliminar esta inhumacion?
+                                    Esta acción no se puede deshacer. ¿Deseas eliminar esta inhumacion?
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>
-                                    Cancelar
-                                  </AlertDialogCancel>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() =>
-                                      deleteInhumacion(inhumacion.idInhumacion)
-                                    }
+                                    onClick={() => deleteInhumacion(inhumacion.idInhumacion)}
                                     disabled={isPending}
-                                    className={clsx(
-                                      "px-8 bg-red-500 hover:bg-red-600",
-                                      isPending &&
-                                        "opacity-50 cursor-not-allowed"
-                                    )}
+                                    className={clsx("px-8 bg-red-500 hover:bg-red-600", isPending && "opacity-50 cursor-not-allowed")}
                                   >
                                     Eliminar
                                   </AlertDialogAction>
@@ -447,10 +425,7 @@ export function InhumacionSearchResults({
                             inhumacion.idFallecido.apellidos}
                         </TableCell>
                         <TableCell>
-                          {inhumacion.idNicho?.sector} - Fila:{" "}
-                          {inhumacion.idNicho?.fila} - Número:{" "}
-                          {inhumacion.idNicho?.numero} - Tipo:{" "}
-                          {inhumacion.idNicho?.tipo}
+                          Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
                         </TableCell>
                         <TableCell>
                           {new Date(
@@ -571,7 +546,7 @@ export function InhumacionSearchResults({
                           {inhumaciones.length > 0  && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {inhumaciones[0].idNicho?.sector} - Fila:{inhumaciones[0].idNicho?.fila} 
+                              Fila: {inhumaciones[0].idNicho?.fila ?? "-"} - Columna: {inhumaciones[0].idNicho?.columna ?? "-"}
                             </span>
                           )}
                         </div>

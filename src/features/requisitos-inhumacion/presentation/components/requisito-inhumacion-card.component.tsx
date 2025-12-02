@@ -607,10 +607,8 @@ export function RequisitoInhumacionCard({
                               Ubicación:
                             </span>{" "}
                             <span className="bg-gray-200 text-gray-800 px-2 py-1 rounded text-sm font-medium">
-                              Sector{" "}
-                              {requisitoInhumacion.idHuecoNicho.idNicho.sector} -
-                              Fila {requisitoInhumacion.idHuecoNicho.idNicho.fila}{" "}
-                              - #{requisitoInhumacion.idHuecoNicho.idNicho.numero}
+                              Fila: {requisitoInhumacion.idHuecoNicho.idNicho.fila ?? "No especificado"} -
+                              Columna: {requisitoInhumacion.idHuecoNicho.idNicho.columna ?? "No especificado"}
                             </span>
                           </p>
                           <p>

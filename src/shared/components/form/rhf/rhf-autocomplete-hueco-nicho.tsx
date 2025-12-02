@@ -80,7 +80,7 @@ export default function RHFAutocompleteHuecoNicho({
             return id && allowedNichoIds.includes(id);
         })
         .filter(h =>
-            `${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`
+            `${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""}`
                 .toLowerCase()
                 .includes(search.toLowerCase())
         )
@@ -105,7 +105,7 @@ export default function RHFAutocompleteHuecoNicho({
                                 >
                                     {selected ? (
                                         <span className="font-normal">
-                                            {`Sector: ${selected.idNicho?.sector} - Fila: ${selected.idNicho?.fila} - Número: ${selected.idNicho?.numero} - Hueco: ${selected.numHueco} - Tipo: ${selected.idNicho?.tipo}`}
+                                            {`Fila: ${selected.idNicho?.fila ?? "-"} - Columna: ${selected.idNicho?.columna ?? "-"} - Hueco: ${selected.numHueco} - Tipo: ${selected.idNicho?.tipo ?? "-"}`}
                                         </span>
                                     ) : (
                                         <span className="text-gray-400 font-normal">
@@ -117,8 +117,8 @@ export default function RHFAutocompleteHuecoNicho({
                             </PopoverTrigger>
                             <PopoverContent className="w-full p-0">
                                 <Command shouldFilter={false}>
-                                    <CommandInput
-                                        placeholder="Buscar sector, fila, número, tipo..."
+                                        <CommandInput
+                                        placeholder="Buscar fila, columna, hueco, tipo..."
                                         value={search}
                                         onValueChange={setSearch}
                                     />
@@ -131,7 +131,7 @@ export default function RHFAutocompleteHuecoNicho({
                                                     filtered.map(h => (
                                                         <CommandItem
                                                             key={h.idDetalleHueco}
-                                                            value={`${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`}
+                                                            value={`${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""}`}
                                                             onSelect={async () => {
                                                                     field.onChange(h.idDetalleHueco);
                                                                     // Intentar obtener el propietario del nicho (si existe) desde el propio objeto
@@ -182,7 +182,7 @@ export default function RHFAutocompleteHuecoNicho({
                                                                 )}
                                                             />
                                                             <span className="font-normal">
-                                                                Sector: {h.idNicho?.sector} - Fila: {h.idNicho?.fila} - Número: {h.idNicho?.numero} - Hueco: {h.numHueco} - Tipo: {h.idNicho?.tipo}
+                                                                Fila: {h.idNicho?.fila ?? "-"} - Columna: {h.idNicho?.columna ?? "-"} - Hueco: {h.numHueco} - Tipo: {h.idNicho?.tipo ?? "-"}
                                                             </span>
                                                         </CommandItem>
                                                     ))
