@@ -103,7 +103,8 @@ export default function RHFAutocompleteHuecoNicho({
 
     // Filtrar por texto de búsqueda
     const isAvailableState = (s: any) => String(s || "").toLowerCase() === "disponible";
-    const baseList = (huecosNichos ?? []).filter(h => isAvailable ? isAvailableState(h.estado) : true);
+    // Do not expose any huecos until an owner (solicitante) is selected
+    const baseList = ownerPersonId ? (huecosNichos ?? []).filter(h => isAvailable ? isAvailableState(h.estado) : true) : [];
 
     const filtered = baseList
             .filter(h => {
@@ -148,13 +149,13 @@ export default function RHFAutocompleteHuecoNicho({
                     <div className="w-full">
                         {label && <label className="block text-sm font-medium mb-1">{label}</label>}
                         <Popover open={open} onOpenChange={setOpen}>
-                            <PopoverTrigger asChild>
+                                <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
                                     role="combobox"
                                     aria-expanded={open}
                                     className="w-full justify-between"
-                                    disabled={disabled || isLoading || !idCementerio}
+                                        disabled={disabled || isLoading || !idCementerio || !ownerPersonId}
                                 >
                                             {selected ? (
                                         <span className="font-normal">
@@ -172,16 +173,16 @@ export default function RHFAutocompleteHuecoNicho({
                                         </span>
                                     ) : (
                                         <span className="text-gray-400 font-normal">
-                                            {placeholder || "Selecciona un hueco"}
+                                            {!ownerPersonId ? "Selecciona un solicitante primero" : (placeholder || "Selecciona un hueco")}
                                         </span>
                                     )}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
+                                <PopoverContent className="w-full p-0">
                                 <Command shouldFilter={false}>
                                         <CommandInput
-                                        placeholder="Buscar fila, columna, hueco, tipo..."
+                                        placeholder={ownerPersonId ? "Buscar fila, columna, hueco, tipo..." : "Selecciona un solicitante primero"}
                                         value={search}
                                         onValueChange={setSearch}
                                     />
@@ -260,7 +261,7 @@ export default function RHFAutocompleteHuecoNicho({
                                                         </CommandItem>
                                                     ))
                                                 ) : (
-                                                    <CommandEmpty>No se encontraron huecos</CommandEmpty>
+                                                    <CommandEmpty>{ownerPersonId ? "No se encontraron huecos" : "Selecciona un solicitante para ver huecos"}</CommandEmpty>
                                                 )}
                                             </>
                                         )}
