@@ -61,6 +61,24 @@ export const useUpdateMejoraMutation = () => {
   });
 };
 
+export const useDeleteMejoraFileMutation = () => {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { id: string; filename: string }>({
+    mutationFn: ({ id, filename }) => MejoraRepositoryImpl.getInstance().deleteFile(id, filename),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEYS.byId(variables.id) });
+      toast.success("Documento eliminado", {
+        description: "El archivo se eliminó correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast.error("No se pudo eliminar el documento", {
+        description: error.message,
+      });
+    },
+  });
+};
+
 export const useDownloadMejoraPdfMutation = () => {
   const qc = useQueryClient();
   return useMutation<{ blob: Blob; filename?: string; contentType?: string }, Error, { id: string }>(

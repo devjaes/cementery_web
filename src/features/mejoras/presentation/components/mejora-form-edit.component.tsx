@@ -10,7 +10,12 @@ import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-c
 import { CreateMejoraDTO, CreateMejoraSchema } from "../../domain/schemas/mejora.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useUploadMejoraFilesMutation, useUpdateMejoraMutation } from "../hooks/use-mejora-mutation";
+import {
+  useDeleteMejoraFileMutation,
+  useUploadMejoraFilesMutation,
+  useUpdateMejoraMutation,
+} from "../hooks/use-mejora-mutation";
+import { MejoraDocumento } from "../../domain/entities/mejora.entity";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Button } from "@/shared/components/ui/button";
 import MejoraDocumentUpload from "./mejora-document-upload.component";
@@ -20,6 +25,7 @@ type MejoraFormEditProps = {
   defaultValues?: Partial<CreateMejoraDTO>;
   isPrefillLoading?: boolean;
   searchTerm?: string;
+  initialDocuments?: MejoraDocumento[];
 };
 
 const tipoServicioOptions = [
@@ -38,7 +44,8 @@ export default function MejoraFormEdit({
   mejoraId,
   defaultValues, 
   isPrefillLoading = false,
-  searchTerm = ""
+  searchTerm = "",
+  initialDocuments,
 }: MejoraFormEditProps) {
   const router = useRouter();
   
@@ -56,7 +63,10 @@ export default function MejoraFormEdit({
   
   const { mutate: update, isPending: isUpdating } = useUpdateMejoraMutation();
   const { mutate: uploadFiles } = useUploadMejoraFilesMutation();
+  const { mutate: deleteDocument } = useDeleteMejoraFileMutation();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingDocuments, setExistingDocuments] = useState<MejoraDocumento[]>(initialDocuments ?? []);
+  const [removingDocument, setRemovingDocument] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("general");
 
   const sections = useMemo(
@@ -87,12 +97,22 @@ export default function MejoraFormEdit({
 
   useEffect(() => {
     setActiveTab("accion");
-    if (defaultValues && Object.keys(defaultValues).length > 0) {
-      const combined = { ...baseDefaultValues, ...defaultValues };
-      methods.reset(combined);
-      setSelectedFiles([]);
-    }
-  }, [defaultValues, methods]);
+    const combined = { ...baseDefaultValues, ...defaultValues };
+    methods.reset(combined);
+    setSelectedFiles([]);
+    setExistingDocuments(initialDocuments ?? []);
+  }, [defaultValues, initialDocuments, methods]);
+
+  const handleRemoveDocument = (document: MejoraDocumento) => {
+    setRemovingDocument(document.filename);
+    deleteDocument(
+      { id: mejoraId, filename: document.filename },
+      {
+        onSuccess: () => setExistingDocuments((docs) => docs.filter((doc) => doc.filename !== document.filename)),
+        onSettled: () => setRemovingDocument(null),
+      },
+    );
+  };
 
   const handleSubmit = (data: CreateMejoraDTO) => {
     const redirectUrl = searchTerm ? `/mejoras?q=${encodeURIComponent(searchTerm)}` : "/mejoras";
@@ -192,6 +212,9 @@ export default function MejoraFormEdit({
             <MejoraDocumentUpload
               selectedFiles={selectedFiles}
               onFilesChange={setSelectedFiles}
+              existingDocuments={existingDocuments}
+              removingDocument={removingDocument}
+              onRemoveDocument={handleRemoveDocument}
               disabled={isPrefillLoading}
             />
           </TabsContent>

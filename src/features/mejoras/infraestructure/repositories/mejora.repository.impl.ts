@@ -107,6 +107,10 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     });
   }
 
+  async deleteFile(id: string, filename: string): Promise<void> {
+    await this.httpClient.delete(API_ROUTES.MEJORAS.DELETE_FILE(id, filename));
+  }
+
   async downloadPdf(id: string): Promise<{ blob: Blob; filename?: string; contentType?: string }> {
     const response = await this.httpClient.get<Blob, AxiosResponse<Blob>>(
       API_ROUTES.MEJORAS.DOWNLOAD_PDF(id),

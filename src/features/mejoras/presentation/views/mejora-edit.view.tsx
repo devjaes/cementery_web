@@ -107,6 +107,7 @@ export default function MejoraEditView({ id }: { id: string }) {
               defaultValues={defaultValues}
               isPrefillLoading={isLoading}
               searchTerm={searchTermParam}
+              initialDocuments={data.documentos}
             />
           </CardContent>
         </Card>

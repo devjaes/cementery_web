@@ -135,6 +135,7 @@ export const API_ROUTES = {
     UPDATE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     UPLOAD_FILE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/files`,
+    DELETE_FILE: (id: string, filename: string) => `${AR_KEYS.MEJORAS}/${id}/files/${encodeURIComponent(filename)}`,
     DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
     SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
     APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
