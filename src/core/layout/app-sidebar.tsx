@@ -11,6 +11,7 @@ import {
   FileText,
   RotateCcw,
   Hammer,
+  ClipboardList,
 } from "lucide-react";
 
 import {
@@ -78,6 +79,12 @@ const data = {
       icon: RotateCcw,
       isActive: (pathname: string) => pathname.startsWith("/exhumaciones"),
     },
+    {
+      title: "Reportes",
+      url: "/reports",
+      icon: ClipboardList,
+      isActive: (pathname: string) => pathname.startsWith("/reports"),
+    },
   ],
 };
 
@@ -89,15 +96,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Create formatted user object for NavUser
   const formattedUser = user
     ? {
-        name: `${user.nombre} ${user.apellido}`,
-        email: user.email || user.cedula, // Use email if exists, otherwise cedula
-        avatar: "", // Empty avatar by default
-      }
+      name: `${user.nombre} ${user.apellido}`,
+      email: user.email || user.cedula, // Use email if exists, otherwise cedula
+      avatar: "", // Empty avatar by default
+    }
     : {
-        name: "Usuario",
-        email: "Sin sesión",
-        avatar: "",
-      };
+      name: "Usuario",
+      email: "Sin sesión",
+      avatar: "",
+    };
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
