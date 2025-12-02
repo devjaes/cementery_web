@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { MejoraDocumento, MejoraEntity } from "../../../domain/entities/mejora.entity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Input } from "@/shared/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/components/ui/table";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
@@ -144,6 +145,8 @@ export const RelatedMejorasPanel = ({
   isLoading,
   searchTerm,
 }: RelatedMejorasPanelProps) => {
+  const [searchFilter, setSearchFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const approveMutation = useApproveMejoraMutation();
   const rejectMutation = useRejectMejoraMutation();
   const downloadMutation = useDownloadMejoraPdfMutation();
@@ -164,6 +167,31 @@ export const RelatedMejorasPanel = ({
       setActiveDocuments([]);
     }
   };
+
+  const normalizedSearch = searchFilter.trim().toLowerCase();
+  const filteredMejoras = mejoras.filter((mejora) => {
+    const matchesStatus =
+      statusFilter === "all" ||
+      (mejora.estado ?? "").toLowerCase() === statusFilter;
+    if (!matchesStatus) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    const candidates = [
+      mejora.codigoAutorizacion ?? "",
+      mejora.tipoServicio ?? "",
+      mejora.solicitante?.cedula ?? "",
+      `${mejora.solicitante?.nombres ?? ""} ${mejora.solicitante?.apellidos ?? ""}`.trim(),
+    ]
+      .map((value) => value.toLowerCase())
+      .filter(Boolean);
+
+    return candidates.some((value) => value.includes(normalizedSearch));
+  });
 
   const handleApprove = (mejora: MejoraEntity) => {
     setApprovingId(mejora.idMejora);
@@ -209,11 +237,39 @@ export const RelatedMejorasPanel = ({
         </CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[220px]">
+            <Input
+              placeholder="Buscar"
+              value={searchFilter}
+              onChange={(event) => setSearchFilter(event.target.value)}
+              className="h-10"
+            />
+          </div>
+          <div className="flex flex-col gap-1 text-sm text-slate-600">
+            <label htmlFor="related-mejoras-status">Estado</label>
+            <select
+              id="related-mejoras-status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="all">Todos</option>
+              <option value="solicitado">Solicitado</option>
+              <option value="aprobado">Aprobado</option>
+              <option value="negado">Negado</option>
+            </select>
+          </div>
+        </div>
         {isLoading ? (
           <div className="flex items-center gap-3 text-gray-600">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span>Buscando mejoras asociadas…</span>
           </div>
+        ) : filteredMejoras.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No se encontraron mejoras que coincidan con los filtros.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -229,117 +285,117 @@ export const RelatedMejorasPanel = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mejoras.map((mejora) => (
-                    <TableRow key={mejora.idMejora}>
+                {filteredMejoras.map((mejora) => (
+                  <TableRow key={mejora.idMejora}>
                     <TableCell>{fullName(mejora.solicitante)}</TableCell>
                     <TableCell>{fullName(mejora.fallecido)}</TableCell>
                     <TableCell>{mejora.idCementerio?.nombre ?? "Sin cementerio"}</TableCell>
                     <TableCell>{mejora.tipoServicio}</TableCell>
                     <TableCell>{formatDate(mejora.fechaInicio ?? mejora.fechaSolicitud)}</TableCell>
-                      <TableCell className="align-top">
-                        <div className="flex flex-col gap-2">
-                          <Badge
-                            className={
-                              mejora.estado === "Aprobado"
-                                ? "bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
-                                : mejora.estado === "Negado"
-                                  ? "bg-rose-500 hover:bg-rose-600 text-white w-fit"
-                                  : "w-fit"
-                            }
-                            variant={mejora.estado === "Aprobado" ? "default" : "secondary"}
-                          >
-                            {mejora.estado ?? "Sin estado"}
-                          </Badge>
-                          {mejora.estado === "Solicitado" && (
-                            <div className="flex flex-wrap gap-2">
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
+                    <TableCell className="align-top">
+                      <div className="flex flex-col gap-2">
+                        <Badge
+                          className={
+                            mejora.estado === "Aprobado"
+                              ? "bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
+                              : mejora.estado === "Negado"
+                                ? "bg-rose-500 hover:bg-rose-600 text-white w-fit"
+                                : "w-fit"
+                          }
+                          variant={mejora.estado === "Aprobado" ? "default" : "secondary"}
+                        >
+                          {mejora.estado ?? "Sin estado"}
+                        </Badge>
+                        {mejora.estado === "Solicitado" && (
+                          <div className="flex flex-wrap gap-2">
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
+                                  disabled={approveMutation.isPending}
+                                >
+                                  {approveMutation.isPending && approvingId === mejora.idMejora ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Check className="h-4 w-4" />
+                                  )}
+                                  {approveMutation.isPending && approvingId === mejora.idMejora
+                                    ? "Aprobando…"
+                                    : "Aprobar"}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={approveMutation.isPending}>
+                                    Cancelar
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
                                     disabled={approveMutation.isPending}
+                                    onClick={() => handleApprove(mejora)}
+                                    className="gap-1.5 bg-emerald-500 hover:bg-emerald-600"
                                   >
                                     {approveMutation.isPending && approvingId === mejora.idMejora ? (
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                       <Check className="h-4 w-4" />
                                     )}
-                                    {approveMutation.isPending && approvingId === mejora.idMejora
-                                      ? "Aprobando…"
-                                      : "Aprobar"}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={approveMutation.isPending}>
-                                      Cancelar
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      disabled={approveMutation.isPending}
-                                      onClick={() => handleApprove(mejora)}
-                                      className="gap-1.5 bg-emerald-500 hover:bg-emerald-600"
-                                    >
-                                      {approveMutation.isPending && approvingId === mejora.idMejora ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Check className="h-4 w-4" />
-                                      )}
-                                      Confirmar
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    className="gap-1.5 bg-rose-500 hover:bg-rose-600 text-white w-fit"
+                                    Confirmar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  className="gap-1.5 bg-rose-500 hover:bg-rose-600 text-white w-fit"
+                                  disabled={rejectMutation.isPending}
+                                >
+                                  {rejectMutation.isPending && rejectingId === mejora.idMejora ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <XCircle className="h-4 w-4" />
+                                  )}
+                                  {rejectMutation.isPending && rejectingId === mejora.idMejora ? "Negando…" : "Negar"}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Negar esta mejora?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Confirmar actualizará el estado a &quot;Negado&quot; y cancelará la ejecución de la solicitud.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={rejectMutation.isPending}>
+                                    Cancelar
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
                                     disabled={rejectMutation.isPending}
+                                    onClick={() => handleReject(mejora)}
+                                    className="gap-1.5 bg-rose-500 hover:bg-rose-600"
                                   >
                                     {rejectMutation.isPending && rejectingId === mejora.idMejora ? (
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                       <XCircle className="h-4 w-4" />
                                     )}
-                                    {rejectMutation.isPending && rejectingId === mejora.idMejora ? "Negando…" : "Negar"}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Negar esta mejora?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Confirmar actualizará el estado a &quot;Negado&quot; y cancelará la ejecución de la solicitud.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={rejectMutation.isPending}>
-                                      Cancelar
-                                    </AlertDialogCancel>
-                                    <AlertDialogAction
-                                      disabled={rejectMutation.isPending}
-                                      onClick={() => handleReject(mejora)}
-                                      className="gap-1.5 bg-rose-500 hover:bg-rose-600"
-                                    >
-                                      {rejectMutation.isPending && rejectingId === mejora.idMejora ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <XCircle className="h-4 w-4" />
-                                      )}
-                                      Confirmar
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
+                                    Confirmar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="px-4">
                       <div className="flex items-center justify-center gap-2">
                         <Dialog>
