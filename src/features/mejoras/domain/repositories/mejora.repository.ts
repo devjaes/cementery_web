@@ -11,6 +11,7 @@ export interface MejoraRepository {
   uploadFiles(id: string, files: File[]): Promise<void>;
   downloadPdf(id: string): Promise<{ blob: Blob; filename?: string; contentType?: string }>;
   approve(id: string, payload: { aprobadoPorId: string }): Promise<MejoraEntity>;
+  reject(id: string, payload: { negadoPorId: string }): Promise<MejoraEntity>;
   search(query: string): Promise<SearchFallecidosRequisitoInhumacionEntity>;
   searchAll(query: string): Promise<MejoraSearchAllResultsEntity>;
 }

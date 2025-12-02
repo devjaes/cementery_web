@@ -46,6 +46,26 @@ export const useApproveMejoraMutation = () => {
   });
 };
 
+export const useRejectMejoraMutation = () => {
+  const qc = useQueryClient();
+  return useMutation<MejoraEntity, Error, { id: string; negadoPorId: string }>({
+    mutationFn: ({ id, negadoPorId }) =>
+      MejoraRepositoryImpl.getInstance().reject(id, { negadoPorId }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEYS.all() });
+      qc.invalidateQueries({ queryKey: KEYS.byId(variables.id) });
+      toast.success("Mejora negada", {
+        description: "La solicitud cambió su estado a Negado.",
+      });
+    },
+    onError: (error) => {
+      toast.error("No se pudo negar la mejora", {
+        description: error.message,
+      });
+    },
+  });
+};
+
 export const useUpdateMejoraMutation = () => {
   const qc = useQueryClient();
   return useMutation<MejoraEntity, Error, { id: string; data: Partial<CreateMejoraEntity> }>({

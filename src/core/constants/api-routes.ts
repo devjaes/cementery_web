@@ -139,6 +139,7 @@ export const API_ROUTES = {
     DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
     SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
     APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
+    REJECT: (id: string) => `${AR_KEYS.MEJORAS}/${id}/negar`,
   },
   PAYMENTS: {
     LIST: AR_KEYS.PAYMENTS,

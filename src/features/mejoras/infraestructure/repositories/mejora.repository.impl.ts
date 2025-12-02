@@ -95,6 +95,12 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     return MejoraMapper.toEntity(updated);
   }
 
+  async reject(id: string, payload: { negadoPorId: string }): Promise<MejoraEntity> {
+    const { data } = await this.httpClient.patch<MejoraModel>(API_ROUTES.MEJORAS.REJECT(id), payload);
+    const updated = this.unwrapResponse<MejoraModel>(data);
+    return MejoraMapper.toEntity(updated);
+  }
+
   async delete(id: string): Promise<void> {
     await this.httpClient.delete(API_ROUTES.MEJORAS.DELETE(id));
   }

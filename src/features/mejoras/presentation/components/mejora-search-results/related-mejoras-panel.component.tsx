@@ -28,8 +28,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/shared/components/ui/dialog";
-import { Check, Download, Eye, FileText, Loader2, MapPin, Pencil } from "lucide-react";
-import { useApproveMejoraMutation, useDownloadMejoraPdfMutation } from "../../hooks/use-mejora-mutation";
+import { Check, Download, Eye, FileText, Loader2, MapPin, Pencil, XCircle } from "lucide-react";
+import {
+  useApproveMejoraMutation,
+  useDownloadMejoraPdfMutation,
+  useRejectMejoraMutation,
+} from "../../hooks/use-mejora-mutation";
 import { formatDate, fullName } from "./formatters";
 import { DEFAULT_APPROVER_ID } from "./constants";
 import { MejoraDetailDialog } from "./mejora-detail-dialog.component";
@@ -57,26 +61,22 @@ const formatBytes = (value: number) => {
 
 type MejoraDocumentListDialogProps = {
   documents: MejoraDocumento[];
+  open: boolean;
+  onOpenChange: (value: boolean) => void;
 };
 
-const MejoraDocumentListDialog = ({ documents }: MejoraDocumentListDialogProps) => {
+const MejoraDocumentListDialog = ({ documents, open, onOpenChange }: MejoraDocumentListDialogProps) => {
   if (!documents.length) {
     return null;
   }
 
+  const handleView = (url?: string) => {
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8"
-          title="Ver documentos adjuntos"
-        >
-          <FileText className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Documentos adjuntos</DialogTitle>
@@ -107,7 +107,10 @@ const MejoraDocumentListDialog = ({ documents }: MejoraDocumentListDialogProps) 
                     variant="outline"
                     disabled={!url}
                     className="gap-2"
-                    onClick={() => url && window.open(url, "_blank")}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => {
+                      handleView(url);
+                    }}
                   >
                     <Eye className="h-4 w-4" />
                     Ver
@@ -142,9 +145,25 @@ export const RelatedMejorasPanel = ({
   searchTerm,
 }: RelatedMejorasPanelProps) => {
   const approveMutation = useApproveMejoraMutation();
+  const rejectMutation = useRejectMejoraMutation();
   const downloadMutation = useDownloadMejoraPdfMutation();
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+  const [activeDocuments, setActiveDocuments] = useState<MejoraDocumento[]>([]);
+
+  const handleOpenDocuments = (documents: MejoraDocumento[]) => {
+    setActiveDocuments(documents);
+    setDocumentDialogOpen(true);
+  };
+
+  const handleDocumentDialogOpenChange = (value: boolean) => {
+    setDocumentDialogOpen(value);
+    if (!value) {
+      setActiveDocuments([]);
+    }
+  };
 
   const handleApprove = (mejora: MejoraEntity) => {
     setApprovingId(mejora.idMejora);
@@ -152,6 +171,16 @@ export const RelatedMejorasPanel = ({
       { id: mejora.idMejora, aprobadoPorId: DEFAULT_APPROVER_ID },
       {
         onSettled: () => setApprovingId(null),
+      },
+    );
+  };
+
+  const handleReject = (mejora: MejoraEntity) => {
+    setRejectingId(mejora.idMejora);
+    rejectMutation.mutate(
+      { id: mejora.idMejora, negadoPorId: DEFAULT_APPROVER_ID },
+      {
+        onSettled: () => setRejectingId(null),
       },
     );
   };
@@ -201,65 +230,116 @@ export const RelatedMejorasPanel = ({
               </TableHeader>
               <TableBody>
                 {mejoras.map((mejora) => (
-                  <TableRow key={mejora.idMejora}>
+                    <TableRow key={mejora.idMejora}>
                     <TableCell>{fullName(mejora.solicitante)}</TableCell>
                     <TableCell>{fullName(mejora.fallecido)}</TableCell>
                     <TableCell>{mejora.idCementerio?.nombre ?? "Sin cementerio"}</TableCell>
                     <TableCell>{mejora.tipoServicio}</TableCell>
                     <TableCell>{formatDate(mejora.fechaInicio ?? mejora.fechaSolicitud)}</TableCell>
-                    <TableCell className="align-top">
-                      <div className="flex flex-col gap-2">
-                        <Badge 
-                          className={mejora.estado === "Aprobado" ? "bg-emerald-500 hover:bg-emerald-600 text-white w-fit" : "w-fit"} 
-                          variant={mejora.estado === "Aprobado" ? "default" : "secondary"}
-                        >
-                          {mejora.estado ?? "Sin estado"}
-                        </Badge>
-                        {mejora.estado === "Solicitado" && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
-                                disabled={approveMutation.isPending}
-                              >
-                                {approveMutation.isPending && approvingId === mejora.idMejora ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Check className="h-4 w-4" />
-                                )}
-                                {approveMutation.isPending && approvingId === mejora.idMejora
-                                  ? "Aprobando…"
-                                  : "Aprobar"}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel disabled={approveMutation.isPending}>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  disabled={approveMutation.isPending}
-                                  onClick={() => handleApprove(mejora)}
-                                  className="gap-1.5 bg-emerald-500 hover:bg-emerald-600"
-                                >
-                                  {approveMutation.isPending && approvingId === mejora.idMejora ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Check className="h-4 w-4" />
-                                  )}
-                                  Confirmar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                    </TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-2">
+                          <Badge
+                            className={
+                              mejora.estado === "Aprobado"
+                                ? "bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
+                                : mejora.estado === "Negado"
+                                  ? "bg-rose-500 hover:bg-rose-600 text-white w-fit"
+                                  : "w-fit"
+                            }
+                            variant={mejora.estado === "Aprobado" ? "default" : "secondary"}
+                          >
+                            {mejora.estado ?? "Sin estado"}
+                          </Badge>
+                          {mejora.estado === "Solicitado" && (
+                            <div className="flex flex-wrap gap-2">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white w-fit"
+                                    disabled={approveMutation.isPending}
+                                  >
+                                    {approveMutation.isPending && approvingId === mejora.idMejora ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Check className="h-4 w-4" />
+                                    )}
+                                    {approveMutation.isPending && approvingId === mejora.idMejora
+                                      ? "Aprobando…"
+                                      : "Aprobar"}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Aprobar esta mejora?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Confirmar actualizará el estado a &quot;Aprobado&quot; y dejará la solicitud lista para ejecutar.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={approveMutation.isPending}>
+                                      Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      disabled={approveMutation.isPending}
+                                      onClick={() => handleApprove(mejora)}
+                                      className="gap-1.5 bg-emerald-500 hover:bg-emerald-600"
+                                    >
+                                      {approveMutation.isPending && approvingId === mejora.idMejora ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Check className="h-4 w-4" />
+                                      )}
+                                      Confirmar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    className="gap-1.5 bg-rose-500 hover:bg-rose-600 text-white w-fit"
+                                    disabled={rejectMutation.isPending}
+                                  >
+                                    {rejectMutation.isPending && rejectingId === mejora.idMejora ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <XCircle className="h-4 w-4" />
+                                    )}
+                                    {rejectMutation.isPending && rejectingId === mejora.idMejora ? "Negando…" : "Negar"}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Negar esta mejora?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Confirmar actualizará el estado a &quot;Negado&quot; y cancelará la ejecución de la solicitud.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={rejectMutation.isPending}>
+                                      Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      disabled={rejectMutation.isPending}
+                                      onClick={() => handleReject(mejora)}
+                                      className="gap-1.5 bg-rose-500 hover:bg-rose-600"
+                                    >
+                                      {rejectMutation.isPending && rejectingId === mejora.idMejora ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4" />
+                                      )}
+                                      Confirmar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                     <TableCell className="px-4">
                       <div className="flex items-center justify-center gap-2">
                         <Dialog>
@@ -295,7 +375,16 @@ export const RelatedMejorasPanel = ({
                           </Button>
                         ) : null}
                         {mejora.documentos && mejora.documentos.length > 0 ? (
-                          <MejoraDocumentListDialog documents={mejora.documentos} />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Ver documentos adjuntos"
+                            onClick={() => handleOpenDocuments(mejora.documentos ?? [])}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
                         ) : null}
                       </div>
                     </TableCell>
@@ -306,6 +395,11 @@ export const RelatedMejorasPanel = ({
           </div>
         )}
       </CardContent>
+      <MejoraDocumentListDialog
+        documents={activeDocuments}
+        open={documentDialogOpen}
+        onOpenChange={handleDocumentDialogOpenChange}
+      />
     </Card>
   );
 };
