@@ -151,7 +151,15 @@ export default function MejoraDocumentUpload({
                         size="sm"
                         className="gap-2"
                         disabled={removingDocument === doc.filename}
-                        onClick={() => onRemoveDocument(doc)}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `¿Eliminar "${doc.originalName}"? Esta acción quitará el archivo del respaldo en el servidor.`,
+                            )
+                          ) {
+                            onRemoveDocument(doc);
+                          }
+                        }}
                       >
                         {removingDocument === doc.filename ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
