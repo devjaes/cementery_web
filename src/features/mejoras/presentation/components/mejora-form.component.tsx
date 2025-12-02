@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { useCreateMejoraMutation, useUploadMejoraFilesMutation } from "../hooks/use-mejora-mutation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Button } from "@/shared/components/ui/button";
+import MejoraDocumentUpload from "./mejora-document-upload.component";
 
 type MejoraFormProps = {
   defaultValues?: Partial<CreateMejoraDTO>;
@@ -219,16 +220,14 @@ export default function MejoraForm({
               <h3 className="text-lg font-semibold">Documentación requerida</h3>
               <p className="text-sm text-muted-foreground">Carga los archivos de respaldo solicitados para completar la autorización.</p>
             </div>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Adjunta solicitud firmada, cédula del solicitante y evidencias del nicho (antes). El comprobante de pago se subirá en el flujo de pagos.</p>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
-                className="block w-full text-sm"
-                disabled={isPrefillLoading}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Adjunta solicitud firmada, cédula del solicitante y evidencias del nicho (antes). El comprobante de pago se subirá en el flujo de pagos.
+            </p>
+            <MejoraDocumentUpload
+              selectedFiles={selectedFiles}
+              onFilesChange={setSelectedFiles}
+              disabled={isPrefillLoading}
+            />
           </TabsContent>
 
           <div className="flex flex-col gap-3 border-t pt-4 md:flex-row md:items-center md:justify-between">
