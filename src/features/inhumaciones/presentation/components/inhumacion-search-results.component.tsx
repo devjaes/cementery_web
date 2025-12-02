@@ -32,6 +32,8 @@ import {
   InhumacionFallecidosEntity,
   SearchFallecidosInhumacionEntity,
 } from "../../domain/entities/inhumacion.entity";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
+import { useFindBloquesByCementeryQuery } from "@/features/bloques/presentation/hooks/use-bloques-queries";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +81,17 @@ export function InhumacionSearchResults({
   // Move hook to top level to avoid conditional calling
   const { mutate: deleteInhumacion, isPending } =
     useDeleteInhumacionMutation();
+
+  const { activeCemetery } = useActiveCemetery();
+  const bloquesQuery = useFindBloquesByCementeryQuery(activeCemetery?.idCementerio || "");
+  const blockMap: Record<string, string> = {};
+  if (bloquesQuery.data) {
+    bloquesQuery.data.forEach((b: any) => {
+      const id = b?.idBloque || b?.id_bloque || b?.id || String(b?.id);
+      const nombre = b?.nombre || b?.nombreBloque || b?.nombre_bloque || String(b?.numero) || id;
+      blockMap[String(id)] = nombre;
+    });
+  }
 
   // Si hay un fallecido seleccionado, mostrar sus detalles
   if (selectedFallecido) {
@@ -223,7 +236,12 @@ export function InhumacionSearchResults({
                           {inhumacion.idFallecido.nombres + " " + inhumacion.idFallecido.apellidos}
                         </TableCell>
                         <TableCell>
-                          Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
+                            Bloque: {(
+                             (inhumacion as any)?.idNicho?.bloque?.nombre ||
+                             blockMap[String(inhumacion.idNicho?.idBloque || (inhumacion as any)?.idNicho?.id_bloque)] ||
+                             inhumacion.idNicho?.idBloque ||
+                             "-"
+                            )} - Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
                         </TableCell>
                         <TableCell>
                           {new Date(inhumacion.fechaInhumacion).toLocaleDateString()}
@@ -425,7 +443,12 @@ export function InhumacionSearchResults({
                             inhumacion.idFallecido.apellidos}
                         </TableCell>
                         <TableCell>
-                          Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
+                          Bloque: {(
+                            (inhumacion as any)?.idNicho?.bloque?.nombre ||
+                            blockMap[String(inhumacion.idNicho?.idBloque || (inhumacion as any)?.idNicho?.id_bloque)] ||
+                            inhumacion.idNicho?.idBloque ||
+                            "-"
+                          )} - Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
                         </TableCell>
                         <TableCell>
                           {new Date(
@@ -546,7 +569,12 @@ export function InhumacionSearchResults({
                           {inhumaciones.length > 0  && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              Fila: {inhumaciones[0].idNicho?.fila ?? "-"} - Columna: {inhumaciones[0].idNicho?.columna ?? "-"}
+                              Bloque: {(
+                                (inhumaciones[0] as any)?.idNicho?.bloque?.nombre ||
+                                blockMap[String(inhumaciones[0].idNicho?.idBloque || (inhumaciones[0] as any)?.idNicho?.id_bloque)] ||
+                                inhumaciones[0].idNicho?.idBloque ||
+                                "-"
+                              )} - Fila: {inhumaciones[0].idNicho?.fila ?? "-"} - Columna: {inhumaciones[0].idNicho?.columna ?? "-"}
                             </span>
                           )}
                         </div>
