@@ -107,10 +107,30 @@ export default function RHFAutocompleteHuecoNicho({
 
     const filtered = baseList
             .filter(h => {
-            if (!allowedNichoIds) return true; // no owner filter -> include all
-            const id = h.idNicho?.idNicho;
-            return id && allowedNichoIds.includes(id);
-        })
+                // If an owner (solicitante) is provided, only include nichos that belong to that owner
+                if (ownerPersonId) {
+                    // If we have allowedNichoIds loaded, use them
+                    if (Array.isArray(allowedNichoIds)) {
+                        const id = h.idNicho?.idNicho;
+                        return !!id && allowedNichoIds.includes(id);
+                    }
+
+                    // Otherwise, try to detect ownership from embedded propietarios on the nicho (if present)
+                    const propietarios = h.idNicho?.propietarios || h.idNicho?.propietariosNicho || [];
+                    if (Array.isArray(propietarios) && propietarios.length > 0) {
+                        return propietarios.some((p: any) => {
+                            const pid = p?.idPersona?.id_persona || p?.idPersona?.idPersona || p?.idPersona?.id || p?.id_persona || p?.idPersona;
+                            return String(pid) === String(ownerPersonId);
+                        });
+                    }
+
+                    // If we neither have allowedNichoIds nor embedded propietarios, avoid returning all items — treat as not-owned until allowedNichoIds loads
+                    return false;
+                }
+
+                // No owner filter -> include all
+                return true;
+            })
             .filter(h => {
                 const bloqueName = (h as any)?.bloque?.nombre || h.idNicho?.idBloque?.nombre || h.idNicho?.id_bloque?.nombre || h.idNicho?.bloqueNombre || blockMap[String(h.idNicho?.idBloque || h.idNicho?.id_bloque)] || h.idNicho?.idBloque || h.idNicho?.id_bloque || "";
                 return `${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""} ${String(bloqueName)}`
