@@ -14,13 +14,17 @@ import { PdfPreviewDialog } from "@/features/payment/presentation/components/pdf
 import { UploadReceiptDialog } from "@/features/payment/presentation/components/upload-receipt-dialog";
 import { useAuthStore } from "@/features/auth/presentation/context/auth.store";
 import { useSearchPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
+import { useFindNichoByIdQuery, useFindPropietariosByNichoIdQuery } from "../hooks/use-nicho-queries";
+import { useCemeteryStore } from '@/features/cementery/presentation/context/cemetery.store';
+import { useBloquesWithNichos } from '@/features/map/presentation/hooks/use-bloques-with-nichos';
+import { useCreatePropietarioNichoMutation } from "@/features/propietarios-nichos/presentation/hooks/use-propietario-nicho-mutations";
 
 interface ReservationActionsProps {
   nichoId: string;
-  open?: boolean; // modo controlado (opcional)
-  onOpenChange?: (open: boolean) => void; // callback controlado (opcional)
-  hideTrigger?: boolean; // ocultar botón trigger si se usa modo controlado desde el padre
-    onReceiptUploaded?: (buyerPersonId?: string, paymentId?: string) => void; // callback cuando se sube el comprobante exitosamente, incluye el ID de la persona compradora y el ID del pago
+  open?: boolean; 
+  onOpenChange?: (open: boolean) => void; 
+  hideTrigger?: boolean; 
+    onReceiptUploaded?: (buyerPersonId?: string, paymentId?: string) => void;
 }
 
 export function ReservationActions({ nichoId, open: controlledOpen, onOpenChange, hideTrigger = false, onReceiptUploaded }: ReservationActionsProps) {
@@ -40,6 +44,11 @@ export function ReservationActions({ nichoId, open: controlledOpen, onOpenChange
   const { data: payments, isLoading } = usePaymentsByProcedure("niche_sale", nichoId, open);
   const cancelarReservaMutation = useCancelarReserva();
   const getReceiptBlob = useGetReceiptBlob();
+  const { data: nicho } = useFindNichoByIdQuery(nichoId);
+  const { data: propietarios } = useFindPropietariosByNichoIdQuery(nichoId);
+  const cemetery = useCemeteryStore((s) => s.activeCemetery);
+  const { bloques = [] } = useBloquesWithNichos(cemetery?.idCementerio || '');
+  const createPropietarioMutation = useCreatePropietarioNichoMutation();
   const { user } = useAuthStore();
   const validatedBy = user?.email || user?.nombre || "";
   
@@ -144,8 +153,49 @@ export function ReservationActions({ nichoId, open: controlledOpen, onOpenChange
                   <UploadReceiptDialog
                     paymentId={paymentId}
                     validatedBy={validatedBy}
-                    onSuccess={() => {
+                    onSuccess={async () => {
                       setOpen(false);
+                      // Crear propietario automáticamente si se encontró la persona compradora
+                      if (buyerPersonId) {
+                        try {
+                          // Evitar duplicados: verificar si ya existe un propietario activo para este nicho con la misma persona
+                          const exists = propietarios?.propietarios?.some(
+                            (p: any) => (p?.idPersona?.id_persona || p?.idPersona) === buyerPersonId && (p.activo === undefined ? true : p.activo)
+                          );
+
+                          if (exists) {
+                            // Ya existe un propietario activo para la misma persona; no crear duplicado
+                            console.info("Propietario ya existente nicho, se omite creación automática.");
+                          } else {
+                            const fechaAdq = new Date().toISOString().split('T')[0];
+                            // Obtener el número visible del nicho (numeroGlobal) buscando en los bloques calculados
+                            let visibleNumber: number | undefined = (nicho as any)?.numeroGlobal;
+                            if (!visibleNumber) {
+                              for (const b of bloques) {
+                                const found = (b.nichos || []).find((n: any) => n.idNicho === nichoId);
+                                if (found && (found as any).numeroGlobal) {
+                                  visibleNumber = (found as any).numeroGlobal;
+                                  break;
+                                }
+                              }
+                            }
+                            const numeroDocumento = visibleNumber ? String(visibleNumber) : String(nicho?.columna ?? nichoId);
+                            await createPropietarioMutation.mutateAsync({
+                              idPersona: buyerPersonId,
+                              idNicho: nichoId,
+                              fechaAdquisicion: fechaAdq,
+                              tipoDocumento: "Escritura",
+                              numeroDocumento,
+                              razon: "Compra",
+                              tipo: "Dueño",
+                            });
+                          }
+                        } catch (e) {
+                          // Si falla la creación, registrar y continuar para no bloquear el flujo
+                          console.error("Error creando propietario automáticamente:", e);
+                        }
+                      }
+
                       onReceiptUploaded?.(buyerPersonId, paymentId || undefined);
                     }}
                   />
