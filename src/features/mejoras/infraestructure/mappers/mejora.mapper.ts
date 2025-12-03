@@ -48,6 +48,7 @@ export class MejoraMapper {
       obligacionesPostObra: model.obligacionesPostObra,
       escombreraMunicipal: model.escombreraMunicipal,
       direccionEntidad: model.direccionEntidad,
+      documentos: model.documentos,
     };
   }
 

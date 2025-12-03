@@ -7,18 +7,26 @@ import RHFInput from "@/shared/components/form/rhf/rhf-input";
 import RHFSelect from "@/shared/components/form/rhf/rhf-select";
 import RHFTextarea from "@/shared/components/form/rhf/rhf-text-area";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
+import RHFTimeRangeSelect from "@/shared/components/form/rhf/rhf-time-range-select";
 import { CreateMejoraDTO, CreateMejoraSchema } from "../../domain/schemas/mejora.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useUploadMejoraFilesMutation, useUpdateMejoraMutation } from "../hooks/use-mejora-mutation";
+import {
+  useDeleteMejoraFileMutation,
+  useUploadMejoraFilesMutation,
+  useUpdateMejoraMutation,
+} from "../hooks/use-mejora-mutation";
+import { MejoraDocumento } from "../../domain/entities/mejora.entity";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Button } from "@/shared/components/ui/button";
+import MejoraDocumentUpload from "./mejora-document-upload.component";
 
 type MejoraFormEditProps = {
   mejoraId: string;
   defaultValues?: Partial<CreateMejoraDTO>;
   isPrefillLoading?: boolean;
   searchTerm?: string;
+  initialDocuments?: MejoraDocumento[];
 };
 
 const tipoServicioOptions = [
@@ -37,7 +45,8 @@ export default function MejoraFormEdit({
   mejoraId,
   defaultValues, 
   isPrefillLoading = false,
-  searchTerm = ""
+  searchTerm = "",
+  initialDocuments,
 }: MejoraFormEditProps) {
   const router = useRouter();
   
@@ -55,7 +64,10 @@ export default function MejoraFormEdit({
   
   const { mutate: update, isPending: isUpdating } = useUpdateMejoraMutation();
   const { mutate: uploadFiles } = useUploadMejoraFilesMutation();
+  const { mutate: deleteDocument } = useDeleteMejoraFileMutation();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingDocuments, setExistingDocuments] = useState<MejoraDocumento[]>(initialDocuments ?? []);
+  const [removingDocument, setRemovingDocument] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("general");
 
   const sections = useMemo(
@@ -86,12 +98,22 @@ export default function MejoraFormEdit({
 
   useEffect(() => {
     setActiveTab("accion");
-    if (defaultValues && Object.keys(defaultValues).length > 0) {
-      const combined = { ...baseDefaultValues, ...defaultValues };
-      methods.reset(combined);
-      setSelectedFiles([]);
-    }
-  }, [defaultValues, methods]);
+    const combined = { ...baseDefaultValues, ...defaultValues };
+    methods.reset(combined);
+    setSelectedFiles([]);
+    setExistingDocuments(initialDocuments ?? []);
+  }, [defaultValues, initialDocuments, methods]);
+
+  const handleRemoveDocument = (document: MejoraDocumento) => {
+    setRemovingDocument(document.filename);
+    deleteDocument(
+      { id: mejoraId, filename: document.filename },
+      {
+        onSuccess: () => setExistingDocuments((docs) => docs.filter((doc) => doc.filename !== document.filename)),
+        onSettled: () => setRemovingDocument(null),
+      },
+    );
+  };
 
   const handleSubmit = (data: CreateMejoraDTO) => {
     const redirectUrl = searchTerm ? `/mejoras?q=${encodeURIComponent(searchTerm)}` : "/mejoras";
@@ -170,10 +192,9 @@ export default function MejoraFormEdit({
               <RHFSelect name="tipoServicio" label="Tipo de servicio a efectuar *" options={tipoServicioOptions} placeholder="Selecciona" disabled={isPrefillLoading} />
               <RHFDatePickerCalendar name="fechaInicio" label="Fecha de inicio" />
               <RHFDatePickerCalendar name="fechaFin" label="Fecha de fin" />
-              <RHFInput
+              <RHFTimeRangeSelect
                 name="horarioTrabajo"
                 label="Horario de trabajo"
-                placeholder="Ej: 09h00 a 17h00"
                 disabled={isPrefillLoading}
               />
             </div>
@@ -185,16 +206,17 @@ export default function MejoraFormEdit({
               <h3 className="text-lg font-semibold">Documentación requerida</h3>
               <p className="text-sm text-muted-foreground">Carga los archivos de respaldo solicitados para completar la autorización.</p>
             </div>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Adjunta solicitud firmada, cédula del solicitante y evidencias del nicho (antes). El comprobante de pago se subirá en el flujo de pagos.</p>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
-                className="block w-full text-sm"
-                disabled={isPrefillLoading}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Adjunta solicitud firmada, cédula del solicitante y evidencias del nicho (antes). El comprobante de pago se subirá en el flujo de pagos.
+            </p>
+            <MejoraDocumentUpload
+              selectedFiles={selectedFiles}
+              onFilesChange={setSelectedFiles}
+              existingDocuments={existingDocuments}
+              removingDocument={removingDocument}
+              onRemoveDocument={handleRemoveDocument}
+              disabled={isPrefillLoading}
+            />
           </TabsContent>
 
           <div className="flex flex-col gap-3 border-t pt-4 md:flex-row md:items-center md:justify-between">

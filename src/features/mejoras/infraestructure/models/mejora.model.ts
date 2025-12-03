@@ -54,6 +54,16 @@ export interface MejoraModel {
   obligacionesPostObra?: string;
   escombreraMunicipal?: string;
   direccionEntidad?: string;
+  documentos?: MejoraDocumentModel[];
+}
+
+export interface MejoraDocumentModel {
+  filename: string;
+  originalName: string;
+  url: string;
+  uploadedAt: string;
+  contentType: string;
+  size: number;
 }
 
 export interface CreateMejoraModel {

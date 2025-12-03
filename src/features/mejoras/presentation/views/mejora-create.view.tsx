@@ -150,6 +150,9 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
   const direccionEntidad = nicho.idCementerio?.direccion ?? undefined;
   
   const propietarioActivo = nicho.propietarios?.find((prop) => prop.activo);
+  
+  // Extraer información del fallecido si existe
+  const fallecidoInfo = extractFallecidoFromNicho(nicho);
 
   const result: Partial<CreateMejoraDTO> = {
     idCementerio: nicho.idCementerio?.idCementerio,
@@ -159,6 +162,10 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
     solicitanteDireccion: truncate(propietario?.direccion, 200),
     solicitanteTelefono: truncate(propietario?.telefono, 30),
     solicitanteCorreo: truncate(propietario?.correo, 100),
+    // Información del fallecido (si existe)
+    id_fallecido: fallecidoInfo?.idPersona,
+    fechaFallecimiento: fallecidoInfo?.fechaDefuncion,
+    // Información del propietario
     propietarioNicho: truncate(propietarioNombre, 200),
     propietarioNombre: truncate(propietarioNombre, 200),
     propietarioFechaAdquisicion: propietarioActivo?.fechaAdquisicion ?? undefined,
@@ -188,6 +195,41 @@ const buildNichoCodigoSitio = (nicho: NichoEntity) => {
   if (nicho.fila) segments.push(`FILA-${nicho.fila}`);
   if (nicho.columna) segments.push(`NICHO-${nicho.columna}`);
   return segments.length ? segments.join("-") : undefined;
+};
+
+/**
+ * Extrae el primer fallecido del nicho (desde huecos o inhumaciones)
+ */
+const extractFallecidoFromNicho = (nicho: NichoEntity): { idPersona?: string; fechaDefuncion?: string; fechaInhumacion?: string } | undefined => {
+  // Buscar en huecos
+  if (nicho.huecos && nicho.huecos.length > 0) {
+    for (const hueco of nicho.huecos) {
+      if (hueco.idFallecido) {
+        return {
+          idPersona: hueco.idFallecido.id_persona,
+          fechaDefuncion: hueco.idFallecido.fecha_defuncion ?? undefined,
+          fechaInhumacion: hueco.idFallecido.fecha_inhumacion ?? undefined,
+        };
+      }
+    }
+  }
+
+  // Buscar en inhumaciones (el API devuelve id_fallecido como objeto)
+  if (nicho.inhumaciones && nicho.inhumaciones.length > 0) {
+    for (const inhumacion of nicho.inhumaciones) {
+      // El API puede devolver id_fallecido como objeto con id_persona
+      const fallecido = inhumacion.id_fallecido;
+      if (fallecido && typeof fallecido === 'object') {
+        return {
+          idPersona: fallecido.id_persona,
+          fechaDefuncion: fallecido.fecha_defuncion ?? undefined,
+          fechaInhumacion: fallecido.fecha_inhumacion ?? inhumacion.fecha_inhumacion ?? undefined,
+        };
+      }
+    }
+  }
+
+  return undefined;
 };
 
 export default function MejoraCreateView() {

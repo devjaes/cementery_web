@@ -8,12 +8,14 @@ import RHFSelect from "@/shared/components/form/rhf/rhf-select";
 import RHFAutocompletePerson from "@/shared/components/form/rhf/rhf-autocomplete-person";
 import RHFTextarea from "@/shared/components/form/rhf/rhf-text-area";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
+import RHFTimeRangeSelect from "@/shared/components/form/rhf/rhf-time-range-select";
 import { CreateMejoraDTO, CreateMejoraSchema } from "../../domain/schemas/mejora.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useCreateMejoraMutation, useUploadMejoraFilesMutation } from "../hooks/use-mejora-mutation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Button } from "@/shared/components/ui/button";
+import MejoraDocumentUpload from "./mejora-document-upload.component";
 
 type MejoraFormProps = {
   defaultValues?: Partial<CreateMejoraDTO>;
@@ -204,10 +206,9 @@ export default function MejoraForm({
               <RHFSelect name="tipoServicio" label="Tipo de servicio a efectuar *" options={tipoServicioOptions} placeholder="Selecciona" disabled={isPrefillLoading} />
               <RHFDatePickerCalendar name="fechaInicio" label="Fecha de inicio" />
               <RHFDatePickerCalendar name="fechaFin" label="Fecha de fin" />
-              <RHFInput
+              <RHFTimeRangeSelect
                 name="horarioTrabajo"
                 label="Horario de trabajo"
-                placeholder="Ej: 09h00 a 17h00"
                 disabled={isPrefillLoading}
               />
             </div>
@@ -219,16 +220,14 @@ export default function MejoraForm({
               <h3 className="text-lg font-semibold">Documentación requerida</h3>
               <p className="text-sm text-muted-foreground">Carga los archivos de respaldo solicitados para completar la autorización.</p>
             </div>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Adjunta solicitud firmada, cédula del solicitante y evidencias del nicho (antes). El comprobante de pago se subirá en el flujo de pagos.</p>
-              <input
-                type="file"
-                multiple
-                onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
-                className="block w-full text-sm"
-                disabled={isPrefillLoading}
-              />
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Adjunta solicitud firmada, cédula del solicitante y evidencias del nicho (antes). El comprobante de pago se subirá en el flujo de pagos.
+            </p>
+            <MejoraDocumentUpload
+              selectedFiles={selectedFiles}
+              onFilesChange={setSelectedFiles}
+              disabled={isPrefillLoading}
+            />
           </TabsContent>
 
           <div className="flex flex-col gap-3 border-t pt-4 md:flex-row md:items-center md:justify-between">
