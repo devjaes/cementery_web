@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
-import { Home } from "lucide-react";
+import { Home, User } from "lucide-react";
 import { formatDate, fullName, formatNichoLocation } from "./formatters";
+import { useCemeteryStore } from "@/features/cementery/presentation/context/cemetery.store";
 
 interface PropietariosResultsViewProps {
   propietarios: MejoraSearchAllResultsEntity["propietarios"];
@@ -22,6 +23,8 @@ export const PropietariosResultsView = ({
   propietarios,
   searchTerm,
 }: PropietariosResultsViewProps) => {
+  const { activeCemetery } = useCemeteryStore();
+  
   if (propietarios.length === 0) return null;
 
   return (
@@ -66,6 +69,7 @@ export const PropietariosResultsView = ({
                           <TableHead>Estado</TableHead>
                           <TableHead>Cementerio</TableHead>
                           <TableHead>Ubicación</TableHead>
+                          <TableHead>Fallecido(s)</TableHead>
                           <TableHead>Tipo propietario</TableHead>
                           <TableHead>Fecha adquisición</TableHead>
                           <TableHead>Documento</TableHead>
@@ -84,10 +88,31 @@ export const PropietariosResultsView = ({
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {prop.idNicho?.idCementerio?.nombre ?? "N/A"}
+                              {prop.idNicho?.idCementerio?.nombre ?? activeCemetery?.nombre ?? "N/A"}
                             </TableCell>
                             <TableCell>
                               {formatNichoLocation(prop.idNicho)}
+                            </TableCell>
+                            <TableCell>
+                              {prop.idNicho?.fallecidos && prop.idNicho.fallecidos.length > 0 ? (
+                                <div className="space-y-1">
+                                  {prop.idNicho.fallecidos.map((fallecido) => (
+                                    <div key={fallecido.idPersona} className="flex items-center gap-1 text-xs">
+                                      <User className="w-3 h-3 text-gray-500" />
+                                      <span className="font-medium">
+                                        {fullName(fallecido)}
+                                      </span>
+                                      {fallecido.fechaInhumacion && (
+                                        <span className="text-muted-foreground">
+                                          ({formatDate(fallecido.fechaInhumacion)})
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Sin fallecidos</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">{prop.tipo}</Badge>

@@ -18,8 +18,7 @@ import { ArrowLeft, Check, Loader2, Edit } from "lucide-react";
 import Link from "next/link";
 import { useFindMejoraByIdQuery } from "../hooks/use-mejora-queries";
 import { useApproveMejoraMutation } from "../hooks/use-mejora-mutation";
-
-const DEFAULT_APPROVER_ID = "11657f06-85d6-42bb-84f6-7e3ffe06965d";
+import { useAuthStore } from "@/features/auth/presentation/context/auth.store";
 const DOCUMENT_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "").replace(/\/$/, "");
 const buildDocumentUrl = (relative: string) => (relative ? `${DOCUMENT_BASE_URL}${relative}` : relative);
 
@@ -27,13 +26,14 @@ export default function MejoraDetailView({ id }: { id: string }) {
   const router = useRouter();
   const { data, isLoading } = useFindMejoraByIdQuery(id);
   const approveMutation = useApproveMejoraMutation();
+  const { user } = useAuthStore();
 
   const isApproving = approveMutation.isPending;
   const canApprove = !!data && data.estado === "Solicitado";
 
   const handleApprove = () => {
-    if (!data) return;
-    approveMutation.mutate({ id: data.idMejora, aprobadoPorId: DEFAULT_APPROVER_ID });
+    if (!data || !user?.id_user) return;
+    approveMutation.mutate({ id: data.idMejora, aprobadoPorId: user.id_user });
   };
 
   if (isLoading) return <ContainerApp title="Detalle de Mejora"><div className="py-8">Cargando...</div></ContainerApp>;

@@ -36,7 +36,7 @@ import {
   useRejectMejoraMutation,
 } from "../../hooks/use-mejora-mutation";
 import { formatDate, fullName } from "./formatters";
-import { DEFAULT_APPROVER_ID } from "./constants";
+import { useAuthStore } from "@/features/auth/presentation/context/auth.store";
 import { MejoraDetailDialog } from "./mejora-detail-dialog.component";
 
 interface RelatedMejorasPanelProps {
@@ -150,6 +150,7 @@ export const RelatedMejorasPanel = ({
   const approveMutation = useApproveMejoraMutation();
   const rejectMutation = useRejectMejoraMutation();
   const downloadMutation = useDownloadMejoraPdfMutation();
+  const { user } = useAuthStore();
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -194,9 +195,10 @@ export const RelatedMejorasPanel = ({
   });
 
   const handleApprove = (mejora: MejoraEntity) => {
+    if (!user?.id_user) return;
     setApprovingId(mejora.idMejora);
     approveMutation.mutate(
-      { id: mejora.idMejora, aprobadoPorId: DEFAULT_APPROVER_ID },
+      { id: mejora.idMejora, aprobadoPorId: user.id_user },
       {
         onSettled: () => setApprovingId(null),
       },
@@ -204,9 +206,10 @@ export const RelatedMejorasPanel = ({
   };
 
   const handleReject = (mejora: MejoraEntity) => {
+    if (!user?.id_user) return;
     setRejectingId(mejora.idMejora);
     rejectMutation.mutate(
-      { id: mejora.idMejora, negadoPorId: DEFAULT_APPROVER_ID },
+      { id: mejora.idMejora, negadoPorId: user.id_user },
       {
         onSettled: () => setRejectingId(null),
       },

@@ -7,6 +7,7 @@ import RHFInput from "@/shared/components/form/rhf/rhf-input";
 import RHFSelect from "@/shared/components/form/rhf/rhf-select";
 import RHFTextarea from "@/shared/components/form/rhf/rhf-text-area";
 import RHFDatePickerCalendar from "@/shared/components/form/rhf/rhf-datepicker-calendar";
+import RHFTimeRangeSelect from "@/shared/components/form/rhf/rhf-time-range-select";
 import { CreateMejoraDTO, CreateMejoraSchema } from "../../domain/schemas/mejora.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -191,10 +192,9 @@ export default function MejoraFormEdit({
               <RHFSelect name="tipoServicio" label="Tipo de servicio a efectuar *" options={tipoServicioOptions} placeholder="Selecciona" disabled={isPrefillLoading} />
               <RHFDatePickerCalendar name="fechaInicio" label="Fecha de inicio" />
               <RHFDatePickerCalendar name="fechaFin" label="Fecha de fin" />
-              <RHFInput
+              <RHFTimeRangeSelect
                 name="horarioTrabajo"
                 label="Horario de trabajo"
-                placeholder="Ej: 09h00 a 17h00"
                 disabled={isPrefillLoading}
               />
             </div>
