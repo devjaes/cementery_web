@@ -30,9 +30,9 @@ type InhumacionData = {
   solicitante?: string;
   idNicho?: {
     idCementerio?: { nombre?: string };
-    sector?: string | number;
+    idBloque?: string | number;
     fila?: number;
-    numero?: string | number;
+    columna?: string | number;
   };
 } & Record<string, unknown>;
 
@@ -187,9 +187,9 @@ export function ExhumacionSearchResults({
                         <div className="text-gray-600">
                           <span className="font-medium">Ubicación:</span>{' '}
                           <span className="text-sm">
-                            {result.hasExhumacion 
+                            {result.hasExhumacion
                               ? exhumacion?.ubicacion
-                              : `${inhumacion?.idNicho?.idCementerio?.nombre} - Sector ${inhumacion?.idNicho?.sector} - Fila ${inhumacion?.idNicho?.fila} - Nicho ${inhumacion?.idNicho?.numero}`
+                              : `${inhumacion?.idNicho?.idCementerio?.nombre} - Fila ${inhumacion?.idNicho?.fila ?? "-"} - Columna ${inhumacion?.idNicho?.columna ?? "-"}`
                             }
                           </span>
                         </div>

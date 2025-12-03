@@ -26,7 +26,7 @@ export default function RHFHuecoNichoSelect({
   
   const options = (huecosNichos ?? []).map((h) => ({
     value: h.idDetalleHueco as string,
-    label: `Sector: ${h.idNicho?.sector} - Fila: ${h.idNicho?.fila} - Número: ${h.idNicho?.numero} - Hueco: ${h.numHueco} - Tipo: ${h.idNicho?.tipo}`,
+    label: `Fila: ${h.idNicho?.fila ?? "-"} - Columna: ${h.idNicho?.columna ?? "-"} - Hueco: ${h.numHueco} - Tipo: ${h.idNicho?.tipo ?? "-"}`,
   }));
 
   return (

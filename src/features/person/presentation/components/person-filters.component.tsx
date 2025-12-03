@@ -11,7 +11,7 @@ export function PersonFilters() {
   return (
     <div className="flex flex-col md:flex-row gap-4">
       <Input
-        placeholder="Buscar por ID, sector, fila, número..."
+        placeholder="Buscar por ID, fila, columna..."
         className="w-full md:w-1/3"
       />
       <Select>

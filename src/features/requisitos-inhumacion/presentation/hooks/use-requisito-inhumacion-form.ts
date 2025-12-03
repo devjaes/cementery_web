@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { RequisitoInhumacionEntity } from "../../domain/entities/requisito-inhumacion.entity";
 import { useForm } from "react-hook-form";
 import {
@@ -75,6 +76,24 @@ export function useRequisitoInhumacionForm(
           idCementerio: activeCemetery?.idCementerio || "",
         },
   });
+
+  // Keep idCementerio in sync with the global active cemetery selection.
+  // If the form is for creating a new requisito (no existing requisitoInhumacion),
+  // update the form value when the active cemetery changes so the UI reflects
+  // the selector at the top of the app immediately.
+  useEffect(() => {
+    try {
+      if (!requisitoInhumacion) {
+        methods.setValue("idCementerio", activeCemetery?.idCementerio || "", {
+          shouldDirty: false,
+          shouldValidate: false,
+        });
+      }
+    } catch (e) {
+      // ignore setValue errors
+    }
+    // we intentionally depend on id only
+  }, [activeCemetery?.idCementerio, requisitoInhumacion]);
 
   const { mutate: create, isPending: isCreating } =
     useCreateRequisitoInhumacionMutation();

@@ -32,6 +32,8 @@ import {
   InhumacionFallecidosEntity,
   SearchFallecidosInhumacionEntity,
 } from "../../domain/entities/inhumacion.entity";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
+import { useFindBloquesByCementeryQuery } from "@/features/bloques/presentation/hooks/use-bloques-queries";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +81,17 @@ export function InhumacionSearchResults({
   // Move hook to top level to avoid conditional calling
   const { mutate: deleteInhumacion, isPending } =
     useDeleteInhumacionMutation();
+
+  const { activeCemetery } = useActiveCemetery();
+  const bloquesQuery = useFindBloquesByCementeryQuery(activeCemetery?.idCementerio || "");
+  const blockMap: Record<string, string> = {};
+  if (bloquesQuery.data) {
+    bloquesQuery.data.forEach((b: any) => {
+      const id = b?.idBloque || b?.id_bloque || b?.id || String(b?.id);
+      const nombre = b?.nombre || b?.nombreBloque || b?.nombre_bloque || String(b?.numero) || id;
+      blockMap[String(id)] = nombre;
+    });
+  }
 
   // Si hay un fallecido seleccionado, mostrar sus detalles
   if (selectedFallecido) {
@@ -220,33 +233,27 @@ export function InhumacionSearchResults({
                       <TableRow key={inhumacion.idInhumacion}>
                         <TableCell>{inhumacion.codigoInhumacion}</TableCell>
                         <TableCell>
-                          {inhumacion.idFallecido.nombres +
-                            " " +
-                            inhumacion.idFallecido.apellidos}
+                          {inhumacion.idFallecido.nombres + " " + inhumacion.idFallecido.apellidos}
                         </TableCell>
                         <TableCell>
-                          {inhumacion.idNicho?.sector} - Fila:{" "}
-                          {inhumacion.idNicho?.fila} - Número:{" "}
-                          {inhumacion.idNicho?.numero} - Tipo:{" "}
-                          {inhumacion.idNicho?.tipo}
+                            Bloque: {(
+                             (inhumacion as any)?.idNicho?.bloque?.nombre ||
+                             blockMap[String(inhumacion.idNicho?.idBloque || (inhumacion as any)?.idNicho?.id_bloque)] ||
+                             inhumacion.idNicho?.idBloque ||
+                             "-"
+                            )} - Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
                         </TableCell>
                         <TableCell>
-                          {new Date(
-                            inhumacion.fechaInhumacion
-                          ).toLocaleDateString()}
+                          {new Date(inhumacion.fechaInhumacion).toLocaleDateString()}
                         </TableCell>
                         <TableCell>{inhumacion.solicitante}</TableCell>
-                        <TableCell>
-                          {inhumacion.responsableInhumacion}
-                        </TableCell>
+                        <TableCell>{inhumacion.responsableInhumacion}</TableCell>
                         <TableCell>
                           <StatusChip estado={inhumacion.estado} />
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Link
-                              href={`/inhumaciones/${inhumacion.idInhumacion}/editar`}
-                            >
+                            <Link href={`/inhumaciones/${inhumacion.idInhumacion}/editar`}>
                               <Button size="icon" variant="ghost">
                                 <Pencil className="w-4 h-4" />
                               </Button>
@@ -259,28 +266,17 @@ export function InhumacionSearchResults({
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    ¿Eliminar inhumacion?
-                                  </AlertDialogTitle>
+                                  <AlertDialogTitle>¿Eliminar inhumacion?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. ¿Deseas
-                                    eliminar esta inhumacion?
+                                    Esta acción no se puede deshacer. ¿Deseas eliminar esta inhumacion?
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>
-                                    Cancelar
-                                  </AlertDialogCancel>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() =>
-                                      deleteInhumacion(inhumacion.idInhumacion)
-                                    }
+                                    onClick={() => deleteInhumacion(inhumacion.idInhumacion)}
                                     disabled={isPending}
-                                    className={clsx(
-                                      "px-8 bg-red-500 hover:bg-red-600",
-                                      isPending &&
-                                        "opacity-50 cursor-not-allowed"
-                                    )}
+                                    className={clsx("px-8 bg-red-500 hover:bg-red-600", isPending && "opacity-50 cursor-not-allowed")}
                                   >
                                     Eliminar
                                   </AlertDialogAction>
@@ -447,10 +443,12 @@ export function InhumacionSearchResults({
                             inhumacion.idFallecido.apellidos}
                         </TableCell>
                         <TableCell>
-                          {inhumacion.idNicho?.sector} - Fila:{" "}
-                          {inhumacion.idNicho?.fila} - Número:{" "}
-                          {inhumacion.idNicho?.numero} - Tipo:{" "}
-                          {inhumacion.idNicho?.tipo}
+                          Bloque: {(
+                            (inhumacion as any)?.idNicho?.bloque?.nombre ||
+                            blockMap[String(inhumacion.idNicho?.idBloque || (inhumacion as any)?.idNicho?.id_bloque)] ||
+                            inhumacion.idNicho?.idBloque ||
+                            "-"
+                          )} - Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}
                         </TableCell>
                         <TableCell>
                           {new Date(
@@ -571,7 +569,12 @@ export function InhumacionSearchResults({
                           {inhumaciones.length > 0  && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {inhumaciones[0].idNicho?.sector} - Fila:{inhumaciones[0].idNicho?.fila} 
+                              Bloque: {(
+                                (inhumaciones[0] as any)?.idNicho?.bloque?.nombre ||
+                                blockMap[String(inhumaciones[0].idNicho?.idBloque || (inhumaciones[0] as any)?.idNicho?.id_bloque)] ||
+                                inhumaciones[0].idNicho?.idBloque ||
+                                "-"
+                              )} - Fila: {inhumaciones[0].idNicho?.fila ?? "-"} - Columna: {inhumaciones[0].idNicho?.columna ?? "-"}
                             </span>
                           )}
                         </div>

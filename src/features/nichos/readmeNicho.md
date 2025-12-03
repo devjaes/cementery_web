@@ -57,9 +57,9 @@ export interface NichoEntity {
   idNicho?: string;
   idCementerio?: CementeryEntity;
   idBloque?: string;
-  sector: string;
+  bloque?: string;
   fila: number;              // ⚠️ Cambiado de string a number
-  numero: number;            // ⚠️ Cambiado de string a number
+  columna: number;            // ⚠️ Cambiado de string a number
   tipo: string;              // "Nicho" | "Mausoleo" | "Fosa" | "Bóveda"
   estado: string;
   estadoVenta: EstadoVentaNicho;
@@ -79,9 +79,9 @@ export interface NichoEntity {
 ```typescript
 const NichoBaseSchema = z.object({
   idCementerio: z.string().uuid(),
-  sector: z.string().min(1).max(2),
+  idBloque: z.string().uuid(),
   fila: z.coerce.number().int().positive(),     // ⚠️ Validación numérica
-  numero: z.coerce.number().int().positive(),   // ⚠️ Validación numérica
+  columna: z.coerce.number().int().positive(),   // ⚠️ Validación numérica
   tipo: z.enum(["Nicho", "Mausoleo", "Fosa", "Bóveda"]),  // ⚠️ Incluye Bóveda
   fechaConstruccion: z.string().min(1),
   observaciones: z.string().max(500).optional(),
