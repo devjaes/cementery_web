@@ -58,14 +58,16 @@ export interface DeceasedReport {
 export interface DeceasedFilters {
   startDate?: string;
   endDate?: string;
-  nicheId?: string;
   cause?: string;
+  cedula?: string;
 }
 
 export const reportsService = {
-  getOwners: async (): Promise<OwnerReport[]> => {
+  getOwners: async (cedula?: string): Promise<OwnerReport[]> => {
     const client = AxiosClient.getInstance();
-    const { data } = await client.get<OwnerReport[]>("/reports/owners");
+    const params = new URLSearchParams();
+    if (cedula) params.append("cedula", cedula);
+    const { data } = await client.get<OwnerReport[]>(`/reports/owners?${params.toString()}`);
     return data.data;
   },
 
@@ -74,8 +76,8 @@ export const reportsService = {
     const params = new URLSearchParams();
     if (filters.startDate) params.append("startDate", filters.startDate);
     if (filters.endDate) params.append("endDate", filters.endDate);
-    if (filters.nicheId) params.append("nicheId", filters.nicheId);
     if (filters.cause) params.append("cause", filters.cause);
+    if (filters.cedula) params.append("cedula", filters.cedula);
 
     const { data } = await client.get<DeceasedReport[]>(
       `/reports/deceased?${params.toString()}`

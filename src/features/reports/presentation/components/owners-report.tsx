@@ -16,21 +16,27 @@ import {
 	CardTitle,
 } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 import { FileDown } from "lucide-react";
 import {
 	OwnerReport,
 	reportsService,
 } from "../../services/reports.service";
 import { reportsPdfService } from "../../services/reports-pdf.service";
+import { useDebounce } from "@/shared/hooks/use-debounce";
 
 export function OwnersReport() {
 	const [owners, setOwners] = useState<OwnerReport[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [cedula, setCedula] = useState("");
+	const debouncedCedula = useDebounce(cedula, 500);
 
 	useEffect(() => {
 		const fetchOwners = async () => {
+			setLoading(true);
 			try {
-				const data = await reportsService.getOwners();
+				const data = await reportsService.getOwners(debouncedCedula);
 				setOwners(data);
 			} catch (error) {
 				console.error("Error fetching owners:", error);
@@ -40,7 +46,13 @@ export function OwnersReport() {
 		};
 
 		fetchOwners();
-	}, []);
+	}, [debouncedCedula]);
+
+	const handleSearch = async () => {
+		// Optional: Immediate search if needed, but debounce handles it.
+		// We can keep this empty or remove the button if auto-search is sufficient.
+		// For now, let's just let the effect handle it to avoid double calls.
+	};
 
 	const handleExportPdf = async () => {
 		await reportsPdfService.generateOwnersReportPdf(owners);
@@ -60,6 +72,17 @@ export function OwnersReport() {
 				</Button>
 			</CardHeader>
 			<CardContent>
+				<div className="flex items-end gap-4 mb-6">
+					<div className="w-full max-w-sm">
+						<Label htmlFor="cedula">Filtrar por Cédula</Label>
+						<Input
+							id="cedula"
+							placeholder="Ingrese número de cédula"
+							value={cedula}
+							onChange={(e) => setCedula(e.target.value)}
+						/>
+					</div>
+				</div>
 				<Table>
 					<TableHeader>
 						<TableRow>

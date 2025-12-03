@@ -25,6 +25,7 @@ import {
 	DeceasedFilters,
 } from "../../services/reports.service";
 import { reportsPdfService } from "../../services/reports-pdf.service";
+import { useDebounce } from "@/shared/hooks/use-debounce";
 
 export function DeceasedReportComponent() {
 	const [deceased, setDeceased] = useState<DeceasedReport[]>([]);
@@ -32,14 +33,15 @@ export function DeceasedReportComponent() {
 	const [filters, setFilters] = useState<DeceasedFilters>({
 		startDate: "",
 		endDate: "",
-		nicheId: "",
 		cause: "",
+		cedula: "",
 	});
+	const debouncedFilters = useDebounce(filters, 500);
 
 	const fetchDeceased = async () => {
 		setLoading(true);
 		try {
-			const data = await reportsService.getDeceased(filters);
+			const data = await reportsService.getDeceased(debouncedFilters);
 			setDeceased(data);
 		} catch (error) {
 			console.error("Error fetching deceased:", error);
@@ -50,7 +52,7 @@ export function DeceasedReportComponent() {
 
 	useEffect(() => {
 		fetchDeceased();
-	}, []);
+	}, [debouncedFilters]);
 
 	const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target;
@@ -58,7 +60,7 @@ export function DeceasedReportComponent() {
 	};
 
 	const handleSearch = () => {
-		fetchDeceased();
+		// Debounce handles search
 	};
 
 	const handleExportPdf = async () => {
@@ -97,16 +99,6 @@ export function DeceasedReportComponent() {
 						/>
 					</div>
 					<div>
-						<Label htmlFor="nicheId">ID Nicho</Label>
-						<Input
-							id="nicheId"
-							name="nicheId"
-							placeholder="ID del Nicho"
-							value={filters.nicheId}
-							onChange={handleFilterChange}
-						/>
-					</div>
-					<div>
 						<Label htmlFor="cause">Causa Defunción</Label>
 						<Input
 							id="cause"
@@ -116,9 +108,16 @@ export function DeceasedReportComponent() {
 							onChange={handleFilterChange}
 						/>
 					</div>
-					<Button onClick={handleSearch} disabled={loading}>
-						{loading ? "Buscando..." : "Buscar"}
-					</Button>
+					<div>
+						<Label htmlFor="cedula">Cédula</Label>
+						<Input
+							id="cedula"
+							name="cedula"
+							placeholder="Cédula"
+							value={filters.cedula}
+							onChange={handleFilterChange}
+						/>
+					</div>
 				</div>
 
 				<Table>
