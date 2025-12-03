@@ -33,10 +33,11 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
     const payment = searchParams.get('paymentId');
 
     if (openPropietarios === 'true') {
+      // Ir a la pestaña de propietarios pero NO abrir automáticamente el panel de "Agregar Nuevo Propietario"
       setActiveTab("propietarios");
       setBuyerPersonId(personId || undefined);
       setPaymentId(payment || undefined);
-      setIsPropietarioPanelOpen(true);
+      setIsPropietarioPanelOpen(false);
     }
   }, [searchParams]);
 
@@ -52,7 +53,8 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
     setActiveTab("propietarios");
     setBuyerPersonId(personId);
     setPaymentId(payId);
-    setIsPropietarioPanelOpen(true);
+    // No abrir el panel automáticamente; el usuario podrá añadir propietario manualmente si lo desea
+    setIsPropietarioPanelOpen(false);
   };
 
   if (isLoading) {
