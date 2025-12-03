@@ -119,7 +119,7 @@ export function InhumacionListTable() {
               <TableRow key={inhumacion.idInhumacion}>
                 <TableCell>{inhumacion.codigoInhumacion}</TableCell>
                 <TableCell>{inhumacion.idFallecido.nombres + ' ' +  inhumacion.idFallecido.apellidos}</TableCell>
-                <TableCell>{inhumacion.idNicho?.sector} - Fila: {inhumacion.idNicho?.fila} - Número: {inhumacion.idNicho?.numero} - Tipo: {inhumacion.idNicho?.tipo}</TableCell>
+                <TableCell>Fila: {inhumacion.idNicho?.fila ?? "-"} - Columna: {inhumacion.idNicho?.columna ?? "-"} - Tipo: {inhumacion.idNicho?.tipo ?? "-"}</TableCell>
                 <TableCell>{new Date(inhumacion.fechaInhumacion).toLocaleDateString()}</TableCell>
                 <TableCell>{inhumacion.solicitante}</TableCell>
                 <TableCell>{inhumacion.responsableInhumacion}</TableCell>

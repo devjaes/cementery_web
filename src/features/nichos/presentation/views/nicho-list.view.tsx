@@ -279,9 +279,8 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
           <TableHeader>
             <TableRow>
               <TableHead>Cementerio</TableHead>
-              <TableHead>Sector</TableHead>
               <TableHead>Fila</TableHead>
-              <TableHead>Número</TableHead>
+              <TableHead>Columna</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Acciones</TableHead>
@@ -290,7 +289,7 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Cargando...</p>
                 </TableCell>
@@ -298,7 +297,7 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
             )}
             {!isLoading && (!nichos || nichos.length === 0) && (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center">
+                <TableCell colSpan={6} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <AlertCircle className="w-12 h-12 mb-1" />
                     <span className="text-base md:text-lg font-medium">

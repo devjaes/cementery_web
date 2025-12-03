@@ -19,11 +19,10 @@ const formatHueco = (requisito: RequisitoInhumacionEntity): string => {
   const hueco = requisito.idHuecoNicho;
   const nicho = hueco?.idNicho;
   if (!hueco || !nicho) return "Sin información";
-  const sector = nicho.sector ? `Sector ${nicho.sector}` : "";
   const fila = nicho.fila ? `Fila ${nicho.fila}` : "";
-  const numero = nicho.numero ? `Nicho ${nicho.numero}` : "";
+  const columna = nicho.columna ? `Columna ${nicho.columna}` : "";
   const huecoLabel = hueco.numHueco ? `Hueco ${hueco.numHueco}` : "";
-  return [sector, fila, numero, huecoLabel].filter(Boolean).join(" • ") || "Sin información";
+  return [fila, columna, huecoLabel].filter(Boolean).join(" • ") || "Sin información";
 };
 
 /**

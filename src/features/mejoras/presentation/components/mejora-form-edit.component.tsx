@@ -166,7 +166,7 @@ export default function MejoraFormEdit({
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Navega por las secciones para completar la solicitud.</p>
+            <p className="text-sm text-muted-foreground">Navega por los bloques para completar la solicitud.</p>
             <div className="overflow-x-auto pb-1">
               <TabsList className="flex min-w-max gap-2 bg-transparent p-0">
                 {sections.map((section) => (

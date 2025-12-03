@@ -35,9 +35,8 @@ const buildHuecoDescripcion = (requisito: RequisitoInhumacionEntity) => {
   const nicho = hueco?.idNicho;
   const fragments: string[] = [];
   if (requisito.idCementerio?.nombre) fragments.push(requisito.idCementerio.nombre);
-  if (nicho?.sector) fragments.push(`Sector ${nicho.sector}`);
   if (nicho?.fila) fragments.push(`Fila ${nicho.fila}`);
-  if (nicho?.numero) fragments.push(`Nicho ${nicho.numero}`);
+  if (nicho?.columna) fragments.push(`Columna ${nicho.columna}`);
   if (hueco?.numHueco) fragments.push(`Hueco ${hueco.numHueco}`);
   return fragments.length ? fragments.join(" • ") : undefined;
 };
@@ -46,9 +45,8 @@ const buildCodigoSitio = (requisito: RequisitoInhumacionEntity) => {
   const hueco = requisito.idHuecoNicho;
   const nicho = hueco?.idNicho;
   const segments: string[] = [];
-  if (nicho?.sector) segments.push(`SEC-${nicho.sector}`);
   if (nicho?.fila) segments.push(`FILA-${nicho.fila}`);
-  if (nicho?.numero) segments.push(`NICHO-${nicho.numero}`);
+  if (nicho?.columna) segments.push(`NICHO-${nicho.columna}`);
   if (hueco?.numHueco) segments.push(`HUECO-${hueco.numHueco}`);
   return segments.length ? segments.join("-") : undefined;
 };
@@ -187,17 +185,15 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
 const buildNichoDescripcion = (nicho: NichoEntity) => {
   const fragments: string[] = [];
   if (nicho.idCementerio?.nombre) fragments.push(nicho.idCementerio.nombre);
-  if (nicho.sector) fragments.push(`Sector ${nicho.sector}`);
   if (nicho.fila) fragments.push(`Fila ${nicho.fila}`);
-  if (nicho.numero) fragments.push(`Nicho ${nicho.numero}`);
+  if (nicho.columna) fragments.push(`Columna ${nicho.columna}`);
   return fragments.length ? fragments.join(" • ") : undefined;
 };
 
 const buildNichoCodigoSitio = (nicho: NichoEntity) => {
   const segments: string[] = [];
-  if (nicho.sector) segments.push(`SEC-${nicho.sector}`);
   if (nicho.fila) segments.push(`FILA-${nicho.fila}`);
-  if (nicho.numero) segments.push(`NICHO-${nicho.numero}`);
+  if (nicho.columna) segments.push(`NICHO-${nicho.columna}`);
   return segments.length ? segments.join("-") : undefined;
 };
 

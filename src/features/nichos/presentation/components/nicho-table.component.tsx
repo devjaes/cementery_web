@@ -53,11 +53,7 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
                   Cementerio
                 </span>
               </TableHead>
-              <TableHead>
-                <span className="flex items-center gap-1">
-                  Sector
-                </span>
-              </TableHead>
+              {/* Sector column removed */}
               <TableHead>
                 <span className="flex items-center gap-1">
                   Fila
@@ -65,7 +61,7 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
               </TableHead>
               <TableHead>
                 <span className="flex items-center gap-1">
-                  Número
+                  Columna
                 </span>
               </TableHead>
               <TableHead>
@@ -86,7 +82,7 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Cargando...</p>
                 </TableCell>
@@ -94,14 +90,14 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
             )}
             {error && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-destructive">
+                <TableCell colSpan={6} className="text-center py-8 text-destructive">
                   {error instanceof Error ? error.message : "Error al cargar los nichos"}
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && nichos && nichos.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center">
+                <TableCell colSpan={6} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <AlertCircle className="w-12 h-12 mb-1" />
                     <span className="text-base md:text-lg font-medium">
@@ -114,9 +110,6 @@ export function NichoListTable({ onEditClick }: NichoListTableProps = {}) {
             {nichos?.map((nicho) => (
               <TableRow key={nicho.idNicho}>
                 <TableCell className="font-medium">{nicho.idCementerio?.nombre || "N/A"}</TableCell>
-                <TableCell>
-                  <Badge variant="outline"></Badge>
-                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{nicho.fila}</Badge>
                 </TableCell>

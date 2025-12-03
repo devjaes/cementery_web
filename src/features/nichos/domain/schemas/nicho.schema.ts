@@ -4,12 +4,9 @@ const NichoBaseSchema = z.object({
   idCementerio: z
     .string()
     .uuid("El cementerio es requerido y debe ser un UUID válido"),
-  sector: z
-    .string()
-    .min(1, "El sector es requerido")
-    .max(2, "Máximo 2 caracteres"),
+  idBloque: z.string().uuid("El bloque es requerido y debe ser un UUID válido"),
   fila: z.number().or(z.string()),
-  numero: z.string().or(z.number()),
+  columna: z.string().or(z.number()),
   tipo: z.enum(["Nicho", "Mausoleo", "Fosa"], { message: "Tipo inválido" }),
   fechaConstruccion: z.string().min(1, "La fecha de adquisición es requerida"),
   observaciones: z

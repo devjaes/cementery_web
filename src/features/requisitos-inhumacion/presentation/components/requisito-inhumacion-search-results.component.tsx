@@ -46,6 +46,8 @@ import {
   RequisitoInhumacionFallecidosEntity,
   SearchFallecidosRequisitoInhumacionEntity,
 } from "../../domain/entities/requisito-inhumacion.entity";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
+import { useFindBloquesByCementeryQuery } from "@/features/bloques/presentation/hooks/use-bloques-queries";
 import {
   useDeleteRequisitoInhumacionMutation,
   useDownloadRequisitoInhumacionPdfMutation,
@@ -230,6 +232,18 @@ export function RequisitoInhumacionSearchResults({
     }
   };
 
+  // Load bloques map for current cemetery (used to display bloque name when available)
+  const { activeCemetery } = useActiveCemetery();
+  const bloquesQuery = useFindBloquesByCementeryQuery(activeCemetery?.idCementerio || "");
+  const blockMap: Record<string, string> = {};
+  if (bloquesQuery.data) {
+    bloquesQuery.data.forEach((b: any) => {
+      const id = b?.idBloque || b?.id_bloque || b?.id || String(b?.id);
+      const nombre = b?.nombre || b?.nombreBloque || b?.nombre_bloque || String(b?.numero) || id;
+      blockMap[String(id)] = nombre;
+    });
+  }
+
   // New helper: evaluates only the six document fields (ignores autorizacionDeMovilizacionDelCadaver)
   const isChecklistComplete = (r: unknown): boolean => {
     try {
@@ -411,8 +425,12 @@ export function RequisitoInhumacionSearchResults({
                         </TableCell>
                         <TableCell>
                           {requisito.idHuecoNicho
-                            ? `${requisito.idHuecoNicho.idNicho?.sector} - Fila: ${requisito.idHuecoNicho.idNicho?.fila} 
-                    - Número: ${requisito.idHuecoNicho.idNicho?.numero} - Hueco: ${requisito.idHuecoNicho.numHueco}`
+                            ? `Bloque: ${(
+                                (requisito as any)?.idHuecoNicho?.idNicho?.bloque?.nombre ||
+                                blockMap[String(requisito.idHuecoNicho.idNicho?.idBloque || (requisito as any)?.idHuecoNicho?.idNicho?.id_bloque)] ||
+                                requisito.idHuecoNicho.idNicho?.idBloque ||
+                                "-"
+                              )} - Fila: ${requisito.idHuecoNicho.idNicho?.fila ?? "-"} - Columna: ${requisito.idHuecoNicho.idNicho?.columna ?? "-"} - Hueco: ${requisito.idHuecoNicho.numHueco}`
                             : "Sin nicho"}
                         </TableCell>
                         <TableCell>
@@ -674,10 +692,14 @@ export function RequisitoInhumacionSearchResults({
                   {requisito.idCementerio?.nombre ?? "Sin cementerio"}
                 </TableCell>
                 <TableCell>
-                  {requisito.idHuecoNicho ?
-                    `${requisito.idHuecoNicho.idNicho?.sector} - Fila: ${requisito.idHuecoNicho.idNicho?.fila} 
-                    - Número: ${requisito.idHuecoNicho.idNicho?.numero} - Hueco: ${requisito.idHuecoNicho.numHueco}`
-                  : "Sin nicho"}
+                  {requisito.idHuecoNicho
+                    ? `Bloque: ${(
+                        (requisito as any)?.idHuecoNicho?.idNicho?.bloque?.nombre ||
+                        blockMap[String(requisito.idHuecoNicho.idNicho?.idBloque || (requisito as any)?.idHuecoNicho?.idNicho?.id_bloque)] ||
+                        requisito.idHuecoNicho.idNicho?.idBloque ||
+                        "-"
+                      )} - Fila: ${requisito.idHuecoNicho.idNicho?.fila ?? "-"} - Columna: ${requisito.idHuecoNicho.idNicho?.columna ?? "-"} - Hueco: ${requisito.idHuecoNicho.numHueco}`
+                    : "Sin nicho"}
                 </TableCell>
                 <TableCell>
                   {requisito.idFallecido
