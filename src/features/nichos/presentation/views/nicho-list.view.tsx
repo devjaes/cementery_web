@@ -16,7 +16,7 @@ import { NichoForm } from "../components/nicho-form.component";
 import { useSearchFallecidosQuery, useFindAllNichosQuery, useFindNichoByIdQuery } from "../hooks/use-nicho-queries";
 import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { NichoFallecidosEntity, NichoEntity } from "../../domain/entities/nicho.entity";
 import {
@@ -74,22 +74,22 @@ export default function NichoListView() {
   } = useFindAllNichosQuery();
 
   // Filter nichos based on search criteria
-    const filteredNichos = useMemo(() => {
-      if (!nichoFilters || !allNichos) return allNichos;
-  
-      return allNichos.filter((nicho) => {
-        const matchesCementerio = !nichoFilters.cementerio ||
-          String(nicho.idCementerio?.nombre ?? '').toLowerCase().includes(nichoFilters.cementerio.toLowerCase());
-  
-        const matchesFila = !nichoFilters.fila ||
-          String(nicho.fila ?? '').toLowerCase().includes(nichoFilters.fila.toLowerCase());
-  
-        const matchesNumero = !nichoFilters.numero ||
-          String(nicho.columna ?? '').toLowerCase().includes(nichoFilters.numero.toLowerCase());
-  
-        return matchesCementerio && matchesFila && matchesNumero;
-      });
-    }, [allNichos, nichoFilters]);
+  const filteredNichos = useMemo(() => {
+    if (!nichoFilters || !allNichos) return allNichos;
+
+    return allNichos.filter((nicho) => {
+      const matchesCementerio = !nichoFilters.cementerio ||
+        String(nicho.idCementerio?.nombre ?? '').toLowerCase().includes(nichoFilters.cementerio.toLowerCase());
+
+      const matchesFila = !nichoFilters.fila ||
+        String(nicho.fila ?? '').toLowerCase().includes(nichoFilters.fila.toLowerCase());
+
+      const matchesNumero = !nichoFilters.numero ||
+        String(nicho.columna ?? '').toLowerCase().includes(nichoFilters.numero.toLowerCase());
+
+      return matchesCementerio && matchesFila && matchesNumero;
+    });
+  }, [allNichos, nichoFilters]);
 
   const handleSearchFallecido = (busqueda: string) => {
     setSearchTerm(busqueda);
@@ -141,41 +141,57 @@ export default function NichoListView() {
   const SearchBar = NichoSearchBar as unknown as any;
 
   return (
-    <ContainerApp title="Gestión de Nichos">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Gestión de Nichos
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Administra nichos y busca la ubicación de fallecidos
-            </p>
-          </div>
+  <ContainerApp title="Gestión de Nichos">
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">
+            Gestión de Nichos
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Administra nichos y busca la ubicación de fallecidos
+          </p>
         </div>
+      </div>
 
-        {/* Search Bar */}
-        <SearchBar
-          onSearchFallecido={handleSearchFallecido}
-          onSearchNicho={handleSearchNicho}
-          onClear={handleClearSearch}
-          isSearching={isSearching}
-          searchTerm={searchTerm}
-          searchType={searchType}
-          onSearchTypeChange={handleSearchTypeChange}
-        />
+      {/* 👉 SI NO HA BUSCADO: MOSTRAR SOLO EL BUSCADOR */}
+      {!hasSearched ? (
+        <div className="min-h-[300px] flex items-center justify-center">
+          <SearchBar
+            onSearchFallecido={handleSearchFallecido}
+            onSearchNicho={handleSearchNicho}
+            onClear={handleClearSearch}
+            isSearching={isSearching}
+            searchTerm={searchTerm}
+            searchType={searchType}
+            onSearchTypeChange={handleSearchTypeChange}
+          />
+        </div>
+      ) : (
+        /* 👉 SI YA BUSCÓ: MOSTRAR RESULTADOS + BOTÓN */
+        <div className="space-y-4">
 
-        {/* Content */}
-        {hasSearched ? (
-          searchType === "fallecido" && searchTerm ? (
-            // Fallecido Search Results
+          {/* 🔙 Botón para nueva búsqueda */}
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={handleClearSearch} className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Nueva búsqueda
+            </Button>
+
+            <div className="text-sm text-muted-foreground">
+              Resultados para: <span className="font-medium">"{searchTerm}"</span>
+            </div>
+          </div>
+
+          {/* 👉 Resultados cuando busca por fallecido */}
+          {searchType === "fallecido" && searchTerm && (
             <div className="space-y-4">
               {fallecidosError && (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    No se encontraron fallecidos que coincidan con &quot;{searchTerm}&quot;.
-                    Intenta con otros términos de búsqueda.
+                    No se encontraron fallecidos que coincidan con "{searchTerm}".
                   </AlertDescription>
                 </Alert>
               )}
@@ -187,49 +203,55 @@ export default function NichoListView() {
                 </div>
               )}
 
-              {!isSearchingFallecidos && !fallecidosError && fallecidosResults && fallecidosResults.totalEncontrados > 0 && (
-                <NichoSearchResults
-                  results={fallecidosResults}
-                  searchTerm={searchTerm}
-                  selectedFallecido={selectedFallecido}
-                  onSelectFallecido={handleSelectFallecido}
-                />
-              )}
+              {!isSearchingFallecidos &&
+                !fallecidosError &&
+                fallecidosResults &&
+                fallecidosResults.totalEncontrados > 0 && (
+                  <NichoSearchResults
+                    results={fallecidosResults}
+                    searchTerm={searchTerm}
+                    selectedFallecido={selectedFallecido}
+                    onSelectFallecido={handleSelectFallecido}
+                  />
+                )}
             </div>
-          ) : searchType === "nicho" && nichoFilters ? (
-            // Nicho Filter Results
-            <FilteredNichosTable nichos={filteredNichos} isLoading={isLoadingNichos} onEditClick={handleEditClick} />
-          ) : null
-        ) : (
-          // Default: Show all nichos table
-          <NichoListTable onEditClick={handleEditClick} />
-        )}
+          )}
 
-        {/* Create Modal */}
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Registrar Nicho</DialogTitle>
-            </DialogHeader>
-            {isCreateModalOpen && (
-              <NichoForm key="create" onSuccess={handleCreateSuccess} />
-            )}
-          </DialogContent>
-        </Dialog>
+          {/* 👉 Resultados cuando busca por nicho (tabla oculta) */}
+          {searchType === "nicho" && nichoFilters && (
+            <p className="text-center text-muted-foreground">
+              Resultados disponibles, pero la tabla está oculta temporalmente.
+            </p>
+          )}
+        </div>
+      )}
 
-        {/* Edit Modal */}
-        {editingNichoId && (
-          <NichoEditModal
-            nichoId={editingNichoId}
-            open={!!editingNichoId}
-            onOpenChange={(open) => !open && setEditingNichoId(null)}
-            onSuccess={handleEditSuccess}
-          />
-        )}
-      </div>
-    </ContainerApp>
-  );
-}
+      {/* ---------------- MODALES (NO TOCADO) ---------------- */}
+
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registrar Nicho</DialogTitle>
+          </DialogHeader>
+          {isCreateModalOpen && (
+            <NichoForm key="create" onSuccess={handleCreateSuccess} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {editingNichoId && (
+        <NichoEditModal
+          nichoId={editingNichoId}
+          open={!!editingNichoId}
+          onOpenChange={(open) => !open && setEditingNichoId(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+    </div>
+  </ContainerApp>
+);
+
 
 // Modal for editing nicho
 function NichoEditModal({
@@ -265,6 +287,8 @@ function NichoEditModal({
   );
 }
 
+
+{/* Edit Modal 
 // Component for filtered nichos results
 function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: NichoEntity[] | undefined; isLoading: boolean; onEditClick: (id: string) => void }) {
   const { mutate: deleteNicho, isPending } = useDeleteNichoMutation();
@@ -391,4 +415,4 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
       </div>
     </div>
   );
-}
+} */}
