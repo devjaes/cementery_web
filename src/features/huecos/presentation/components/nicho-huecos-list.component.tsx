@@ -74,16 +74,43 @@ export function NichoHuecosList({ nichoId }: NichoHuecosListProps) {
   };
 
   const handleVerPDF = async (huecoId: string) => {
-    try {
-      const repo = HuecoRepositoryImpl.getInstance();
-      const blob = await repo.descargarArchivo(huecoId);
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-    } catch (e) {
-      console.error('Error al visualizar PDF:', e);
+  try {
+    const repo = HuecoRepositoryImpl.getInstance();
+    const blob = await repo.descargarArchivo(huecoId);
+
+    // Validamos que sea PDF real
+    if (blob.type !== "application/pdf") {
+      console.error("Archivo no es PDF:", blob.type);
+      alert("El archivo no es un PDF válido.");
+      return;
     }
-  };
+
+    // Convertimos el PDF a base64 para compatibilidad universal
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+
+      // Abrimos en una nueva pestaña usando data URI
+      const newWindow = window.open();
+
+      if (newWindow) {
+        newWindow.document.write(`
+          <iframe src="${base64data}" 
+            style="width:100%; height:100%; border:none;">
+          </iframe>
+        `);
+      } else {
+        alert("El navegador bloqueó la ventana emergente. Activa las ventanas emergentes.");
+      }
+    };
+
+    reader.readAsDataURL(blob); // <-- convierte Blob → Base64
+  } catch (e) {
+    console.error("Error al visualizar PDF:", e);
+    alert("No se pudo abrir el PDF.");
+  }
+};
+
 
 
   return (
