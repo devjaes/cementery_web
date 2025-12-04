@@ -60,6 +60,21 @@ export default function MejoraForm({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [activeTab, setActiveTab] = useState("general");
 
+  const fechaInicioValue = methods.watch("fechaInicio");
+
+  const toDateOnly = (value?: string | null) => {
+    if (!value) return undefined;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+    if (match) {
+      const [, y, m, d] = match;
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+
+  const fechaInicioDate = toDateOnly(fechaInicioValue);
+
   const sections = useMemo(
     () => [
       { value: "solicitante", label: "Solicitante", description: "Información de contacto del solicitante" },
@@ -205,7 +220,12 @@ export default function MejoraForm({
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <RHFSelect name="tipoServicio" label="Tipo de servicio a efectuar *" options={tipoServicioOptions} placeholder="Selecciona" disabled={isPrefillLoading} />
               <RHFDatePickerCalendar name="fechaInicio" label="Fecha de inicio" />
-              <RHFDatePickerCalendar name="fechaFin" label="Fecha de fin" />
+              <RHFDatePickerCalendar
+                name="fechaFin"
+                label="Fecha de fin"
+                disabled={!fechaInicioDate}
+                minDate={fechaInicioDate}
+              />
               <RHFTimeRangeSelect
                 name="horarioTrabajo"
                 label="Horario de trabajo"

@@ -16,12 +16,16 @@ export default function RHFDatePickerCalendar({
   name,
   label,
   placeholder,
-  required = false
+  required = false,
+  minDate,
+  disabled,
 }: {
   name: string;
   label?: string;
   placeholder?: string;
   required?: boolean;
+  minDate?: Date;
+  disabled?: boolean;
 }) {
   const { control, formState } = useFormContext();
   const { field } = useController({ name, control });
@@ -82,8 +86,10 @@ export default function RHFDatePickerCalendar({
             variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal",
-              !field.value && "text-muted-foreground"
+              !field.value && "text-muted-foreground",
+              disabled && "cursor-not-allowed opacity-70"
             )}
+            disabled={disabled}
           >
             {selectedDate ? format(selectedDate, "dd/MM/yyyy") : (placeholder || "Selecciona una fecha")}
           </Button>
@@ -124,6 +130,15 @@ export default function RHFDatePickerCalendar({
               onSelect={date => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
               month={viewMonth}
               onMonthChange={setViewMonth}
+              disabled={
+                minDate
+                  ? (date) => {
+                      if (!date) return false;
+                      // Deshabilitar días anteriores al minDate (comparación solo de fecha)
+                      return date.getTime() < new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()).getTime();
+                    }
+                  : undefined
+              }
               className="rounded-md border-0"
               classNames={{
                 head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
