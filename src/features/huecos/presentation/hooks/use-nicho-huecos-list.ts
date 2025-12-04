@@ -21,6 +21,7 @@ export function useNichoHuecosList({ nichoId }: UseNichoHuecosListProps) {
     error,
     refetch,
   } = useFindHuecosByNichoQuery(nichoId);
+
   const { data: nicho } = useFindNichoByIdQuery(nichoId);
 
   // Mutations
@@ -36,7 +37,6 @@ export function useNichoHuecosList({ nichoId }: UseNichoHuecosListProps) {
 
   /**
    * Crea un hueco nuevo recibiendo directamente el objeto CreateHuecoEntity.
-   * El repositorio se encarga de construir el FormData con las claves correctas.
    */
   const handleCreateHueco = (data: CreateHuecoEntity) => {
     createHueco(data, {
@@ -46,39 +46,47 @@ export function useNichoHuecosList({ nichoId }: UseNichoHuecosListProps) {
 
   // Business Logic
   const getMaxHuecosByTipo = (tipo: string) => {
-    switch (tipo) {
-      case "Mausoleo":
-        return 9;
-      case "Nicho":
-      case "Fosa":
-        return 1;
+    switch (tipo?.toLowerCase()) {
+      case "fosa":
+        return 1; // solo 1 permitido
+
+      case "nicho":
+      case "mausoleo":
+        return Infinity; // ilimitado
+
       default:
-        return 1;
+        return Infinity;
     }
   };
 
   const canCreateHueco = () => {
     if (!nicho || !huecos) return false;
-    const currentHuecos = huecos.length;
-    const maxHuecos = getMaxHuecosByTipo(nicho.tipo);
-    return currentHuecos < maxHuecos;
+
+    // Si es fosa, solo permitir 1
+    if (nicho.tipo?.toLowerCase() === "fosa") {
+      return huecos.length < 1;
+    }
+
+    // Nicho o Mausoleo → ilimitado siempre permite crear
+    return true;
   };
 
   const getCreateButtonMessage = () => {
     if (!nicho || !huecos) return "Crear Hueco";
 
-    const currentHuecos = huecos.length;
-    const maxHuecos = getMaxHuecosByTipo(nicho.tipo);
+    const current = huecos.length;
 
-    if (currentHuecos >= maxHuecos) {
-      return `Límite alcanzado (${maxHuecos}/${maxHuecos})`;
+    if (nicho.tipo?.toLowerCase() === "fosa") {
+      return current >= 1 ? "Límite alcanzado (1/1)" : "Crear Hueco (0/1)";
     }
 
-    return `Crear Hueco (${currentHuecos}/${maxHuecos})`;
+    // Para Nicho y Mausoleo solo mostramos cuantos hay
+    return `Crear Hueco `;
   };
 
+
   const canDeleteHueco = (hueco: HuecoEntity) => {
-    // No se puede eliminar si está ocupado (tiene un fallecido asignado)
+    // No se puede eliminar si está ocupado
     return hueco.estado !== "Ocupado" && !hueco.idFallecido;
   };
 
