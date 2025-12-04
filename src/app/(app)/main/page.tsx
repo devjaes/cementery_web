@@ -29,6 +29,11 @@ const features = [
     href: "/nichos",
   },
   {
+    title: "Mejoras en Tumbas",
+    description: "Registra, consulta y aprueba las mejoras en tumbas.",
+    href: "/mejoras",
+  },
+  {
     title: "Mapa Interactivo del Cementerio",
     description: "Visualiza y navega el cementerio con los nichos creados.",
     href: "/map",

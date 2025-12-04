@@ -55,6 +55,12 @@ const data = {
       isActive: (pathname: string) => pathname.startsWith("/nichos"),
     },
     {
+      title: "Mejoras",
+      url: "/mejoras",
+      icon: Hammer,
+      isActive: (pathname: string) => pathname.startsWith("/mejoras"),
+    },
+    {
       title: "Mapa",
       url: "/map",
       icon: ListIcon,
@@ -66,12 +72,6 @@ const data = {
       icon: FileText,
       isActive: (pathname: string) =>
         pathname.startsWith("/requisitos-inhumaciones"),
-    },
-    {
-      title: "Mejoras en Tumbas",
-      url: "/mejoras",
-      icon: Hammer,
-      isActive: (pathname: string) => pathname.startsWith("/mejoras"),
     },
     {
       title: "Exhumaciones",
