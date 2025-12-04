@@ -4,25 +4,28 @@ import { MejoraBloqueInfo, MejoraFallecidoInfo } from "../../../domain/entities/
  * Utility functions for formatting data in mejora search results
  */
 
-const toLocalDateOnly = (value?: string): Date | null => {
-  if (!value) return null;
+export const formatDate = (value?: string): string => {
+  if (!value) return "No disponible";
 
-  // Si viene como YYYY-MM-DD, crear fecha local sin aplicar zona horaria UTC
-  const dateOnlyMatch = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value.trim());
-  if (dateOnlyMatch) {
-    const [, year, month, day] = dateOnlyMatch;
-    return new Date(Number(year), Number(month) - 1, Number(day));
+  const trimmed = value.trim();
+
+  // Si trae hora (formato ISO), parsear a Date para convertir a local y evitar +1 día
+  if (trimmed.includes("T")) {
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? "No disponible" : parsed.toLocaleDateString("es-EC");
   }
 
-  // Si viene con hora/offset, normalizar usando componentes UTC para evitar corrimientos
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
-};
+  // Si es solo fecha YYYY-MM-DD, renderizarla directamente en local sin corrimientos
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (dateOnlyMatch) {
+    const [, y, m, d] = dateOnlyMatch;
+    const asDate = new Date(Number(y), Number(m) - 1, Number(d));
+    return Number.isNaN(asDate.getTime()) ? "No disponible" : asDate.toLocaleDateString("es-EC");
+  }
 
-export const formatDate = (value?: string): string => {
-  const date = toLocalDateOnly(value);
-  return date ? date.toLocaleDateString("es-EC") : "No disponible";
+  // Fallback genérico
+  const fallback = new Date(trimmed);
+  return Number.isNaN(fallback.getTime()) ? "No disponible" : fallback.toLocaleDateString("es-EC");
 };
 
 export const fullName = (person?: { nombres?: string; apellidos?: string }): string => {
