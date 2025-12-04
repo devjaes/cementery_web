@@ -61,6 +61,7 @@ export default function MejoraForm({
   const [activeTab, setActiveTab] = useState("general");
 
   const fechaInicioValue = methods.watch("fechaInicio");
+  const fechaFinValue = methods.watch("fechaFin");
 
   const toDateOnly = (value?: string | null) => {
     if (!value) return undefined;
@@ -74,6 +75,15 @@ export default function MejoraForm({
   };
 
   const fechaInicioDate = toDateOnly(fechaInicioValue);
+  const fechaFinDate = toDateOnly(fechaFinValue);
+
+  // Si la fecha de fin queda antes que la fecha de inicio tras cambios, limpiarla
+  useEffect(() => {
+    if (!fechaInicioDate || !fechaFinDate) return;
+    if (fechaFinDate.getTime() < fechaInicioDate.getTime()) {
+      methods.setValue("fechaFin", undefined, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [fechaInicioDate, fechaFinDate, methods]);
 
   const sections = useMemo(
     () => [
