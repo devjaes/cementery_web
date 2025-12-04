@@ -39,48 +39,82 @@ const TIME_OPTIONS = generateTimeOptions();
 // Formatear hora para mostrar: "09:00" -> "09h00"
 const formatTimeDisplay = (t: string) => t.replace(":", "h");
 
+/**
+ * Parsea un valor de horario y extrae las horas de inicio y fin en formato HH:MM
+ */
+const parseTimeRange = (value: string | null | undefined): { start: string; end: string } => {
+  if (!value) return { start: "", end: "" };
+  
+  // Normalizar: reemplazar 'h' por ':' para unificar formatos
+  const normalized = String(value).replace(/h/gi, ":");
+  
+  // Buscar patrón de dos horarios separados por 'a', '-', ' - ', etc.
+  const match = normalized.match(/(\d{1,2}):(\d{2})\s*[-aA]\s*(\d{1,2}):(\d{2})/);
+  
+  if (match) {
+    const startHour = match[1].padStart(2, "0");
+    const startMin = match[2];
+    const endHour = match[3].padStart(2, "0");
+    const endMin = match[4];
+    
+    return {
+      start: `${startHour}:${startMin}`,
+      end: `${endHour}:${endMin}`,
+    };
+  }
+  
+  return { start: "", end: "" };
+};
+
 export default function RHFTimeRangeSelect({
   name,
   label,
   disabled,
   className,
 }: RHFTimeRangeSelectProps) {
-  const { control, formState } = useFormContext();
+  const { control, formState, watch } = useFormContext();
   const {
     field: { value, onChange },
   } = useController({ name, control });
 
-  // Estado local para manejar las selecciones
-  const [startTime, setStartTime] = React.useState("");
-  const [endTime, setEndTime] = React.useState("");
+  // Observar el valor del formulario para detectar cambios externos (como reset)
+  const watchedValue = watch(name);
 
-  // Sincronizar estado local con el valor del formulario
+  // Estado local para manejar las selecciones
+  const [startTime, setStartTime] = React.useState(() => {
+    const parsed = parseTimeRange(value);
+    return parsed.start;
+  });
+  const [endTime, setEndTime] = React.useState(() => {
+    const parsed = parseTimeRange(value);
+    return parsed.end;
+  });
+
+  // Referencia para evitar actualizaciones cíclicas
+  const isInternalUpdate = React.useRef(false);
+
+  // Sincronizar estado local con el valor del formulario cuando cambia externamente
   React.useEffect(() => {
-    if (!value) {
-      setStartTime("");
-      setEndTime("");
+    // Ignorar si el cambio fue interno
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
       return;
     }
-    
-    // Parsear valor existente "HHhMM a HHhMM" o "HH:MM a HH:MM"
-    const normalized = String(value).replace(/h/g, ":");
-    const parts = normalized.split(/\s*a\s*/i);
-    
-    if (parts.length === 2) {
-      const start = parts[0].trim();
-      const end = parts[1].trim();
-      const isValidTime = (t: string) => /^\d{2}:\d{2}$/.test(t);
-      
-      if (isValidTime(start)) setStartTime(start);
-      if (isValidTime(end)) setEndTime(end);
-    }
-  }, [value]);
 
-  // Cuando cambian ambos tiempos, actualizar el formulario
+    const parsed = parseTimeRange(watchedValue);
+    
+    if (parsed.start !== startTime || parsed.end !== endTime) {
+      setStartTime(parsed.start);
+      setEndTime(parsed.end);
+    }
+  }, [watchedValue]); // Solo depende del valor observado
+
+  // Cuando cambian los tiempos locales, actualizar el formulario
   React.useEffect(() => {
     if (startTime && endTime) {
       const formatted = `${formatTimeDisplay(startTime)} a ${formatTimeDisplay(endTime)}`;
       if (formatted !== value) {
+        isInternalUpdate.current = true;
         onChange(formatted);
       }
     }

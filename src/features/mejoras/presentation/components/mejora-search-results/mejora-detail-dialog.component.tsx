@@ -95,10 +95,6 @@ export const MejoraDetailDialog = ({ mejora }: MejoraDetailDialogProps) => {
               <span className="text-muted-foreground">Teléfono:</span>
               <p className="font-medium">{mejora.solicitanteTelefono ?? "N/A"}</p>
             </div>
-            <div>
-              <span className="text-muted-foreground">Correo:</span>
-              <p className="font-medium">{mejora.correoSolicitante ?? "N/A"}</p>
-            </div>
             {mejora.direccionSolicitante && (
               <div className="col-span-2">
                 <span className="text-muted-foreground">Dirección:</span>

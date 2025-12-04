@@ -16,6 +16,7 @@ import { useFindNichoByIdQuery } from "@/features/nichos/presentation/hooks/use-
 import { useFindPersonByIdQuery } from "@/features/person/presentation/hooks/use-person-queries";
 import type { NichoEntity } from "@/features/nichos/domain/entities/nicho.entity";
 import type { PersonEntity } from "@/features/person/domain/entities/person.entity";
+import { normalizeDateToISO } from "../helpers/mejora-entity-to-dto.mapper";
 
 const DEFAULT_ENTIDAD = "GADM Santiago de Pillaro";
 
@@ -119,10 +120,10 @@ const mapRequisitoToMejoraDefaults = (requisito: RequisitoInhumacionEntity): Par
     solicitanteCorreo: truncate(solicitante?.correo, 100),
     observacionSolicitante: truncate(requisito.observacionSolicitante ?? "Sin observaciones", 200),
     id_fallecido: fallecido?.id_persona ?? undefined,
-    fechaFallecimiento: fallecido?.fecha_defuncion ?? undefined,
+    fechaFallecimiento: normalizeDateToISO(fallecido?.fecha_defuncion),
     propietarioNicho: truncate(propietarioNombre ?? requisito.nombreAdministradorNicho, 200),
     propietarioNombre: truncate(propietarioNombre, 200),
-    propietarioFechaAdquisicion: propietario?.fechaAdquisicion ?? undefined,
+    propietarioFechaAdquisicion: normalizeDateToISO(propietario?.fechaAdquisicion),
   propietarioTipoTenencia: truncate(propietario?.tipo, 50),
     numeroNichos: requisito.idHuecoNicho?.idNicho?.numHuecos ?? undefined,
     lugarNicho: truncate(ubicacion, 100),
@@ -164,11 +165,11 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
     solicitanteCorreo: truncate(propietario?.correo, 100),
     // Información del fallecido (si existe)
     id_fallecido: fallecidoInfo?.idPersona,
-    fechaFallecimiento: fallecidoInfo?.fechaDefuncion,
+    fechaFallecimiento: normalizeDateToISO(fallecidoInfo?.fechaDefuncion),
     // Información del propietario
     propietarioNicho: truncate(propietarioNombre, 200),
     propietarioNombre: truncate(propietarioNombre, 200),
-    propietarioFechaAdquisicion: propietarioActivo?.fechaAdquisicion ?? undefined,
+    propietarioFechaAdquisicion: normalizeDateToISO(propietarioActivo?.fechaAdquisicion),
     propietarioTipoTenencia: truncate(propietarioActivo?.tipo, 50),
     numeroNichos: nicho.numHuecos ?? undefined,
     lugarNicho: truncate(ubicacion, 100),

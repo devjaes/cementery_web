@@ -32,7 +32,7 @@ export const MejoraSearch: React.FC<MejoraSearchProps> = ({ onSearch, isSearchin
             </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Búsqueda de Mejoras en Tumbas</h2>
-          <p className="text-gray-600">Busca por cédula, nombres o apellidos del propietario del nicho o del fallecido</p>
+          <p className="text-gray-600">Busca por cédula del propietario del nicho</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -40,7 +40,7 @@ export const MejoraSearch: React.FC<MejoraSearchProps> = ({ onSearch, isSearchin
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <Input
               type="text"
-              placeholder="Escribe cédula, nombres o apellidos..."
+              placeholder="Escribe la cédula del propietario..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="pl-10 h-12 text-lg"
@@ -65,10 +65,8 @@ export const MejoraSearch: React.FC<MejoraSearchProps> = ({ onSearch, isSearchin
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">¿Cómo funciona?</p>
               <ul className="space-y-1">
-                <li>• <strong>Por cédula:</strong> Ingresa números completos o parciales (ej: 1724727225)</li>
-                <li>• <strong>Por nombres:</strong> Escribe el nombre completo o parte de él (ej: Mónica)</li>
-                <li>• <strong>Por apellidos:</strong> Ingresa apellidos completos o parciales (ej: Álvarez)</li>
-                <li className="mt-2 text-xs italic">Busca tanto en propietarios de nichos como en fallecidos</li>
+                <li>• <strong>Por cédula:</strong> Ingresa el número de cédula completo o parcial (ej: 1724727225)</li>
+                <li className="mt-2 text-xs italic">Busca propietarios de nichos por su número de cédula</li>
               </ul>
             </div>
           </div>
