@@ -81,7 +81,7 @@ export default function MejoraForm({
   useEffect(() => {
     if (!fechaInicioDate || !fechaFinDate) return;
     if (fechaFinDate.getTime() < fechaInicioDate.getTime()) {
-      methods.setValue("fechaFin", undefined, { shouldValidate: true, shouldDirty: true });
+      methods.setValue("fechaFin", "", { shouldValidate: true, shouldDirty: true });
     }
   }, [fechaInicioDate, fechaFinDate, methods]);
 
