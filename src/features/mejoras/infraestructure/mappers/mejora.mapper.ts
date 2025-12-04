@@ -12,7 +12,8 @@ export class MejoraMapper {
 
     return {
       idMejora: model.id_mejora,
-      fechaSolicitud: model.fechaSolicitud,
+      fechaCreacion: model.fechaCreacion ?? model.fecha_creacion ?? model.fechaSolicitud,
+      fechaSolicitud: model.fechaSolicitud ?? model.fechaCreacion ?? model.fecha_creacion,
       codigoAutorizacion: model.codigoAutorizacion,
       idCementerio: CementeryMapper.toEntity(cementeryModel),
       idNicho: model.nicho?.id_nicho,

@@ -3,7 +3,9 @@ import { PersonModel } from "@/features/person/infraestrcture/models/person.mode
 
 export interface MejoraModel {
   id_mejora: string;
-  fechaSolicitud: string;
+  fecha_creacion?: string;
+  fechaCreacion?: string; // camelCase desde backend
+  fechaSolicitud?: string; // compatibilidad versiones anteriores
   codigoAutorizacion?: string;
 
   id_cementerio?: CementeryModel;
