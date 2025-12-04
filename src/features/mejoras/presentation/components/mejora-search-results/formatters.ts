@@ -4,10 +4,25 @@ import { MejoraBloqueInfo, MejoraFallecidoInfo } from "../../../domain/entities/
  * Utility functions for formatting data in mejora search results
  */
 
+const toLocalDateOnly = (value?: string): Date | null => {
+  if (!value) return null;
+
+  // Si viene como YYYY-MM-DD, crear fecha local sin aplicar zona horaria UTC
+  const dateOnlyMatch = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value.trim());
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  // Si viene con hora/offset, normalizar usando componentes UTC para evitar corrimientos
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
+};
+
 export const formatDate = (value?: string): string => {
-  if (!value) return "No disponible";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "No disponible" : date.toLocaleDateString("es-EC");
+  const date = toLocalDateOnly(value);
+  return date ? date.toLocaleDateString("es-EC") : "No disponible";
 };
 
 export const fullName = (person?: { nombres?: string; apellidos?: string }): string => {

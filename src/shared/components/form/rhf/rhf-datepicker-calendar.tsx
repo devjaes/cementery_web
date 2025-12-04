@@ -1,4 +1,3 @@
-import { parseISO } from "date-fns";
 import { Button } from "../../ui/button";
 import { Calendar } from "../../ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
@@ -27,7 +26,27 @@ export default function RHFDatePickerCalendar({
   const { control, formState } = useFormContext();
   const { field } = useController({ name, control });
 
-  const selectedDate = field.value ? parseISO(field.value) : undefined;
+  const parseDateValue = (value: string | undefined): Date | undefined => {
+    if (!value) return undefined;
+
+    const dateOnlyMatch = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value.trim());
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return undefined;
+
+    // Normalizar con componentes UTC para evitar corrimientos por zona horaria
+    return new Date(
+      parsed.getUTCFullYear(),
+      parsed.getUTCMonth(),
+      parsed.getUTCDate(),
+    );
+  };
+
+  const selectedDate = parseDateValue(field.value);
   const [viewMonth, setViewMonth] = useState(selectedDate || new Date());
 
   const currentYear = viewMonth.getFullYear();
