@@ -1,4 +1,4 @@
-"use client";
+"use client"; 
 import { FormProvider, useForm } from "react-hook-form";
 import { Button } from "@/shared/components/ui/button";
 import RHFInput from "@/shared/components/form/rhf/rhf-input";
@@ -36,13 +36,12 @@ export function EnableNichoForm({ nichoId, onSuccess }: EnableNichoFormProps) {
   const tipo = useWatch({ control: methods.control, name: "tipo" });
 
   useEffect(() => {
-    if (tipo === "Nicho" || tipo === "Fosa") {
+    /**
+     * ✓ Fosa → hueco fijo en 1  
+     * ✓ Nicho y Mausoleo → ilimitados  
+     */
+    if (tipo === "Fosa") {
       methods.setValue("num_huecos", 1);
-    } else if (tipo === "Mausoleo") {
-      const numHuecos = methods.getValues("num_huecos");
-      if (!numHuecos || numHuecos < 1 || numHuecos > 9) {
-        methods.setValue("num_huecos", 1);
-      }
     }
   }, [tipo, methods]);
 
@@ -58,35 +57,42 @@ export function EnableNichoForm({ nichoId, onSuccess }: EnableNichoFormProps) {
     );
   };
 
-  const isFixedOne = tipo === "Nicho" || tipo === "Fosa";
+  /** SOLO FOSA debe bloquear el input */
+  const isFixedOne = tipo === "Fosa";
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
           <RHFSelect 
             name="tipo" 
             label="Tipo" 
             options={tipoOptions} 
             placeholder="Selecciona el tipo de nicho" 
           />
+
           <RHFDatePickerCalendar 
             name="fecha_construccion" 
             label="Fecha de construcción" 
           />
+
           <RHFInput
             name="num_huecos"
             label="Número de Huecos"
             type="number"
-            disabled={isFixedOne}
+            disabled={isFixedOne}   // SOLO fosa se bloquea
           />
+
         </div>
+
         <div>
           <RHFInput 
             name="observaciones" 
             label="Observaciones"
           />
         </div>
+
         <div className="flex justify-end gap-3 pt-2">
           <Button 
             type="submit" 
