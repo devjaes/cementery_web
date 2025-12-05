@@ -158,20 +158,11 @@ export default function NuevaExhumacionPage() {
       formData.append('archivos', uploadedFile);
     }
 
-    // console.log(" Datos a enviar:");
-    // console.log("  • nicho_original_id:", inhumacion.idNicho.idNicho);
-    // console.log("  • inhumacion_id:", inhumacion.idInhumacion);
-    // console.log("  • archivo:", uploadedFile ? uploadedFile.name : 'Sin archivo');
-    // console.log("  • ubicacion:", ubicacion);
 
     try {
       // Crear la exhumación
       //console.log(" Iniciando creación de exhumación...");
       const exhumacionResult = await createExhumacionMutation.mutateAsync(formData);
-      //console.log(" Exhumación creada exitosamente:", exhumacionResult);
-      //console.log(" Estructura completa del resultado:", JSON.stringify(exhumacionResult, null, 2));
-      //console.log(" ID de exhumación:", exhumacionResult?.idExhumacion);
-      //console.log(" Propiedades del resultado:", Object.keys(exhumacionResult || {}));
       
       // Verificar que tenemos el ID antes de redirigir
       if (!exhumacionResult?.idExhumacion) {
@@ -227,15 +218,7 @@ export default function NuevaExhumacionPage() {
     );
   }
 
-  // Verificar que tenemos todos los datos necesarios
-  // console.log(" Verificando datos de la inhumación:", {
-  //   inhumacion: inhumacion,
-  //   idInhumacion: inhumacion?.idInhumacion,
-  //   idNicho: inhumacion?.idNicho,
-  //   idNichoValue: inhumacion?.idNicho?.idNicho,
-  //   propiedades: Object.keys(inhumacion || {}),
-  //   propiedadesNicho: inhumacion?.idNicho ? Object.keys(inhumacion.idNicho) : []
-  // });
+
 
   if (!inhumacion?.idInhumacion || !inhumacion?.idNicho?.idNicho) {
     return (
@@ -321,9 +304,24 @@ export default function NuevaExhumacionPage() {
                 <div className="flex items-center gap-1 text-sm text-gray-600">
                   <MapPin className="h-3 w-3" />
                   <span className="font-medium">Ubicación:</span>
-                  {inhumacion.idNicho?.idCementerio?.nombre} - 
-                  Fila {inhumacion.idNicho?.fila} - 
-                  Columna {inhumacion.idNicho?.columna}
+                  {(() => {
+                    const cementerio = inhumacion.idNicho?.idCementerio?.nombre || '';
+                    const fila = inhumacion.idNicho?.fila;
+                    const columna = inhumacion.idNicho?.columna;
+
+                    // Si no hay fila ni columna (fosa u otra ubicación sin coordenadas), mostrar solo el nombre del cementerio
+                    if (fila == null && columna == null) {
+                      return <span className="ml-1">{cementerio}</span>;
+                    }
+
+                    // Si alguna de las coordenadas existe, mostrar las que existan
+                    const parts: string[] = [];
+                    if (cementerio) parts.push(cementerio);
+                    if (fila != null) parts.push(`Fila ${fila}`);
+                    if (columna != null) parts.push(`Columna ${columna}`);
+
+                    return <span className="ml-1">{parts.join(' - ')}</span>;
+                  })()}
                 </div>
                 <div className="text-sm text-gray-600">
                   <span className="font-medium">Solicitante:</span> {inhumacion.solicitante}

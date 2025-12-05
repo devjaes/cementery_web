@@ -189,7 +189,23 @@ export function ExhumacionSearchResults({
                           <span className="text-sm">
                             {result.hasExhumacion
                               ? exhumacion?.ubicacion
-                              : `${inhumacion?.idNicho?.idCementerio?.nombre} - Fila ${inhumacion?.idNicho?.fila ?? "-"} - Columna ${inhumacion?.idNicho?.columna ?? "-"}`
+                              : (() => {
+                                  const cemetery = inhumacion?.idNicho?.idCementerio?.nombre || '';
+                                  const fila = inhumacion?.idNicho?.fila;
+                                  const columna = inhumacion?.idNicho?.columna;
+
+                                  // Si no hay fila ni columna (p. ej. fosa), mostrar solo el cementerio
+                                  if (fila == null && columna == null) {
+                                    return cemetery;
+                                  }
+
+                                  const parts: string[] = [];
+                                  if (cemetery) parts.push(cemetery);
+                                  if (fila != null) parts.push(`Fila ${fila}`);
+                                  if (columna != null) parts.push(`Columna ${columna}`);
+
+                                  return parts.join(' - ');
+                                })()
                             }
                           </span>
                         </div>

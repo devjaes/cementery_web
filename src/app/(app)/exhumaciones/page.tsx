@@ -113,11 +113,7 @@ export default function ExhumacionesPage() {
               Busca por nombre, cédula, código de inhumación o solicitante
             </p>
           </div>
-          {/* <Link href="/exhumaciones/nuevo">
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" /> Nueva Exhumación
-            </Button>
-          </Link> */}
+
         </div>
 
         {/* Contenido Principal */}

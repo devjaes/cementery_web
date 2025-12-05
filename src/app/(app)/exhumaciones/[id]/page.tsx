@@ -405,6 +405,48 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
     setGeneratingAuthorization(true);
 
     try {
+      // === FUNCIÓN AUXILIAR PARA LIMPIAR UBICACIÓN ===
+      const getCleanUbicacion = () => {
+        const rawCementerio = exhumacion.inhumacion?.idNicho?.idCementerio?.nombre ?? exhumacion.ubicacion ?? 'CEMENTERIO MUNICIPAL';
+        
+        // Si la ubicacion viene con sufijos como ' - Fila null - Columna null', extraer sólo el nombre antes de esos sufijos
+        const extractCemeteryName = (s: string) => {
+          // Remover ocurrencias de 'Fila null' o 'Columna null' en cualquier posición
+          let cleaned = s.replace(/\b(Fila|Columna)\b\s*:\s*null/gi, '');
+          cleaned = cleaned.replace(/\b(Fila|Columna)\b\s*null\b/gi, '');
+          // Remover múltiples guiones y espacios sobrantes
+          cleaned = cleaned.replace(/\s*-\s*-+/g, '-');
+          // Remover guiones al final o inicio
+          cleaned = cleaned.replace(/(^-\s*|-\s*$)/g, '');
+          return cleaned.trim();
+        };
+
+        const cementerio = extractCemeteryName(String(rawCementerio));
+
+        const rawFila = exhumacion.inhumacion?.idNicho?.fila;
+        const rawColumna = exhumacion.inhumacion?.idNicho?.columna;
+
+        const normalize = (v: unknown) => {
+          if (v == null) return null;
+          const s = String(v).trim();
+          if (s === '' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return null;
+          return s;
+        };
+
+        const fila = normalize(rawFila);
+        const columna = normalize(rawColumna);
+
+        if (fila == null && columna == null) return cementerio;
+
+        const parts: string[] = [cementerio];
+        if (fila != null) parts.push(`Fila ${fila}`);
+        if (columna != null) parts.push(`Columna ${columna}`);
+
+        return parts.join(' - ');
+      };
+
+      const ubicacionLimpia = getCleanUbicacion();
+      
       // Crear nuevo documento PDF en formato A4
       const pdf = new jsPDF('p', 'mm', 'a4');
       
@@ -502,9 +544,9 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
         // Insertar logo en el PDF
         pdf.addImage(logoDataUrl, 'JPEG', leftMargin + 3, yPos + 3, logoWidth, logoHeight);
         
-        console.log('✅ Logo municipal cargado exitosamente');
+        console.log(' Logo municipal cargado exitosamente');
       } catch (error) {
-        console.warn('⚠️ No se pudo cargar el logo, usando texto como fallback:', error);
+        console.warn(' No se pudo cargar el logo, usando texto como fallback:', error);
         
         // Fallback: texto descriptivo si no se puede cargar la imagen
         pdf.setTextColor(0, 0, 0);
@@ -602,7 +644,7 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
       
       // Filas de datos institucionales y motivo
       const institutionalRows = [
-        ['Cementerio:', exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL CENTRAL', 'Escrito', true],
+        ['Cementerio:', ubicacionLimpia || 'CEMENTERIO MUNICIPAL CENTRAL', 'Escrito', true],
         ['Funcionario o cargo:', 'WILSON HINOJOSA', 'Verbal (solo en caso de emergencia)', false] // TODO: Debe venir de BD - tabla funcionarios/empleados
       ];
       
@@ -655,7 +697,7 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
       
       const encabezadosHeight2 = Math.max(
         calculateTextHeight(encabezadoC, tableWidth * 0.5 - 4, 8),
-        calculateTextHeight(encabezadoD, tableWidth * 0.2 - 4, 8),
+        calculateTextHeight(encabezadoD, tableWidth * 0.27 - 4, 7),
         baseCellHeight
       );
       
@@ -667,18 +709,18 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
       pdf.setFontSize(8);
       pdf.text(encabezadoC, leftMargin + (tableWidth * 0.5 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, encabezadosHeight2, false);
-      pdf.text(encabezadoD, leftMargin + tableWidth * 0.5 + (tableWidth * 0.2 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.27, encabezadosHeight2, false);
+      drawTextInCell(encabezadoD, leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.27, encabezadosHeight2, 7);
       
-      drawTableBorder(leftMargin + tableWidth * 0.7, yPos, tableWidth * 0.1, encabezadosHeight2, false);
+      drawTableBorder(leftMargin + tableWidth * 0.77, yPos, tableWidth * 0.08, encabezadosHeight2, false);
       pdf.setFontSize(7);
-      pdf.text("Cumple", leftMargin + tableWidth * 0.7 + (tableWidth * 0.1 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
+      pdf.text("Cumple", leftMargin + tableWidth * 0.77 + (tableWidth * 0.08 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.1, encabezadosHeight2, false);
-      pdf.text("No cumple", leftMargin + tableWidth * 0.8 + (tableWidth * 0.1 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.85, yPos, tableWidth * 0.08, encabezadosHeight2, false);
+      pdf.text("No cumple", leftMargin + tableWidth * 0.85 + (tableWidth * 0.08 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
-      drawTableBorder(leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, encabezadosHeight2, false);
-      pdf.text("Observación", leftMargin + tableWidth * 0.9 + (tableWidth * 0.1 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
+      drawTableBorder(leftMargin + tableWidth * 0.93, yPos, tableWidth * 0.07, encabezadosHeight2, false);
+      pdf.text("Observación", leftMargin + tableWidth * 0.93 + (tableWidth * 0.07 / 2), yPos + encabezadosHeight2/2 + 1, { align: "center" });
       
       yPos += encabezadosHeight2;
       
@@ -698,8 +740,8 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
         // Calcular altura necesaria para cada columna
         const col1Height = calculateTextHeight(row[0] as string, tableWidth * 0.22 - 4, 7);
         const col2Height = calculateTextHeight(row[1] as string, tableWidth * 0.28 - 4, 7);
-        const col3Height = calculateTextHeight(row[2] as string, tableWidth * 0.2 - 4, 7);
-        const col6Height = calculateTextHeight(row[5] as string, tableWidth * 0.1 - 4, 6);
+        const col3Height = calculateTextHeight(row[2] as string, tableWidth * 0.27 - 4, 7);
+        const col6Height = calculateTextHeight(row[5] as string, tableWidth * 0.07 - 4, 6);
         
         // La altura de la fila es el máximo entre todas las columnas
         const currentCellHeight = Math.max(col1Height, col2Height, col3Height, col6Height, baseCellHeight);
@@ -716,24 +758,24 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
         drawTextInCell(row[1] as string, leftMargin + tableWidth * 0.22, yPos, tableWidth * 0.28, currentCellHeight, 7);
         
         // Columna derecha - requisitos
-        drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, currentCellHeight);
-        drawTextInCell(row[2] as string, leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.2, currentCellHeight, 7);
+        drawTableBorder(leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.27, currentCellHeight);
+        drawTextInCell(row[2] as string, leftMargin + tableWidth * 0.5, yPos, tableWidth * 0.27, currentCellHeight, 7);
         
-        drawTableBorder(leftMargin + tableWidth * 0.7, yPos, tableWidth * 0.1, currentCellHeight);
+        drawTableBorder(leftMargin + tableWidth * 0.77, yPos, tableWidth * 0.08, currentCellHeight);
         if (row[3]) {
           pdf.setFontSize(7);
-          pdf.text('X', leftMargin + tableWidth * 0.73, yPos + currentCellHeight/2 + 1);
+          pdf.text('X', leftMargin + tableWidth * 0.81, yPos + currentCellHeight/2 + 1);
         }
         
-        drawTableBorder(leftMargin + tableWidth * 0.8, yPos, tableWidth * 0.1, currentCellHeight);
+        drawTableBorder(leftMargin + tableWidth * 0.85, yPos, tableWidth * 0.08, currentCellHeight);
         if (row[4]) {
           pdf.setFontSize(7);
-          pdf.text('X', leftMargin + tableWidth * 0.83, yPos + currentCellHeight/2 + 1);
+          pdf.text('X', leftMargin + tableWidth * 0.89, yPos + currentCellHeight/2 + 1);
         }
         
-        drawTableBorder(leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, currentCellHeight);
+        drawTableBorder(leftMargin + tableWidth * 0.93, yPos, tableWidth * 0.07, currentCellHeight);
         if (row[5] && typeof row[5] === 'string' && row[5].trim() !== '') {
-          drawTextInCell(row[5], leftMargin + tableWidth * 0.9, yPos, tableWidth * 0.1, currentCellHeight, 6);
+          drawTextInCell(row[5], leftMargin + tableWidth * 0.93, yPos, tableWidth * 0.07, currentCellHeight, 6);
         }
         
         yPos += currentCellHeight;
@@ -765,7 +807,7 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
       
       const nichoRows = [
         ['Nombre del Propietario', exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA', 'Número de nicho', ''], // TODO: Número debe venir del nicho relacionado
-        ['Fecha de adquisición', '17 DE NOVIEMBRE DE 1974', 'Lugar del nicho', exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL CENTRAL'], // TODO: Debe venir de BD - fecha adquisicion del nicho
+        ['Fecha de adquisición', '17 DE NOVIEMBRE DE 1974', 'Lugar del nicho', ubicacionLimpia || 'CEMENTERIO MUNICIPAL CENTRAL'], // TODO: Debe venir de BD - fecha adquisicion del nicho
         ['Nombre del administrador', '', 'Lugar del sitio', ''], // TODO: Debe venir de BD - administrador del cementerio
         ['Propio', 'X', 'Arrendado/a', '', 'Firma de aceptación de exhumación', ''] // TODO: Debe venir de BD - tipo de propiedad del nicho
       ];
@@ -859,10 +901,10 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
       yPos += encabezadoFHeight;
       
       const fallecidoRows = [
-        ['Nombre/Apellido', `${exhumacion.inhumacion?.idFallecido?.nombres || 'LUZ EDELMIRA'} ${exhumacion.inhumacion?.idFallecido?.apellidos || 'PÁEZ RAMÍREZ'}`, 'FECHA DE EXHUMACIÓN', formatDateSafely(exhumacion.fechaExhumacion, "dd 'DE' MMMM 'DE' yyyy").toUpperCase()],
+        ['Nombre/Apellido', `${exhumacion.inhumacion?.idFallecido?.nombres || 'LUZ EDELMIRA'} ${exhumacion.inhumacion?.idFallecido?.apellidos || ''}`, 'FECHA DE EXHUMACIÓN', formatDateSafely(exhumacion.fechaExhumacion, "dd 'DE' MMMM 'DE' yyyy").toUpperCase()],
         ['Fecha de fallecimiento', formatDateSafely(exhumacion.inhumacion?.fechaInhumacion, "dd 'DE' MMMM 'DE' yyyy").toUpperCase() || '08 DE NOVIEMBRE DE 2008', 'Hora de exhumación', exhumacion.horaExhumacion || '15H00'],
         ['Fecha de Inhumación', formatDateSafely(exhumacion.inhumacion?.fechaInhumacion, "dd 'DE' MMMM 'DE' yyyy").toUpperCase() || '10 DE NOVIEMBRE DE 2008', 'Lugar de nueva sepultura (nicho, lote,lugar)', 'CEMENTERIO MUNICIPAL DE CALULÉ'],
-        ['Lugar de sepultura (nicho, lote,lugar)', exhumacion.ubicacion || 'CEMENTERIO MUNICIPAL CALULÉ', '', ''],
+        ['Lugar de sepultura (nicho, lote,lugar)', ubicacionLimpia || 'CEMENTERIO MUNICIPAL CALULÉ', '', ''],
         ['N° Cédula de Identidad', exhumacion.inhumacion?.idFallecido?.cedula || '', 'Aprobación de los familiares', 'LA SOLICITANTE ES SOBRINA DE LA PERSONA FALLECIDA POR LO QUE ADJUNTA AUTORIZACIÓN DE LOS HIJOS DE LA PERSONA FALLECIDA.']
       ];
       
@@ -983,17 +1025,17 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(8);
       pdf.text("Solicitante Responsable", leftMargin + tableWidth * 0.25, yPos + 10, { align: "center" });
-      pdf.line(leftMargin + 10, yPos + 15, leftMargin + tableWidth * 0.5 - 10, yPos + 15);
+      pdf.line(leftMargin + 10, yPos + 29, leftMargin + tableWidth * 0.5 - 10, yPos + 29);
       pdf.setFont("helvetica", "normal");
       const solicitanteNombre = exhumacion.duenioNicho || 'CAMPAÑA PÁEZ GLORIA TERESA';
-      pdf.text(solicitanteNombre, leftMargin + tableWidth * 0.25, yPos + 18, { align: "center" });
+      pdf.text(solicitanteNombre, leftMargin + tableWidth * 0.25, yPos + 32, { align: "center" });
       
       pdf.setFont("helvetica", "bold");
       pdf.text("Directora de Servicios Públicos", leftMargin + tableWidth * 0.75, yPos + 10, { align: "center" });
-      pdf.line(leftMargin + tableWidth * 0.5 + 10, yPos + 15, rightMargin - 10, yPos + 15);
+      pdf.line(leftMargin + tableWidth * 0.5 + 10, yPos + 29, rightMargin - 10, yPos + 29);
       pdf.setFont("helvetica", "normal");
-      pdf.text("ING. JENNY CONSTANTE", leftMargin + tableWidth * 0.75, yPos + 18, { align: "center" }); // TODO: Debe venir de BD - director de servicios públicos
-      
+      pdf.text("ING. JENNY CONSTANTE", leftMargin + tableWidth * 0.75, yPos + 32, { align: "center" }); // TODO: Debe venir de BD - director de servicios públicos
+
       // === BORDE FINAL DEL DOCUMENTO ===
       // Dibujar borde completo en todas las páginas
       const totalPages = (pdf.internal as { pages: unknown[] }).pages.length - 1; // -1 porque el array incluye un elemento vacío al inicio
@@ -1393,7 +1435,45 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
                   <Label className="text-sm font-medium text-gray-500">Ubicación</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <MapPin className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">{exhumacion.ubicacion}</span>
+                    <span className="text-sm">{(() => {
+                      // Raw source: prefer nombre del cementerio desde el nicho; si no existe, usar exhumacion.ubicacion
+                      const rawCementerio = exhumacion.inhumacion?.idNicho?.idCementerio?.nombre ?? exhumacion.ubicacion ?? 'CEMENTERIO MUNICIPAL';
+
+                      // Si la ubicacion viene con sufijos como ' - Fila null - Columna null', extraer sólo el nombre antes de esos sufijos
+                      const extractCemeteryName = (s: string) => {
+                        // Remover ocurrencias de 'Fila null' o 'Columna null' en cualquier posición
+                        let cleaned = s.replace(/\b(Fila|Columna)\b\s*:\s*null/gi, '');
+                        cleaned = cleaned.replace(/\b(Fila|Columna)\b\s*null\b/gi, '');
+                        // Remover múltiples guiones y espacios sobrantes
+                        cleaned = cleaned.replace(/\s*-\s*-+/g, '-');
+                        // Remover guiones al final o inicio
+                        cleaned = cleaned.replace(/(^-|-$)/g, '');
+                        return cleaned.trim();
+                      };
+
+                      const cementerio = extractCemeteryName(String(rawCementerio));
+
+                      const rawFila = exhumacion.inhumacion?.idNicho?.fila;
+                      const rawColumna = exhumacion.inhumacion?.idNicho?.columna;
+
+                      const normalize = (v: unknown) => {
+                        if (v == null) return null;
+                        const s = String(v).trim();
+                        if (s === '' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return null;
+                        return s;
+                      };
+
+                      const fila = normalize(rawFila);
+                      const columna = normalize(rawColumna);
+
+                      if (fila == null && columna == null) return cementerio;
+
+                      const parts: string[] = [cementerio];
+                      if (fila != null) parts.push(`Fila ${fila}`);
+                      if (columna != null) parts.push(`Columna ${columna}`);
+
+                      return parts.join(' - ');
+                    })()}</span>
                   </div>
                 </div>
               </div>
@@ -1411,7 +1491,7 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
                   </div>
                 )}
 
-                <div>
+                {/* <div>
                   <Label className="text-sm font-medium text-gray-500">Fechas del Sistema</Label>
                   <div className="text-sm text-gray-600 mt-1">
                     <p>Creado: {formatDateSafely(exhumacion.fechaCreacion, "dd/MM/yyyy HH:mm")}</p>
@@ -1419,7 +1499,7 @@ export default function ExhumacionDetailPage(): React.JSX.Element {
                       <p>Actualizado: {formatDateSafely(exhumacion.fechaActualizacion, "dd/MM/yyyy HH:mm")}</p>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </CardContent>
