@@ -13,12 +13,19 @@ import { NichoSearchResults } from "../components/nicho-search-results.component
 type SearchType = "fallecido" | "nicho";
 import { NichoListTable } from "../components/nicho-table.component";
 import { NichoForm } from "../components/nicho-form.component";
-import { useSearchFallecidosQuery, useFindAllNichosQuery, useFindNichoByIdQuery } from "../hooks/use-nicho-queries";
+import {
+  useSearchFallecidosQuery,
+  useFindAllNichosQuery,
+  useFindNichoByIdQuery,
+} from "../hooks/use-nicho-queries";
 import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
-import { NichoFallecidosEntity, NichoEntity } from "../../domain/entities/nicho.entity";
+import {
+  NichoFallecidosEntity,
+  NichoEntity,
+} from "../../domain/entities/nicho.entity";
 import {
   Dialog,
   DialogContent,
@@ -55,9 +62,12 @@ import clsx from "clsx";
 export default function NichoListView() {
   const [searchType, setSearchType] = useState<SearchType>("fallecido");
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [nichoFilters, setNichoFilters] = useState<NichoSearchFilters | null>(null);
+  const [nichoFilters, setNichoFilters] = useState<NichoSearchFilters | null>(
+    null
+  );
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedFallecido, setSelectedFallecido] = useState<NichoFallecidosEntity | null>(null);
+  const [selectedFallecido, setSelectedFallecido] =
+    useState<NichoFallecidosEntity | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingNichoId, setEditingNichoId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -65,27 +75,34 @@ export default function NichoListView() {
   const {
     data: fallecidosResults,
     isLoading: isSearchingFallecidos,
-    error: fallecidosError
+    error: fallecidosError,
   } = useSearchFallecidosQuery(searchTerm);
 
-  const {
-    data: allNichos,
-    isLoading: isLoadingNichos
-  } = useFindAllNichosQuery();
+  const { data: allNichos, isLoading: isLoadingNichos } =
+    useFindAllNichosQuery();
 
   // Filter nichos based on search criteria
   const filteredNichos = useMemo(() => {
     if (!nichoFilters || !allNichos) return allNichos;
 
     return allNichos.filter((nicho) => {
-      const matchesCementerio = !nichoFilters.cementerio ||
-        String(nicho.idCementerio?.nombre ?? '').toLowerCase().includes(nichoFilters.cementerio.toLowerCase());
+      const matchesCementerio =
+        !nichoFilters.cementerio ||
+        String(nicho.idCementerio?.nombre ?? "")
+          .toLowerCase()
+          .includes(nichoFilters.cementerio.toLowerCase());
 
-      const matchesFila = !nichoFilters.fila ||
-        String(nicho.fila ?? '').toLowerCase().includes(nichoFilters.fila.toLowerCase());
+      const matchesFila =
+        !nichoFilters.fila ||
+        String(nicho.fila ?? "")
+          .toLowerCase()
+          .includes(nichoFilters.fila.toLowerCase());
 
-      const matchesNumero = !nichoFilters.numero ||
-        String(nicho.columna ?? '').toLowerCase().includes(nichoFilters.numero.toLowerCase());
+      const matchesNumero =
+        !nichoFilters.numero ||
+        String(nicho.columna ?? "")
+          .toLowerCase()
+          .includes(nichoFilters.numero.toLowerCase());
 
       return matchesCementerio && matchesFila && matchesNumero;
     });
@@ -135,7 +152,8 @@ export default function NichoListView() {
     setEditingNichoId(id);
   };
 
-  const isSearching = searchType === "fallecido" ? isSearchingFallecidos : isLoadingNichos;
+  const isSearching =
+    searchType === "fallecido" ? isSearchingFallecidos : isLoadingNichos;
 
   // Cast the imported component to any to allow passing extra prop names not present in its TS props type
   const SearchBar = NichoSearchBar as unknown as any;
@@ -143,7 +161,6 @@ export default function NichoListView() {
   return (
     <ContainerApp title="Gestión de Nichos">
       <div className="space-y-6">
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
@@ -172,16 +189,20 @@ export default function NichoListView() {
         ) : (
           /* 👉 SI YA BUSCÓ: MOSTRAR RESULTADOS + BOTÓN */
           <div className="space-y-4">
-
             {/* 🔙 Botón para nueva búsqueda */}
             <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={handleClearSearch} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={handleClearSearch}
+                className="gap-2"
+              >
                 <ArrowLeft className="w-4 h-4" />
                 Nueva búsqueda
               </Button>
 
               <div className="text-sm text-muted-foreground">
-                Resultados para: <span className="font-medium">"{searchTerm}"</span>
+                Resultados para:{" "}
+                <span className="font-medium">&quot;{searchTerm}&quot;</span>
               </div>
             </div>
 
@@ -191,7 +212,8 @@ export default function NichoListView() {
                 {fallecidosError && (
                   <Alert variant="destructive">
                     <AlertDescription>
-                      No se encontraron fallecidos que coincidan con "{searchTerm}".
+                      No se encontraron fallecidos que coincidan con &quot;
+                      {searchTerm}&quot;.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -199,7 +221,9 @@ export default function NichoListView() {
                 {isSearchingFallecidos && (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Buscando coincidencias...</p>
+                    <p className="text-muted-foreground">
+                      Buscando coincidencias...
+                    </p>
                   </div>
                 )}
 
@@ -247,11 +271,9 @@ export default function NichoListView() {
             onSuccess={handleEditSuccess}
           />
         )}
-
       </div>
     </ContainerApp>
   );
-
 
   // Modal for editing nicho
   function NichoEditModal({
@@ -274,7 +296,9 @@ export default function NichoListView() {
             <DialogTitle>Editar Nicho</DialogTitle>
           </DialogHeader>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+            <div className="text-center py-8 text-muted-foreground">
+              Cargando...
+            </div>
           ) : nicho ? (
             <NichoForm nicho={nicho} onSuccess={onSuccess} />
           ) : (
@@ -287,8 +311,8 @@ export default function NichoListView() {
     );
   }
 
-
-  {/* Edit Modal 
+  {
+    /* Edit Modal 
 // Component for filtered nichos results
 function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: NichoEntity[] | undefined; isLoading: boolean; onEditClick: (id: string) => void }) {
   const { mutate: deleteNicho, isPending } = useDeleteNichoMutation();
