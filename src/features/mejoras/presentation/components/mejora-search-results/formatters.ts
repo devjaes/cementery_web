@@ -6,8 +6,26 @@ import { MejoraBloqueInfo, MejoraFallecidoInfo } from "../../../domain/entities/
 
 export const formatDate = (value?: string): string => {
   if (!value) return "No disponible";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "No disponible" : date.toLocaleDateString("es-EC");
+
+  const trimmed = value.trim();
+
+  // Si trae hora (formato ISO), parsear a Date para convertir a local y evitar +1 día
+  if (trimmed.includes("T")) {
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? "No disponible" : parsed.toLocaleDateString("es-EC");
+  }
+
+  // Si es solo fecha YYYY-MM-DD, renderizarla directamente en local sin corrimientos
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (dateOnlyMatch) {
+    const [, y, m, d] = dateOnlyMatch;
+    const asDate = new Date(Number(y), Number(m) - 1, Number(d));
+    return Number.isNaN(asDate.getTime()) ? "No disponible" : asDate.toLocaleDateString("es-EC");
+  }
+
+  // Fallback genérico
+  const fallback = new Date(trimmed);
+  return Number.isNaN(fallback.getTime()) ? "No disponible" : fallback.toLocaleDateString("es-EC");
 };
 
 export const fullName = (person?: { nombres?: string; apellidos?: string }): string => {

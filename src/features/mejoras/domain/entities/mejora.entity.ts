@@ -3,6 +3,7 @@ import { PersonEntity } from "@/features/person/domain/entities/person.entity";
 
 export interface MejoraEntity {
   idMejora: string;
+  fechaCreacion?: string;
   fechaSolicitud: string;
   codigoAutorizacion?: string;
 

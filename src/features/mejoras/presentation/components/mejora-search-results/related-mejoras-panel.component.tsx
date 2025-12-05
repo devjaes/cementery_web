@@ -147,6 +147,7 @@ export const RelatedMejorasPanel = ({
 }: RelatedMejorasPanelProps) => {
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const approveMutation = useApproveMejoraMutation();
   const rejectMutation = useRejectMejoraMutation();
   const downloadMutation = useDownloadMejoraPdfMutation();
@@ -193,6 +194,14 @@ export const RelatedMejorasPanel = ({
 
     return candidates.some((value) => value.includes(normalizedSearch));
   });
+
+  const sortedMejoras = filteredMejoras
+    .slice()
+    .sort((a, b) => {
+      const da = a.fechaCreacion ? new Date(a.fechaCreacion).getTime() : (a.fechaSolicitud ? new Date(a.fechaSolicitud).getTime() : 0);
+      const db = b.fechaCreacion ? new Date(b.fechaCreacion).getTime() : (b.fechaSolicitud ? new Date(b.fechaSolicitud).getTime() : 0);
+      return sortOrder === "desc" ? db - da : da - db;
+    });
 
   const handleApprove = (mejora: MejoraEntity) => {
     if (!user?.id_user) return;
@@ -264,12 +273,24 @@ export const RelatedMejorasPanel = ({
             </select>
           </div>
         </div>
+        <div className="flex flex-col gap-1 text-sm text-slate-600">
+          <label htmlFor="related-mejoras-sort">Orden</label>
+          <select
+            id="related-mejoras-sort"
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
+            className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <option value="desc">Más nuevos primero</option>
+            <option value="asc">Más antiguos primero</option>
+          </select>
+        </div>
         {isLoading ? (
           <div className="flex items-center gap-3 text-gray-600">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span>Buscando mejoras asociadas…</span>
           </div>
-        ) : filteredMejoras.length === 0 ? (
+        ) : sortedMejoras.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No se encontraron mejoras que coincidan con los filtros.
           </p>
@@ -282,18 +303,20 @@ export const RelatedMejorasPanel = ({
                   <TableHead>Fallecido</TableHead>
                   <TableHead>Cementerio</TableHead>
                   <TableHead>Tipo servicio</TableHead>
+                  <TableHead>Fecha creación</TableHead>
                   <TableHead>Fecha inicio</TableHead>
                   <TableHead className="w-[180px]">Estado</TableHead>
                   <TableHead className="w-[140px] text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMejoras.map((mejora) => (
+                {sortedMejoras.map((mejora) => (
                   <TableRow key={mejora.idMejora}>
                     <TableCell>{fullName(mejora.solicitante)}</TableCell>
                     <TableCell>{fullName(mejora.fallecido)}</TableCell>
                     <TableCell>{mejora.idCementerio?.nombre ?? "Sin cementerio"}</TableCell>
                     <TableCell>{mejora.tipoServicio}</TableCell>
+                    <TableCell>{formatDate(mejora.fechaCreacion ?? mejora.fechaSolicitud)}</TableCell>
                     <TableCell>{formatDate(mejora.fechaInicio ?? mejora.fechaSolicitud)}</TableCell>
                     <TableCell className="align-top">
                       <div className="flex flex-col gap-2">

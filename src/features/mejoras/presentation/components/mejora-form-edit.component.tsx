@@ -70,6 +70,31 @@ export default function MejoraFormEdit({
   const [removingDocument, setRemovingDocument] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("general");
 
+  const fechaInicioValue = methods.watch("fechaInicio");
+  const fechaFinValue = methods.watch("fechaFin");
+
+  const toDateOnly = (value?: string | null) => {
+    if (!value) return undefined;
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+    if (match) {
+      const [, y, m, d] = match;
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+
+  const fechaInicioDate = toDateOnly(fechaInicioValue);
+  const fechaFinDate = toDateOnly(fechaFinValue);
+
+  // Si la fecha de fin queda antes que la fecha de inicio tras cambios, limpiarla
+  useEffect(() => {
+    if (!fechaInicioDate || !fechaFinDate) return;
+    if (fechaFinDate.getTime() < fechaInicioDate.getTime()) {
+      methods.setValue("fechaFin", "", { shouldValidate: true, shouldDirty: true });
+    }
+  }, [fechaInicioDate, fechaFinDate, methods]);
+
   const sections = useMemo(
     () => [
       { value: "accion", label: "Acción", description: "Programación de la intervención" },
@@ -191,7 +216,12 @@ export default function MejoraFormEdit({
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <RHFSelect name="tipoServicio" label="Tipo de servicio a efectuar *" options={tipoServicioOptions} placeholder="Selecciona" disabled={isPrefillLoading} />
               <RHFDatePickerCalendar name="fechaInicio" label="Fecha de inicio" />
-              <RHFDatePickerCalendar name="fechaFin" label="Fecha de fin" />
+              <RHFDatePickerCalendar
+                name="fechaFin"
+                label="Fecha de fin"
+                disabled={!fechaInicioDate}
+                minDate={fechaInicioDate}
+              />
               <RHFTimeRangeSelect
                 name="horarioTrabajo"
                 label="Horario de trabajo"
