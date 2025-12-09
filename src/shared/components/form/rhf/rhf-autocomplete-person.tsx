@@ -25,15 +25,13 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const { data: persons, isLoading: isLoadingPersons } = useSearchPersonsQuery(debouncedSearch, vivos);
+  // Consultas separadas para vivos y fallecidos sin inhumación
+  const { data: personsVivos, isLoading: isLoadingVivos } = useSearchPersonsQuery(debouncedSearch, true);
+  const { data: personsFallecidos, isLoading: isLoadingFallecidos } = useSearchPersonsQuery(debouncedSearch, false);
   // fallback list of all persons
   const allPersonsQuery = useFindAllPersonsQuery();
   const allPersons = allPersonsQuery.data ?? [];
   const isLoadingAllPersons = allPersonsQuery.isLoading;
-  // secondary explicit deceased persons list
-  const deceasedPersonsQuery = useSearchPersonsQuery("", false);
-  const deceasedPersons = deceasedPersonsQuery.data ?? [];
-  const isLoadingDeceasedPersons = deceasedPersonsQuery.isLoading;
 
   // requisitos queries to determine which persons already have a requisito/codigo
   const searchRequisitosQuery = useSearchRequisitoInhumacionFallecidosQuery(debouncedSearch);
@@ -98,7 +96,27 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
       render={({ field }) => {
         // Build the available persons list according to the requested filtering mode
         const q = (debouncedSearch || "").trim();
-        let availablePersons = persons ?? [];
+        // Unir personas vivas y fallecidas sin inhumación
+        let availablePersons: any[] = [];
+        if (onlyNotInhumed) {
+          // Si hay búsqueda, usar las consultas específicas
+          if (q.length >= 2) {
+            const vivos = personsVivos || [];
+            const fallecidosSinInhumacion = (personsFallecidos || []).filter((p) => p.fallecido && !p.fecha_inhumacion);
+            availablePersons = [...vivos, ...fallecidosSinInhumacion];
+          } else {
+            // Sin búsqueda, usar allPersons y filtrar
+            const vivos = (allPersons || []).filter((p) => p.fallecido === false);
+            const fallecidosSinInhumacion = (allPersons || []).filter((p) => p.fallecido && !p.fecha_inhumacion);
+            availablePersons = [...vivos, ...fallecidosSinInhumacion];
+          }
+        } else {
+          if (q.length >= 2) {
+            availablePersons = personsVivos || personsFallecidos || [];
+          } else {
+            availablePersons = allPersons || [];
+          }
+        }
 
         // Debug: log relevant data to help troubleshooting
         try {
@@ -110,16 +128,18 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
             open,
             search,
             debouncedSearch: q,
-            personsCount: (persons || []).length,
+            personsVivosCount: (personsVivos || []).length,
+            personsFallecidosCount: (personsFallecidos || []).length,
             allPersonsCount: (allPersons || []).length,
-            deceasedPersonsCount: (deceasedPersons || []).length,
+            availablePersonsBeforeFilter: availablePersons.length,
+            availablePersonsSample: availablePersons.slice(0, 3).map(p => ({ id: p.id_persona, nombre: p.nombres, fallecido: p.fallecido, fecha_inhumacion: p.fecha_inhumacion })),
             requisitosSearch: (searchRequisitosQuery?.data as any) ?? null,
             allRequisitosCount: (allRequisitosQuery?.data || []).length,
           });
         } catch (e) {}
 
-        if (onlyNotInhumed && vivos === false) {
-          // collect person ids that already have requisitos / codigo de inhumacion
+        if (onlyNotInhumed) {
+          // Excluir personas fallecidas con requisitos (solo fallecidos, las vivas no se filtran)
           const requisitoPersonIds = new Set<string>();
           if (q.length >= 2) {
             const sr = searchRequisitosQuery?.data as any;
@@ -130,8 +150,6 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
                 if (pid && requisitos.length > 0) requisitoPersonIds.add(pid);
               });
             }
-            // use persons search but exclude those with fecha_inhumacion or with requisitos
-            availablePersons = (persons || []).filter((p) => p.fallecido && !p.fecha_inhumacion && !requisitoPersonIds.has(p.id_persona));
           } else {
             // fallback: build set from all requisitos
             const allReqs = allRequisitosQuery?.data ?? [];
@@ -141,22 +159,28 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
                 if (pid) requisitoPersonIds.add(pid);
               });
             }
-            if (allPersons && allPersons.length > 0) {
-              availablePersons = (allPersons || []).filter((p) => p.fallecido && !p.fecha_inhumacion && !requisitoPersonIds.has(p.id_persona));
-            } else if (deceasedPersons && deceasedPersons.length > 0) {
-              availablePersons = (deceasedPersons || []).filter((p) => p.fallecido && !p.fecha_inhumacion && !requisitoPersonIds.has(p.id_persona));
-            } else {
-              availablePersons = [];
-            }
           }
+          // Solo excluir fallecidos con requisitos, mantener todas las personas vivas
+          availablePersons = availablePersons.filter((p) => {
+            // Si es persona viva, siempre incluirla
+            if (p.fallecido === false) return true;
+            // Si es fallecido, solo incluirlo si NO tiene requisito
+            return !requisitoPersonIds.has(p.id_persona);
+          });
+          
+          console.log('After requisitos filter:', {
+            availablePersonsCount: availablePersons.length,
+            requisitoPersonIdsCount: requisitoPersonIds.size,
+            sample: availablePersons.slice(0, 5).map(p => ({ nombre: p.nombres, fallecido: p.fallecido, fecha_inhumacion: p.fecha_inhumacion }))
+          });
         }
 
         // If after applying strict filters we have no results, as a pragmatic fallback
         // include deceased persons that do NOT appear in requisitos (ignore fecha_inhumacion)
         // This helps when the backend has fecha_inhumacion populated but no requisito record.
         try {
-          if (onlyNotInhumed && vivos === false && (!availablePersons || availablePersons.length === 0)) {
-            const fallbackPool = (persons && persons.length > 0) ? persons : (allPersons && allPersons.length > 0 ? allPersons : deceasedPersons || []);
+          if (onlyNotInhumed && (!availablePersons || availablePersons.length === 0)) {
+            const fallbackPool = (personsFallecidos && personsFallecidos.length > 0) ? personsFallecidos : (allPersons && allPersons.length > 0 ? allPersons : []);
             // Build requisitos set from search or all requisitos
             const requisitoPersonIdsFallback = new Set<string>();
             const sr = searchRequisitosQuery?.data as any;
@@ -188,9 +212,9 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
         }
 
         const selectedPerson = availablePersons?.find(p => p.id_persona === field.value) ?? selectedPersonById;
-        const loading = onlyNotInhumed && vivos === false
-          ? (q.length >= 2 ? isLoadingPersons : (isLoadingAllPersons || isLoadingDeceasedPersons))
-          : isLoadingPersons;
+        const loading = onlyNotInhumed
+          ? (q.length >= 2 ? (isLoadingVivos || isLoadingFallecidos) : isLoadingAllPersons)
+          : (isLoadingVivos || isLoadingFallecidos);
         return (
           <div className="w-full">
             {label && <label className="block text-sm font-medium mb-1">{label}</label>}
