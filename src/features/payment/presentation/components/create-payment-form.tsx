@@ -77,6 +77,7 @@ interface CreatePaymentFormProps {
   buyerPersonIdInitial?: string | null;
   buyerDirectionInitial?: string | null;
   generatedByInitial?: string | null;
+  deceasedNameInitial?: string | null;
   noFormElement?: boolean;
   /**
    * When true, if the persons search (with vivos=true) returns no results,
@@ -102,6 +103,7 @@ export function CreatePaymentForm({
   buyerPersonIdInitial = null,
   buyerDirectionInitial = null,
   generatedByInitial = null,
+  deceasedNameInitial = null,
   noFormElement = false,
   enablePersonFallback = false,
   hideSubmitButton = false,
@@ -115,6 +117,7 @@ export function CreatePaymentForm({
   const [searchDocument, setSearchDocument] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [deceasedName, setDeceasedName] = useState<string | null>(deceasedNameInitial || null);
 
   const createPaymentMutation = useCreatePayment();
   const reservarNichoMutation = useReservarNicho();
@@ -153,8 +156,11 @@ export function CreatePaymentForm({
     if (generatedByInitial) {
       form.setValue("generatedBy", generatedByInitial);
     }
+    if (deceasedNameInitial) {
+      setDeceasedName(deceasedNameInitial);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buyerDocumentInitial, buyerNameInitial, buyerPersonIdInitial, buyerDirectionInitial, generatedByInitial]);
+  }, [buyerDocumentInitial, buyerNameInitial, buyerPersonIdInitial, buyerDirectionInitial, generatedByInitial, deceasedNameInitial]);
 
   // If parent provides initial buyer data (e.g. propietario resolved), apply them
   // Note: we accept these props via the component signature when updated below.
@@ -301,6 +307,11 @@ export function CreatePaymentForm({
         buyerDirection: values.buyerDirection,
         observations: values.observations,
       };
+
+      // Add deceased name for burial procedures
+      if (values.procedureType === 'burial' && deceasedName) {
+        (paymentData as any).deceasedName = deceasedName;
+      }
 
       const result = await createPaymentMutation.mutateAsync(paymentData);
 

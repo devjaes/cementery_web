@@ -48,6 +48,7 @@ export function RequisitoInhumacionCard({
   const [resolvingOwner, setResolvingOwner] = useState(false);
   const [ordenOwnerPersonId, setOrdenOwnerPersonId] = useState<string | null>(null);
   const [ordenOwnerDirection, setOrdenOwnerDirection] = useState<string | null>(null);
+  const [deceasedName, setDeceasedName] = useState<string | null>(null);
   const [generatedPaymentId, setGeneratedPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -137,9 +138,28 @@ export function RequisitoInhumacionCard({
         let resolvedInhumacionId: string | undefined = undefined;
         if (Array.isArray(inhs) && inhs.length > 0) {
           resolvedInhumacionId = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
-          if (!cancelled) setInhumacionId(resolvedInhumacionId || null);
+          if (!cancelled) {
+            setInhumacionId(resolvedInhumacionId || null);
+            // Set deceased name from the requisito fallecido or from the search response
+            let fallecidoPersona = requisitoInhumacion?.idFallecido;
+            // If not found in requisito, try to get it from the search response
+            if (!fallecidoPersona && first?.persona) {
+              fallecidoPersona = first.persona;
+            }
+            if (fallecidoPersona) {
+              const fullName = `${fallecidoPersona.nombres || ""} ${fallecidoPersona.apellidos || ""}`.trim();
+              console.log('Deceased name resolved:', fullName);
+              setDeceasedName(fullName || null);
+            } else {
+              console.warn('Could not resolve deceased person');
+              setDeceasedName(null);
+            }
+          }
         } else {
-          if (!cancelled) setInhumacionId(null);
+          if (!cancelled) {
+            setInhumacionId(null);
+            setDeceasedName(null);
+          }
         }
         // previously we also resolved propietario del nicho here; we'll resolve it again
         // but keep it hidden in the UI — we only use it to prefill the buyer fields.
@@ -234,8 +254,23 @@ export function RequisitoInhumacionCard({
       if (Array.isArray(inhs) && inhs.length > 0) {
         const resolvedInhumacionId = inhs[0]?.id_inhumacion || inhs[0]?.idInhumacion || inhs[0]?.id;
         setInhumacionId(resolvedInhumacionId || null);
+        // Set deceased name from the requisito fallecido or from the search response
+        let fallecidoPersona = requisitoInhumacion?.idFallecido;
+        // If not found in requisito, try to get it from the search response
+        if (!fallecidoPersona && first?.persona) {
+          fallecidoPersona = first.persona;
+        }
+        if (fallecidoPersona) {
+          const fullName = `${fallecidoPersona.nombres || ""} ${fallecidoPersona.apellidos || ""}`.trim();
+          console.log('Deceased name resolved:', fullName);
+          setDeceasedName(fullName || null);
+        } else {
+          console.warn('Could not resolve deceased person');
+          setDeceasedName(null);
+        }
       } else {
         setInhumacionId(null);
+        setDeceasedName(null);
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -658,6 +693,7 @@ export function RequisitoInhumacionCard({
                             buyerDirectionInitial={ordenOwnerDirection}
                             generatedByInitial={requisitoInhumacion?.pantoneroACargo ?? undefined}
                             buyerPersonIdInitial={ordenOwnerPersonId}
+                            deceasedNameInitial={deceasedName}
                             onSuccess={() => {
                               // opcional: refrescar datos o mostrar notificación
                             }}
