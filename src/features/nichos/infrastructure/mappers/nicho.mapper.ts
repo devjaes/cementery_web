@@ -45,7 +45,7 @@ export class NichoMapper {
       id_cementerio: entity.idCementerio,
       tipo: entity.tipo,
       fecha_construccion: entity.fechaConstruccion,
-      observaciones: entity.observaciones,
+      observaciones: entity.observaciones ?? undefined,
       num_huecos: entity.numHuecos,
     };
   }
@@ -55,7 +55,7 @@ export class NichoMapper {
       id_nicho: entity.idNicho,
       tipo: entity.tipo,
       fecha_construccion: entity.fechaConstruccion,
-      observaciones: entity.observaciones,
+      observaciones: entity.observaciones ?? undefined,
       num_huecos: entity.numHuecos,
     };
   }

@@ -4,6 +4,7 @@ export interface BloqueEntity {
   nombre: string;
   descripcion: string | null;
   numero?: number | null;
+  tipoBloque?: string | null;
   numeroFilas: number;
   numeroColumnas: number;
   estado: string;
@@ -16,6 +17,7 @@ export interface BloqueCreateEntity {
   nombre: string;
   descripcion?: string;
   numero?: number;
+  tipoBloque?: string;
   numeroFilas: number;
   numeroColumnas: number;
 }

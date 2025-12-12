@@ -6,6 +6,7 @@ import { useCreateBloqueMutation } from "./use-bloques-mutations";
 const schema = z.object({
   nombre: z.string().min(1, "Nombre requerido"),
   descripcion: z.string().optional(),
+  tipoBloque: z.string().optional(),
   numeroFilas: z.coerce.number().min(1, "Mínimo 1"),
   numeroColumnas: z.coerce.number().min(1, "Mínimo 1"),
 });
@@ -18,6 +19,7 @@ export function useBloqueForm(idCementerio: string, onSuccess?: () => void) {
     defaultValues: {
       nombre: "",
       descripcion: "",
+      tipoBloque: "Bloque",
       numeroFilas: 1,
       numeroColumnas: 1,
     },
@@ -30,6 +32,7 @@ export function useBloqueForm(idCementerio: string, onSuccess?: () => void) {
       idCementerio,
       nombre: values.nombre,
       descripcion: values.descripcion,
+      tipoBloque: values.tipoBloque,
       numeroFilas: values.numeroFilas,
       numeroColumnas: values.numeroColumnas,
     });

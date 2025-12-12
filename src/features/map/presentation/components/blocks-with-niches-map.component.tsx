@@ -188,6 +188,16 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
 
   // Si hay un bloque seleccionado, mostrar la vista de nichos de ese bloque
   if (selectedBloque) {
+    const getNicheSize = (cols: number) => {
+      if (cols > 40) return 28; // muy compacto
+      if (cols > 30) return 32;
+      if (cols > 25) return 36; // más de 25 columnas, reducir tamaño
+      if (cols > 16) return 40;
+      if (cols > 10) return 44;
+      return 48; // default ~12 (3rem)
+    };
+
+    const nicheSize = getNicheSize(selectedBloque.numeroColumnas || 1);
     return (
       <div className="space-y-6">
         <Card>
@@ -298,10 +308,15 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   </Alert>
                 )}
 
-                <div
-                  className="grid gap-3 p-6 border rounded-lg bg-muted/30"
-                  style={{ gridTemplateColumns: `repeat(${selectedBloque.numeroColumnas}, minmax(0, 1fr))` }}
-                >
+                <div className="p-2">
+                  <div className="overflow-auto border rounded-lg bg-muted/30 p-4">
+                    <div
+                      className="grid"
+                      style={{
+                        gridTemplateColumns: `repeat(${selectedBloque.numeroColumnas}, ${nicheSize}px)`,
+                        gap: 12,
+                      }}
+                    >
                   <TooltipProvider>
                     {selectedBloque.nichos.map((niche) => {
                       const colorStatus = getNicheColorByEstado(niche);
@@ -314,10 +329,11 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                             <button
                               onClick={() => !isDisabled && handleNicheClick(niche.idNicho!)}
                               disabled={isDisabled}
+                              style={{ width: nicheSize, height: nicheSize }}
                               className={clsx(
-                                'relative w-12 h-12 rounded-md font-semibold text-white text-xs',
+                                'relative rounded-md font-semibold text-white',
                                 'transition-all duration-200 ease-in-out',
-                                !isDisabled && 'hover:scale-110 hover:shadow-lg hover:z-10',
+                                !isDisabled && 'hover:scale-105 hover:shadow-lg hover:z-10',
                                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                                 colorStatus.color,
                                 !isDisabled && colorStatus.hover,
@@ -332,7 +348,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                   <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
                                 </span>
                               )}
-                              {nichoNumber}
+                              <span className={clsx('inline-block', nicheSize <= 32 ? 'text-[10px]' : 'text-xs')}>{nichoNumber}</span>
                             </button>
                           </TooltipTrigger>
                           <TooltipContent
@@ -503,6 +519,8 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                       );
                     })}
                   </TooltipProvider>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="text-center text-sm text-muted-foreground pt-2 border-t">

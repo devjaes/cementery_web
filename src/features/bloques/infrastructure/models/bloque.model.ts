@@ -6,6 +6,7 @@ export interface BloqueModel {
   numero?: number | null;
   numero_filas: number;
   numero_columnas: number;
+  tipo_bloque?: string | null;
   estado: string;
   fecha_creacion: string;
   fecha_modificacion: string | null;
@@ -18,6 +19,7 @@ export interface BloqueCreateModel {
   numero?: number;
   numero_filas: number;
   numero_columnas: number;
+  tipo_bloque?: string;
 }
 
 export interface BloqueUpdateModel {
