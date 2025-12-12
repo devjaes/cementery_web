@@ -1,6 +1,7 @@
 "use client";
 import { FormProvider } from "react-hook-form";
 import RHFInput from "@/shared/components/form/rhf/rhf-input";
+import RHFSelect from "@/shared/components/form/rhf/rhf-select";
 import { Button } from "@/shared/components/ui/button";
 import clsx from "clsx";
 import { useBloqueForm } from "../hooks/use-bloque-form";
@@ -23,6 +24,7 @@ export function BloqueForm() {
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <RHFSelect name="tipoBloque" label="Tipo de Bloque" options={[{ value: 'Bloque', label: 'Bloque' }, { value: 'Mausoleo', label: 'Mausoleo' }]} />
           <RHFInput name="nombre" label="Nombre" placeholder="Nombre del bloque" required />
           <RHFInput name="descripcion" label="Descripción" placeholder="Descripción" />
           <RHFInput name="numeroFilas" label="Filas" type="number" required />
