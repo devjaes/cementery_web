@@ -2,6 +2,7 @@ export type ProcedureType =
   | "burial"
   | "exhumation"
   | "niche_sale"
+  | "mausoleum_sale"
   | "tomb_improvement"
   | "hole_extension";
 
