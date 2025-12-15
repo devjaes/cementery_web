@@ -19,8 +19,9 @@ import { EstadoVentaNicho } from '@/features/nichos/domain/entities/nicho.entity
 import { HuecoTooltip } from './hole-tooltip.component';
 import { CreatePaymentForm } from '@/features/payment';
 import { ReservationActions } from '@/features/nichos/presentation/components/reservation-actions.component';
+import { MausoleumReservationActions } from '@/features/nichos/presentation/components/mausoleum-reservation-actions.component';
 import { EnableNichoForm } from '@/features/nichos/presentation/components/enable-nicho-form.component';
-import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, ShoppingCart, ArrowLeft, Power } from 'lucide-react';
+import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, FileText, ShoppingCart, ArrowLeft, Power } from 'lucide-react';
 import clsx from 'clsx';
 
 interface BlocksWithNichesMapProps {
@@ -80,7 +81,12 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   const [reservationNichoId, setReservationNichoId] = useState<string | null>(null);
   const [enableDialogOpen, setEnableDialogOpen] = useState<boolean>(false);
   const [selectedForEnable, setSelectedForEnable] = useState<string | null>(null);
+  const [mausoleumDialogOpen, setMausoleumDialogOpen] = useState<boolean>(false);
+  const [mausoleumActionsOpen, setMausoleumActionsOpen] = useState<boolean>(false);
   const prevStatisticsRef = useRef<string>('');
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const innerGridRef = useRef<HTMLDivElement | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
 
   const filteredBloques = useMemo(() => {
     if (!searchTerm.trim()) {
@@ -94,6 +100,9 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
       bloque.descripcion?.toLowerCase().includes(searchLower)
     );
   }, [bloques, searchTerm]);
+
+  const bloquesNormales = useMemo(() => filteredBloques.filter(b => ((b.tipoBloque ?? '').toString().trim().toLowerCase() !== 'mausoleo')), [filteredBloques]);
+  const mausoleos = useMemo(() => filteredBloques.filter(b => ((b.tipoBloque ?? '').toString().trim().toLowerCase() === 'mausoleo')), [filteredBloques]);
 
   const statistics = useMemo(() => {
     const allNichos = bloques.flatMap(b => b.nichos);
@@ -144,6 +153,28 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   };
 
   const getBlockColor = (bloque: BloqueWithNichos) => {
+    const tipo = (bloque.tipoBloque ?? '').toString().trim().toLowerCase();
+    if (tipo === 'mausoleo') {
+      if (bloque.estado === 'Activo') {
+        return {
+          bg: 'bg-violet-600',
+          hover: 'hover:bg-violet-700',
+          ring: 'ring-violet-500/20',
+          badgeVariant: 'default' as const,
+          bgLight: 'bg-violet-600/10',
+          border: 'border-violet-500/20'
+        };
+      }
+      return {
+        bg: 'bg-violet-400',
+        hover: 'hover:bg-violet-500',
+        ring: 'ring-violet-500/20',
+        badgeVariant: 'secondary' as const,
+        bgLight: 'bg-violet-500/10',
+        border: 'border-violet-500/20'
+      };
+    }
+
     if (bloque.estado === 'Activo') {
       return {
         bg: 'bg-blue-500',
@@ -162,6 +193,20 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
       bgLight: 'bg-gray-500/10',
       border: 'border-gray-500/20'
     };
+  };
+
+  const handleZoomIn = () => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)));
+  const handleZoomOut = () => setZoom((z) => Math.max(0.3, +(z - 0.1).toFixed(2)));
+  const handleFitToWidth = () => {
+    if (!innerGridRef.current || !gridContainerRef.current || !selectedBloque) return;
+    const cols = selectedBloque.numeroColumnas || 1;
+    const nicheSizePx = getNicheSize(cols);
+    const gap = 12;
+    const totalGridWidth = cols * nicheSizePx + (cols - 1) * gap;
+    const containerWidth = gridContainerRef.current.getBoundingClientRect().width - 32; // padding
+    if (totalGridWidth <= 0) return;
+    const fitZoom = Math.min(1, containerWidth / totalGridWidth);
+    setZoom(Number(fitZoom.toFixed(2)));
   };
 
   if (loading) {
@@ -186,18 +231,21 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
     );
   }
 
+  // Función utilitaria para calcular el tamaño del nicho según columnas
+  const getNicheSize = (cols: number) => {
+    if (cols > 40) return 28; // muy compacto
+    if (cols > 30) return 32;
+    if (cols > 25) return 36; // más de 25 columnas, reducir tamaño
+    if (cols > 16) return 40;
+    if (cols > 10) return 44;
+    return 48; // default ~12 (3rem)
+  };
+
   // Si hay un bloque seleccionado, mostrar la vista de nichos de ese bloque
   if (selectedBloque) {
-    const getNicheSize = (cols: number) => {
-      if (cols > 40) return 28; // muy compacto
-      if (cols > 30) return 32;
-      if (cols > 25) return 36; // más de 25 columnas, reducir tamaño
-      if (cols > 16) return 40;
-      if (cols > 10) return 44;
-      return 48; // default ~12 (3rem)
-    };
 
     const nicheSize = getNicheSize(selectedBloque.numeroColumnas || 1);
+    const isSelectedBloqueMausoleo = ((selectedBloque.tipoBloque ?? '').toString().trim().toLowerCase() === 'mausoleo') || ((selectedBloque.nombre ?? '').toString().trim().toLowerCase().includes('mausoleo'));
     return (
       <div className="space-y-6">
         <Card>
@@ -273,6 +321,49 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   </CardContent>
                 </Card>
               </div>
+              {isSelectedBloqueMausoleo && (
+                <div className="flex items-center gap-2">
+                  {/* Mostrar "Reservar Mausoleo" sólo si no hay reservas ni ventas en el bloque */}
+                  {selectedBloque.reservados === 0 && selectedBloque.vendidos === 0 && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setMausoleumDialogOpen(true)}
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Reservar Mausoleo
+                    </Button>
+                  )}
+
+                  {/* Mostrar "Gestionar Reserva" sólo cuando el bloque tiene una reserva */}
+                  {selectedBloque.reservados > 0 && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setMausoleumActionsOpen(true)}
+                      >
+                        <FileText className="w-4 h-4" />
+                        Gestionar Reserva
+                      </Button>
+                      <MausoleumReservationActions
+                        bloqueId={selectedBloque.idBloque}
+                        hideTrigger={true}
+                        open={mausoleumActionsOpen}
+                        onOpenChange={(v) => setMausoleumActionsOpen(v)}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={handleZoomOut}>-</Button>
+                <div className="text-sm px-2">{Math.round(zoom * 100)}%</div>
+                <Button size="sm" variant="ghost" onClick={handleZoomIn}>+</Button>
+                <Button size="sm" variant="outline" onClick={handleFitToWidth}>Ajustar</Button>
+              </div>
             </div>
           </CardHeader>
 
@@ -295,7 +386,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   ))}
                 </div>
 
-                {selectedBloque.disponibles > 0 && (
+                    {selectedBloque.disponibles > 0 && !isSelectedBloqueMausoleo && (
                   <Alert className="bg-yellow-50 border-yellow-200">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                     <AlertDescription className="text-yellow-800">
@@ -309,18 +400,22 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                 )}
 
                 <div className="p-2">
-                  <div className="overflow-auto border rounded-lg bg-muted/30 p-4">
+                  <div ref={gridContainerRef} className="overflow-auto border rounded-lg bg-muted/30 p-4">
                     <div
+                      ref={innerGridRef}
                       className="grid"
                       style={{
                         gridTemplateColumns: `repeat(${selectedBloque.numeroColumnas}, ${nicheSize}px)`,
                         gap: 12,
+                        transform: `scale(${zoom})`,
+                        transformOrigin: 'top left',
+                        width: `${selectedBloque.numeroColumnas * nicheSize + (selectedBloque.numeroColumnas - 1) * 12}px`,
                       }}
                     >
                   <TooltipProvider>
                     {selectedBloque.nichos.map((niche) => {
                       const colorStatus = getNicheColorByEstado(niche);
-                      const isNextForSale = nextAvailableNichoForSale === niche.idNicho;
+                      const isNextForSale = !isSelectedBloqueMausoleo && nextAvailableNichoForSale === niche.idNicho;
                       const isDisabled = niche.estadoVenta === 'Deshabilitado';
                       const nichoNumber = (niche as any).numeroGlobal || niche.columna;
                       return (
@@ -328,7 +423,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => !isDisabled && handleNicheClick(niche.idNicho!)}
-                              disabled={isDisabled}
+                              disabled={isDisabled || isSelectedBloqueMausoleo}
                               style={{ width: nicheSize, height: nicheSize }}
                               className={clsx(
                                 'relative rounded-md font-semibold text-white',
@@ -339,7 +434,8 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                 !isDisabled && colorStatus.hover,
                                 !isDisabled && `focus-visible:${colorStatus.ring}`,
                                 isNextForSale && 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse',
-                                isDisabled && 'cursor-not-allowed opacity-60'
+                                isDisabled && 'cursor-not-allowed opacity-60',
+                                isSelectedBloqueMausoleo && 'cursor-not-allowed opacity-80'
                               )}
                             >
                               {isNextForSale && (
@@ -422,23 +518,72 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                               <div className="flex gap-2 pt-2 border-t flex-col">
                                 {(niche.estadoVenta === 'Disponible' || !niche.estadoVenta) && (
                                   <>
-                                    {nextAvailableNichoForSale !== niche.idNicho && (
-                                      <p className="text-[10px] text-amber-600 text-center">
-                                        ⚠️ Debe venderse en orden
-                                      </p>
+                                    {isSelectedBloqueMausoleo ? (
+                                      <div className="text-center text-sm text-muted-foreground">
+                                        <p>Este nicho forma parte de un mausoleo. Las ventas se realizan por el bloque completo.</p>
+                                        <div className="pt-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-black"
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNicheClick(niche.idNicho!); }}
+                                          >
+                                            Detalles
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {nextAvailableNichoForSale !== niche.idNicho && (
+                                          <p className="text-[10px] text-amber-600 text-center">
+                                            ⚠️ Debe venderse en orden
+                                          </p>
+                                        )}
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            className="flex-1"
+                                            disabled={nextAvailableNichoForSale !== niche.idNicho}
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              openSellDialog(niche);
+                                            }}
+                                          >
+                                            Vender
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="flex-1 text-black"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              handleNicheClick(niche.idNicho!);
+                                            }}
+                                          >
+                                            Detalles
+                                          </Button>
+                                        </div>
+                                      </>
                                     )}
+                                  </>
+                                )}
+                                {niche.estadoVenta === 'Reservado' && (
+                                  !isSelectedBloqueMausoleo ? (
                                     <div className="flex gap-2">
                                       <Button
                                         size="sm"
+                                        variant="secondary"
                                         className="flex-1"
-                                        disabled={nextAvailableNichoForSale !== niche.idNicho}
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
-                                          openSellDialog(niche);
+                                          setReservationNichoId(niche.idNicho!);
+                                          setViewReservationOpen(true);
                                         }}
                                       >
-                                        Vender
+                                        Ver Reserva
                                       </Button>
                                       <Button
                                         size="sm"
@@ -453,36 +598,21 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                         Detalles
                                       </Button>
                                     </div>
-                                  </>
-                                )}
-                                {niche.estadoVenta === 'Reservado' && (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      className="flex-1"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setReservationNichoId(niche.idNicho!);
-                                        setViewReservationOpen(true);
-                                      }}
-                                    >
-                                      Ver Reserva
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="flex-1 text-black"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleNicheClick(niche.idNicho!);
-                                      }}
-                                    >
-                                      Detalles
-                                    </Button>
-                                  </div>
+                                  ) : (
+                                    <div className="text-center text-sm text-muted-foreground">
+                                      <p>Este nicho forma parte de un mausoleo. Las gestiones de reserva se realizan por el bloque completo.</p>
+                                      <div className="pt-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="w-full text-black"
+                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNicheClick(niche.idNicho!); }}
+                                        >
+                                          Detalles
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )
                                 )}
                                 {niche.estadoVenta === 'Vendido' && (
                                   <Button
@@ -597,6 +727,20 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
             )}
           </DialogContent>
         </Dialog>
+        {/* Dialog Reservar Mausoleo */}
+        <Dialog open={mausoleumDialogOpen} onOpenChange={(open) => { setMausoleumDialogOpen(open); }}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Reservar Mausoleo: {selectedBloque.nombre}</DialogTitle>
+            </DialogHeader>
+
+            <CreatePaymentForm
+              procedureType="mausoleum_sale"
+              procedureId={selectedBloque.idBloque}
+              onSuccess={() => setMausoleumDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -630,6 +774,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   className="pl-10"
                 />
               </div>
+              
             </div>
           </div>
         </CardHeader>
@@ -649,162 +794,328 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              
               <TooltipProvider>
-                {filteredBloques.map((bloque) => {
-                  const colorStatus = getBlockColor(bloque);
-                  return (
-                    <Tooltip key={bloque.idBloque}>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => selectBloque(bloque.idBloque)}
-                          className={clsx(
-                            'relative p-6 rounded-lg font-semibold text-white',
-                            'transition-all duration-200 ease-in-out',
-                            'hover:scale-105 hover:shadow-xl',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-                            'flex flex-col items-center justify-center gap-2 min-h-[140px]',
-                            colorStatus.bg,
-                            colorStatus.hover,
-                            `focus-visible:${colorStatus.ring}`
-                          )}
-                        >
-                          <Grid3x3 className="w-8 h-8" />
-                          <span className="text-lg font-bold text-center">
-                            {bloque.nombre}
-                          </span>
-                          <span className="text-xs opacity-90 text-center">
-                            {bloque.totalNichos} nicho{bloque.totalNichos !== 1 ? 's' : ''}
-                          </span>
-                          <div className="flex items-center gap-2 text-xs opacity-90 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Package className="w-3 h-3" />
-                              {bloque.disponibles}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              {bloque.reservados}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <ShoppingCart className="w-3 h-3" />
-                              {bloque.vendidos}
-                            </span>
-                          </div>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        className={clsx(
-                          "max-w-sm p-0 overflow-hidden border-2",
-                          colorStatus.border
-                        )}
-                      >
-                        <div className={clsx("px-4 py-2", colorStatus.bgLight)}>
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="font-bold text-base text-foreground">
-                              {bloque.numero !== null && bloque.numero !== undefined ? `Bloque ${bloque.numero}` : bloque.nombre}
-                            </p>
-                            <Badge
-                              variant={colorStatus.badgeVariant}
+                {bloquesNormales.length > 0 && (
+                  <>
+                    <div className="col-span-full">
+                      <p className="font-semibold">Bloques</p>
+                    </div>
+                    {bloquesNormales.map((bloque) => {
+                      const colorStatus = getBlockColor(bloque);
+                      return (
+                        <Tooltip key={bloque.idBloque}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => selectBloque(bloque.idBloque)}
                               className={clsx(
-                                'font-semibold',
-                                bloque.estado === 'Activo' 
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                  : 'bg-gray-600 text-white hover:bg-gray-700'
+                                'relative p-6 rounded-lg font-semibold text-white',
+                                'transition-all duration-200 ease-in-out',
+                                'hover:scale-105 hover:shadow-xl',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                                'flex flex-col items-center justify-center gap-2 min-h-[140px]',
+                                colorStatus.bg,
+                                colorStatus.hover,
+                                `focus-visible:${colorStatus.ring}`
                               )}
                             >
-                              {bloque.estado}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="p-4 space-y-3 bg-card">
-                          <div className="space-y-2">
-                            {bloque.numero !== null && bloque.numero !== undefined && (
-                              <div className="flex items-center gap-2">
-                                <div className="p-1.5 rounded bg-muted">
-                                  <Box className="w-3.5 h-3.5 text-muted-foreground" />
-                                </div>
-                                <div>
-                                  <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
-                                    Número
-                                  </p>
-                                  <p className="text-sm font-semibold text-foreground leading-none">
-                                    {bloque.numero}
-                                  </p>
-                                </div>
+                              <Grid3x3 className="w-8 h-8" />
+                              <span className="text-lg font-bold text-center">{bloque.nombre}</span>
+                              <span className="text-xs opacity-90 text-center">
+                                {bloque.totalNichos} nicho{bloque.totalNichos !== 1 ? 's' : ''}
+                              </span>
+                              <div className="flex items-center gap-2 text-xs opacity-90 mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Package className="w-3 h-3" />
+                                  {bloque.disponibles}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {bloque.reservados}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <ShoppingCart className="w-3 h-3" />
+                                  {bloque.vendidos}
+                                </span>
                               </div>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className={clsx(
+                              "max-w-sm p-0 overflow-hidden border-2",
+                              colorStatus.border
                             )}
-
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded bg-muted">
-                                <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
-                                  Dimensiones
+                          >
+                            <div className={clsx("px-4 py-2", colorStatus.bgLight)}>
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="font-bold text-base text-foreground">
+                                  {bloque.numero !== null && bloque.numero !== undefined ? `Bloque ${bloque.numero}` : bloque.nombre}
                                 </p>
-                                <p className="text-sm font-semibold text-foreground leading-none">
-                                  {bloque.numeroFilas} filas × {bloque.numeroColumnas} columnas
-                                </p>
+                                <Badge
+                                  variant={colorStatus.badgeVariant}
+                                  className={clsx(
+                                    'font-semibold',
+                                    bloque.estado === 'Activo' 
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                      : 'bg-gray-600 text-white hover:bg-gray-700'
+                                  )}
+                                >
+                                  {bloque.estado}
+                                </Badge>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded bg-muted">
-                                <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
-                                  Nichos en bloque
-                                </p>
-                                <p className="text-sm font-semibold text-foreground leading-none">
-                                  {bloque.totalNichos}
-                                </p>
-                              </div>
-                            </div>
+                            <div className="p-4 space-y-3 bg-card">
+                              <div className="space-y-2">
+                                {bloque.numero !== null && bloque.numero !== undefined && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded bg-muted">
+                                      <Box className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+                                        Número
+                                      </p>
+                                      <p className="text-sm font-semibold text-foreground leading-none">
+                                        {bloque.numero}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
 
-                            <div className="pt-2 border-t">
-                              <p className="text-[10px] text-muted-foreground leading-none mb-2">
-                                Estado de nichos
-                              </p>
-                              <div className="grid grid-cols-3 gap-2">
-                                <div className="text-center">
-                                  <p className="text-xs font-semibold text-emerald-600">{bloque.disponibles}</p>
-                                  <p className="text-[9px] text-muted-foreground">Disponibles</p>
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded bg-muted">
+                                    <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+                                      Dimensiones
+                                    </p>
+                                    <p className="text-sm font-semibold text-foreground leading-none">
+                                      {bloque.numeroFilas} filas × {bloque.numeroColumnas} columnas
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="text-center">
-                                  <p className="text-xs font-semibold text-amber-600">{bloque.reservados}</p>
-                                  <p className="text-[9px] text-muted-foreground">Reservados</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-xs font-semibold text-rose-600">{bloque.vendidos}</p>
-                                  <p className="text-[9px] text-muted-foreground">Vendidos</p>
-                                </div>
-                              </div>
-                            </div>
 
-                            {bloque.descripcion && (
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded bg-muted">
+                                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+                                      Nichos en bloque
+                                    </p>
+                                    <p className="text-sm font-semibold text-foreground leading-none">
+                                      {bloque.totalNichos}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t">
+                                  <p className="text-[10px] text-muted-foreground leading-none mb-2">
+                                    Estado de nichos
+                                  </p>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-emerald-600">{bloque.disponibles}</p>
+                                      <p className="text-[9px] text-muted-foreground">Disponibles</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-amber-600">{bloque.reservados}</p>
+                                      <p className="text-[9px] text-muted-foreground">Reservados</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-rose-600">{bloque.vendidos}</p>
+                                      <p className="text-[9px] text-muted-foreground">Vendidos</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {bloque.descripcion && (
+                                  <div className="pt-2 border-t">
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-1">
+                                      Descripción
+                                    </p>
+                                    <p className="text-xs text-foreground">
+                                      {bloque.descripcion}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
                               <div className="pt-2 border-t">
-                                <p className="text-[10px] text-muted-foreground leading-none mb-1">
-                                  Descripción
-                                </p>
-                                <p className="text-xs text-foreground">
-                                  {bloque.descripcion}
+                                <p className="text-[10px] text-muted-foreground">
+                                  Haz clic para ver los nichos de este Bloque
                                 </p>
                               </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </>
+                )}
+                {mausoleos.length > 0 && (
+                  <>
+                    <div className="col-span-full">
+                      <p className="font-semibold">Mausoleos</p>
+                    </div>
+                    {mausoleos.map((bloque) => {
+                      const colorStatus = getBlockColor(bloque);
+                      return (
+                        <Tooltip key={bloque.idBloque}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => selectBloque(bloque.idBloque)}
+                              className={clsx(
+                                'relative p-6 rounded-lg font-semibold text-white',
+                                'transition-all duration-200 ease-in-out',
+                                'hover:scale-105 hover:shadow-xl',
+                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                                'flex flex-col items-center justify-center gap-2 min-h-[140px]',
+                                colorStatus.bg,
+                                colorStatus.hover,
+                                `focus-visible:${colorStatus.ring}`
+                              )}
+                            >
+                              <Grid3x3 className="w-8 h-8" />
+                              <span className="text-lg font-bold text-center">{bloque.nombre}</span>
+                              <span className="text-xs opacity-90 text-center">
+                                {bloque.totalNichos} nicho{bloque.totalNichos !== 1 ? 's' : ''}
+                              </span>
+                              <div className="flex items-center gap-2 text-xs opacity-90 mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Package className="w-3 h-3" />
+                                  {bloque.disponibles}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {bloque.reservados}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <ShoppingCart className="w-3 h-3" />
+                                  {bloque.vendidos}
+                                </span>
+                              </div>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className={clsx(
+                              "max-w-sm p-0 overflow-hidden border-2",
+                              colorStatus.border
                             )}
-                          </div>
+                          >
+                            <div className={clsx("px-4 py-2", colorStatus.bgLight)}>
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="font-bold text-base text-foreground">
+                                  {bloque.numero !== null && bloque.numero !== undefined ? `Mausoleo ${bloque.numero}` : bloque.nombre}
+                                </p>
+                                <Badge
+                                  variant={colorStatus.badgeVariant}
+                                  className={clsx(
+                                    'font-semibold',
+                                    bloque.estado === 'Activo' 
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                      : 'bg-gray-600 text-white hover:bg-gray-700'
+                                  )}
+                                >
+                                  {bloque.estado}
+                                </Badge>
+                              </div>
+                            </div>
 
-                          <div className="pt-2 border-t">
-                            <p className="text-[10px] text-muted-foreground">
-                              Haz clic para ver los nichos de este bloque
-                            </p>
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
+                            <div className="p-4 space-y-3 bg-card">
+                              <div className="space-y-2">
+                                {bloque.numero !== null && bloque.numero !== undefined && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded bg-muted">
+                                      <Box className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+                                        Número
+                                      </p>
+                                      <p className="text-sm font-semibold text-foreground leading-none">
+                                        {bloque.numero}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded bg-muted">
+                                    <Grid3x3 className="w-3.5 h-3.5 text-muted-foreground" />
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+                                      Dimensiones
+                                    </p>
+                                    <p className="text-sm font-semibold text-foreground leading-none">
+                                      {bloque.numeroFilas} filas × {bloque.numeroColumnas} columnas
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded bg-muted">
+                                    <Layers className="w-3.5 h-3.5 text-muted-foreground" />
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">
+                                      Nichos en bloque
+                                    </p>
+                                    <p className="text-sm font-semibold text-foreground leading-none">
+                                      {bloque.totalNichos}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t">
+                                  <p className="text-[10px] text-muted-foreground leading-none mb-2">
+                                    Estado de nichos
+                                  </p>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-emerald-600">{bloque.disponibles}</p>
+                                      <p className="text-[9px] text-muted-foreground">Disponibles</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-amber-600">{bloque.reservados}</p>
+                                      <p className="text-[9px] text-muted-foreground">Reservados</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs font-semibold text-rose-600">{bloque.vendidos}</p>
+                                      <p className="text-[9px] text-muted-foreground">Vendidos</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {bloque.descripcion && (
+                                  <div className="pt-2 border-t">
+                                    <p className="text-[10px] text-muted-foreground leading-none mb-1">
+                                      Descripción
+                                    </p>
+                                    <p className="text-xs text-foreground">
+                                      {bloque.descripcion}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="pt-2 border-t">
+                                <p className="text-[10px] text-muted-foreground">
+                                  Haz clic para ver los nichos de este Mausoleo
+                                </p>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </>
+                )}
               </TooltipProvider>
             </div>
           )}

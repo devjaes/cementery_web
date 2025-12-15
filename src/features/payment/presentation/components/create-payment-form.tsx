@@ -34,12 +34,13 @@ import { PdfPreviewDialog } from "./pdf-preview-dialog";
 import { toast } from "sonner";
 import { useSearchPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
 import { PersonRepositoryImpl } from "@/features/person/infraestrcture/repositories/person.repository.impl";
-import { useReservarNicho } from "@/features/nichos/hooks/use-nicho-sales";
+import { useReservarNicho, useReservarMausoleo } from "@/features/nichos/hooks/use-nicho-sales";
 
 const procedureTypeLabels: Record<ProcedureType, string> = {
   burial: "Inhumación",
   exhumation: "Exhumación",
   niche_sale: "Venta de Nicho",
+  mausoleum_sale: "Venta de Mausoleo",
   tomb_improvement: "Mejora de Tumba",
   hole_extension: "Ampliación de Hueco",
 };
@@ -49,6 +50,7 @@ const paymentFormSchema = z.object({
     "burial",
     "exhumation",
     "niche_sale",
+    "mausoleum_sale",
     "tomb_improvement",
     "hole_extension",
   ]),
@@ -121,6 +123,7 @@ export function CreatePaymentForm({
 
   const createPaymentMutation = useCreatePayment();
   const reservarNichoMutation = useReservarNicho();
+  const reservarMausoleoMutation = useReservarMausoleo();
   const searchPersonsQuery = useSearchPersonsQuery(searchDocument, true);
 
   const form = useForm<PaymentFormValues>({
@@ -295,6 +298,72 @@ export function CreatePaymentForm({
         if (onSuccess) onSuccess();
         return;
       }
+
+        if (values.procedureType === 'mausoleum_sale') {
+          if (!selectedPersonId) {
+            toast.error('Debe buscar y seleccionar una persona válida antes de reservar.');
+            return;
+          }
+
+          const reservaParams = {
+            idBloque: values.procedureId,
+            idPersona: selectedPersonId,
+            monto: values.amount,
+            generadoPor: values.generatedBy,
+            observaciones: values.observations,
+            direccionComprador: values.buyerDirection,
+          };
+
+          const result = await reservarMausoleoMutation.mutateAsync(reservaParams);
+          const { reserva, pdfBlob, filename } = result as unknown as {
+            reserva: { ordenPago?: { codigo?: string; id?: string; monto?: number; fechaGeneracion?: string; comprador?: { documento: string; nombre: string; direccion?: string } } };
+            pdfBlob: Blob;
+            filename: string;
+          };
+
+          if (pdfBlob) setPdfBlob(pdfBlob);
+
+          if (pdfBlob && filename) {
+            const url = window.URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => {
+              window.URL.revokeObjectURL(url);
+            }, 100);
+          }
+
+          if (reserva?.ordenPago) {
+            const paymentLike: PaymentEntity = {
+              paymentId: reserva.ordenPago.id ?? 'N/D',
+              procedureType: 'mausoleum_sale',
+              procedureId: values.procedureId,
+              amount: reserva.ordenPago.monto ?? values.amount,
+              status: 'pending',
+              paymentCode: reserva.ordenPago.codigo ?? 'N/D',
+              generatedDate: reserva.ordenPago.fechaGeneracion ?? new Date().toISOString(),
+              paidDate: null,
+              receiptFile: null,
+              observations: values.observations ?? null,
+              generatedBy: values.generatedBy,
+              validatedBy: null,
+              buyerDocument: reserva.ordenPago.comprador?.documento ?? values.buyerDocument,
+              buyerName: reserva.ordenPago.comprador?.nombre ?? values.buyerName,
+              buyerDirection: reserva.ordenPago.comprador?.direccion ?? values.buyerDirection ?? null,
+              updatedDate: new Date().toISOString(),
+            };
+            setCreatedPayment(paymentLike);
+          } else {
+            setCreatedPayment(null);
+          }
+
+          toast.success(`Reserva de mausoleo creada. Código de pago: ${reserva?.ordenPago?.codigo ?? 'N/D'}`);
+          if (onSuccess) onSuccess();
+          return;
+        }
 
       // Resto de trámites: usar flujo de pagos estándar (PDF + header)
       const paymentData: CreatePaymentEntity = {

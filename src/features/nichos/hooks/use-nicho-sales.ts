@@ -37,6 +37,31 @@ export const useReservarNicho = () => {
   });
 };
 
+export const useReservarMausoleo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      idBloque: string;
+      idPersona: string;
+      monto: number;
+      generadoPor: string;
+      observaciones?: string;
+      direccionComprador?: string;
+    }) => nichoSalesRepository.reservarMausoleo(params),
+    onSuccess: () => {
+      // Invalidar queries de nichos y bloques para refrescar el estado
+      queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+      queryClient.invalidateQueries({ queryKey: BLOQUES_QUERY_KEYS.all() });
+    },
+    onError: (error: Error) => {
+      toast.error("Error al reservar el mausoleo", {
+        description: error.message,
+      });
+    },
+  });
+};
+
 export const useConfirmarVenta = () => {
   const queryClient = useQueryClient();
   
@@ -60,6 +85,26 @@ export const useConfirmarVenta = () => {
   });
 };
 
+export const useConfirmarVentaMausoleo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      idPago: string;
+      validadoPor: string;
+      archivoRecibo?: File;
+    }) => nichoSalesRepository.confirmarVentaMausoleo(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+      queryClient.invalidateQueries({ queryKey: BLOQUES_QUERY_KEYS.all() });
+      toast.success("Venta de mausoleo confirmada exitosamente");
+    },
+    onError: (error: Error) => {
+      toast.error("Error al confirmar la venta del mausoleo", { description: error.message });
+    },
+  });
+};
+
 export const useCancelarReserva = () => {
   const queryClient = useQueryClient();
   
@@ -78,6 +123,38 @@ export const useCancelarReserva = () => {
       toast.error("Error al cancelar la reserva", {
         description: error.message,
       });
+    },
+  });
+};
+
+export const useCancelarReservaMausoleo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { idBloque: string; motivo: string }) => nichoSalesRepository.cancelarReservaMausoleo(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+      queryClient.invalidateQueries({ queryKey: BLOQUES_QUERY_KEYS.all() });
+      toast.success("Reserva de mausoleo cancelada exitosamente");
+    },
+    onError: (error: Error) => {
+      toast.error("Error al cancelar la reserva del mausoleo", { description: error.message });
+    },
+  });
+};
+
+export const useRegistrarPropietarioMausoleo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { idBloque: string; idPersona: string; tipoDocumento?: string; numeroDocumento?: string; razon?: string }) => nichoSalesRepository.registrarPropietarioMausoleo(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+      queryClient.invalidateQueries({ queryKey: BLOQUES_QUERY_KEYS.all() });
+      toast.success("Propietario registrado para mausoleo exitosamente");
+    },
+    onError: (error: Error) => {
+      toast.error("Error al registrar propietario del mausoleo", { description: error.message });
     },
   });
 };
