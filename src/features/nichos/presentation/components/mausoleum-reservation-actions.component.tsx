@@ -188,27 +188,23 @@ export function MausoleumReservationActions({ bloqueId, open: controlledOpen, on
                           toast.error('No fue posible verificar que los nichos estén marcados como VENDIDO. Intenta de nuevo más tarde o confirma la venta manualmente.');
                         } else {
                           try {
-                            // Obtener datos del bloque para usar su número como número de documento
-                            let numeroDocumentoToSend: string | undefined = undefined;
+                            // Obtener número del bloque para enviar como numeroDocumento
+                            let bloqueNumero: string | undefined = undefined;
                             try {
-                              const bloqueRepo = BloqueRepositoryImpl.getInstance();
-                              const bloqueData = await bloqueRepo.findById(bloqueId);
-                              if (bloqueData && (bloqueData.numero !== null && bloqueData.numero !== undefined)) {
-                                numeroDocumentoToSend = String(bloqueData.numero);
-                              }
+                              const repo = BloqueRepositoryImpl.getInstance();
+                              const datos = await repo.findNichosByBloque(bloqueId);
+                              bloqueNumero = datos?.bloque?.numero?.toString();
                             } catch (err) {
-                              console.warn('No se pudo obtener número de bloque, se usará buyerDocument si existe', err);
-                              numeroDocumentoToSend = buyerDocument || undefined;
+                              console.warn('No se pudo obtener número de bloque, se usará buyerDocument como fallback', err);
                             }
 
                             await registrarPropietarioMausoleo.mutateAsync({
                               idBloque: bloqueId,
                               idPersona: buyerPersonId,
                               tipoDocumento: 'Factura',
-                              numeroDocumento: numeroDocumentoToSend,
+                              numeroDocumento: bloqueNumero || buyerDocument || undefined,
                               razon: 'Compra de mausoleo'
                             });
-
                             toast.success('Propietario registrado correctamente');
                           } catch (e: any) {
                             console.error('Error registrando propietario del mausoleo:', e);
