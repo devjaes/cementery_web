@@ -85,6 +85,7 @@ export const useBloquesWithNichos = (idCementerio: string) => {
 
         return {
           ...bloque,
+          tipoBloque: (bloque.tipoBloque ?? '').toString().trim(),
           nichos,
           totalNichos: queryResult.data.totalNichos,
           disponibles,
@@ -127,8 +128,12 @@ export const useBloquesWithNichos = (idCementerio: string) => {
       const reservados = nichos.filter(n => n.estadoVenta === 'Reservado').length;
       const vendidos = nichos.filter(n => n.estadoVenta === 'Vendido').length;
 
+      // Prefer the tipoBloque from the fresh bloque data, but fallback to the one
+      // in the bloquesWithNichos list if it's missing to avoid inconsistencies.
+      const fallbackTipo = bloquesWithNichos.find(b => b.idBloque === selectedBloqueId)?.tipoBloque ?? '';
       return {
         ...bloqueWithNichosData.bloque,
+        tipoBloque: (bloqueWithNichosData.bloque.tipoBloque ?? fallbackTipo ?? '').toString().trim(),
         nichos,
         totalNichos: bloqueWithNichosData.totalNichos,
         disponibles,

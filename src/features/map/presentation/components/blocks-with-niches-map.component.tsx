@@ -260,7 +260,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   if (selectedBloque) {
 
     const nicheSize = getNicheSize(selectedBloque.numeroColumnas || 1);
-    const isSelectedBloqueMausoleo = ((selectedBloque.tipoBloque ?? '').toString().trim().toLowerCase() === 'mausoleo') || ((selectedBloque.nombre ?? '').toString().trim().toLowerCase().includes('mausoleo'));
+      const isSelectedBloqueMausoleo = ((selectedBloque.tipoBloque ?? '').toString().trim().toLowerCase() === 'mausoleo');
     return (
       <div className="space-y-6">
         <Card>
@@ -284,6 +284,9 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   <CardDescription>
                     {selectedBloque.totalNichos} nicho{selectedBloque.totalNichos !== 1 ? 's' : ''} en este bloque
                   </CardDescription>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Tipo: <span className="font-medium text-foreground">{(selectedBloque.tipoBloque ?? '—').toString()}</span>
+                      </div>
                 </div>
               </div>
 
