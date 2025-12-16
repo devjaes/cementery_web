@@ -18,7 +18,6 @@ interface NichoInfoCardProps {
   nicho: NichoEntity;
 }
 
-
 export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
   return (
     <Card>
@@ -91,7 +90,6 @@ export function NichoInfoCard({ nicho }: NichoInfoCardProps) {
     </Card>
   );
 }
-
 
 function InfoItem({
   icon,
