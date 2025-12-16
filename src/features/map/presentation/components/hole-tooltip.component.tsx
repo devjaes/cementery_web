@@ -6,8 +6,8 @@ interface HuecoTooltipProps {
 }
 
 export const HuecoTooltip: React.FC<HuecoTooltipProps> = ({ nicho }) => {
-  const huecosOcupados = nicho.huecos?.filter(h => h.ocupado).length || 0;
-  const huecosDisponibles = (nicho.numHuecos || 0) - huecosOcupados;
+  const huecosOcupados = nicho.huecos?.filter(h => !!h.idFallecido).length || 0;
+  const huecosDisponibles = Math.max(0, (nicho.numHuecos || 0) - huecosOcupados);
 
   return (
     <div className="space-y-2">
@@ -31,7 +31,7 @@ export const HuecoTooltip: React.FC<HuecoTooltipProps> = ({ nicho }) => {
           <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
             <div 
               className="bg-rose-500 h-full transition-all"
-              style={{ width: `${(huecosOcupados / nicho.numHuecos) * 100}%` }}
+              style={{ width: `${nicho.numHuecos ? (huecosOcupados / nicho.numHuecos) * 100 : 0}%` }}
             />
           </div>
         </>

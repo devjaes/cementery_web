@@ -66,9 +66,24 @@ const estadosNicho: Record<EstadoVentaNicho, {
   }
 };
 
+// Estado visual adicional cuando algún hueco ya está ocupado (persona asociada)
+const OCUPADO_NICHO_STATUS = {
+  color: 'bg-sky-500',
+  hover: 'hover:bg-sky-600',
+  ring: 'ring-sky-500/20',
+  label: 'Ocupado',
+  badgeVariant: 'secondary' as const
+};
+
 const getNicheColorByEstado = (nicho: NichoEntity) => {
+  // Si alguno de los huecos del nicho tiene un fallecido/idFallecido asociado,
+  // consideramos el nicho como OCUPADO (estado visual prioritario sobre estadoVenta).
+  if (nicho.huecos && Array.isArray(nicho.huecos) && nicho.huecos.some(h => !!(h.idFallecido))) {
+    return OCUPADO_NICHO_STATUS;
+  }
+
   const estado = (nicho.estadoVenta || 'Disponible') as EstadoVentaNicho;
-  return estadosNicho[estado as keyof typeof estadosNicho] || estadosNicho['Disponible'];
+  return (estadosNicho as any)[estado] || estadosNicho['Disponible'];
 };
 
 export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemetery, onStatisticsChange }) => {
@@ -384,6 +399,10 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                       <span>{label}</span>
                     </Badge>
                   ))}
+                  <Badge key="Ocupado" variant="outline" className="gap-2 px-3 py-1.5">
+                    <div className={`w-3 h-3 rounded-full ${OCUPADO_NICHO_STATUS.color}`}></div>
+                    <span>{OCUPADO_NICHO_STATUS.label}</span>
+                  </Badge>
                 </div>
 
                     {selectedBloque.disponibles > 0 && !isSelectedBloqueMausoleo && (
