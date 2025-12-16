@@ -28,5 +28,5 @@ export interface BloqueUpdateModel {
   descripcion?: string;
   numero?: number | null;
   numero_filas?: number;
-  numero_columnas?: number;
+  numero_columnas?: number; 
 }
