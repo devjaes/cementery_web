@@ -1,0 +1,88 @@
+Necesito agregar una nueva funcionalidad en el modulo de map, especificamente
+cuando se se selecciona un bloque tipo MAUSOLEO y se visualizazn los nichos 
+En esa seccion ariiba  de :
+<div class="overflow-auto border rounded-lg bg-muted/30 p-4"><div class="grid" style="grid-template-columns: repeat(2, 48px); gap: 12px; transform: scale(1); transform-origin: left top; width: 108px;"><button class="relative rounded-md font-semibold text-white transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg hover:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-emerald-500 hover:bg-emerald-600 focus-visible:ring-emerald-500/20 ring-2 ring-yellow-400 ring-offset-2 animate-pulse" data-state="closed" data-slot="tooltip-trigger" style="width: 48px; height: 48px;"><span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span></span><span class="inline-block text-xs">5</span></button><button class="relative rounded-md font-semibold text-white transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg hover:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-emerald-500 hover:bg-emerald-600 focus-visible:ring-emerald-500/20" data-state="closed" data-slot="tooltip-trigger" style="width: 48px; height: 48px;"><span class="inline-block text-xs">6</span></button><button class="relative rounded-md font-semibold text-white transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg hover:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-emerald-500 hover:bg-emerald-600 focus-visible:ring-emerald-500/20" data-state="closed" data-slot="tooltip-trigger" style="width: 48px; height: 48px;"><span class="inline-block text-xs">7</span></button><button class="relative rounded-md font-semibold text-white transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-lg hover:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 bg-emerald-500 hover:bg-emerald-600 focus-visible:ring-emerald-500/20" data-state="closed" data-slot="tooltip-trigger" style="width: 48px; height: 48px;"><span class="inline-block text-xs">8</span></button></div></div>
+necesito que se implemente un boton que diga Ampliar Mausoleo.
+Una vez que se oprima este boton se muestra un pequeño formulario en donde 
+Se pedira un archivo pdf y observaciones , filas , el numero de columnas debe ser estaticos
+debe ser el mismo con el que se crea por defecto en el bloque
+se cuple con estos requsitos y se crea la fila de nichos.
+--
+la FILA DE NICHOS CREADA DEBE VISUALIZARCE SIEMPRE ENCIMA LA ULTIMA FILA 
+DE NICHOS CREADA.
+puesto que va a crecer verticalmente.
+--
+debajo del componente mencionado a momento de presionar en un nicho se debera ver la siguiente informacion
+# Hueco | Observacion Ampliacion | PDF Ampliacion | Boton Descargar PDF Ampliacion | Boton Ver PDF Ampliacion |
+--
+Ademas quiero que consideres esto:
+el stributo que define si es bloque o mauselo en el back es la siguiente:
+  @Column({ type: 'varchar', length: 50, default: 'Bloque' })
+  tipo_bloque: string; // 'Bloque' o 'Mausoleo'
+--
+asi se crea un bloque:
+  @Post()
+  @ApiOperation({ summary: 'Crear nuevo bloque' })
+  @ApiBody({ type: CreateBloqueDto })
+  @ApiCreatedResponse({
+    description: 'Bloque creado exitosamente',
+    type: CreateBloqueDto,
+  })
+  @ApiBadRequestResponse({ description: 'Datos inválidos' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  @ApiForbiddenResponse({ description: 'Acceso prohibido' })
+  create(@Body() createBloqueDto: CreateBloqueDto) {
+    return this.bloquesService.create(createBloqueDto);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener bloque por ID' })
+  @ApiParam({ name: 'id', description: 'ID del bloque' })
+  @ApiOkResponse({ description: 'Bloque obtenido exitosamente' })
+  @ApiNotFoundResponse({ description: 'Bloque no encontrado' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  findOne(@Param('id') id: string) {
+    return this.bloquesService.findOne(id);
+  }
+
+
+  @Get('search')
+  @ApiOperation({ summary: 'Buscar bloques por nombre' })
+  @ApiQuery({ name: 'nombre', description: 'Nombre del bloque a buscar' })
+  @ApiOkResponse({ description: 'Búsqueda realizada exitosamente' })
+  @ApiUnauthorizedResponse({ description: 'No autorizado' })
+  search(@Query('nombre') nombre: string) {
+    return this.bloquesService.search(nombre);
+  }
+
+--
+
+export class CreateBloqueDto {
+  @IsNotEmpty()
+  @IsUUID()
+  id_cementerio: string;
+
+  @IsNotEmpty()
+  @IsString()
+  nombre: string;
+
+  @IsOptional()
+  @IsString()
+  descripcion?: string;
+
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  numero_filas: number;
+
+  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
+  numero_columnas: number;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['Bloque', 'Mausoleo'])
+  tipo_bloque?: string; // 'Bloque' (default) o 'Mausoleo'
+}
+--
