@@ -34,7 +34,8 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.BLOQUES,
     UPDATE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
-    //AMPLIAR_BLOQUE: (id: string) => `${AR_KEYS.BLOQUES}/${id}/ampliar-bloque`,
+    // Endpoint correcto según documentación del backend
+    AMPLIAR_BLOQUE: (id: string) => `/nichos/mausoleo/${id}/ampliar`,
   },
   NICHOS: {
     LIST: AR_KEYS.NICHOS,
@@ -47,6 +48,11 @@ export const API_ROUTES = {
     DELETE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
     ENABLE: (id: string) => `${AR_KEYS.NICHOS}/${id}/habilitar`,
     AMPLIAR_BLOQUE: (id: string) => `${AR_KEYS.NICHOS}/mausoleo/${id}/ampliar`,
+    // Endpoints de ampliaciones
+    GET_AMPLIACIONES: (idBloque: string) => `${AR_KEYS.NICHOS}/ampliaciones/${idBloque}`,
+    GET_AMPLIACION_NICHO: (idNicho: string) => `${AR_KEYS.NICHOS}/${idNicho}/ampliacion`,
+    UPDATE_AMPLIACION_NICHO: (idNicho: string) => `${AR_KEYS.NICHOS}/ampliacion/${idNicho}`,
+    GET_PDF_AMPLIACION: (idNicho: string) => `${AR_KEYS.NICHOS}/ampliacion/${idNicho}/pdf`,
   },
   PERSONS: {
     LIST: AR_KEYS.PERSON,
