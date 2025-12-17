@@ -16,14 +16,14 @@ export interface BloqueWithNichos extends BloqueEntity {
 
 export const useBloquesWithNichos = (idCementerio: string) => {
   const [selectedBloqueId, setSelectedBloqueId] = useState<string | null>(null);
-  
+
   // Resetear selección cuando cambia el cementerio
   useEffect(() => {
     setSelectedBloqueId(null);
   }, [idCementerio]);
-  
+
   const { data: bloques = [], isLoading: loadingBloques, error: errorBloques } = useFindBloquesByCementeryQuery(idCementerio);
-  
+
   // Cargar nichos para TODOS los bloques en paralelo
   const bloquesNichosQueries = useQueries({
     queries: bloques.map((bloque) => ({
@@ -40,7 +40,7 @@ export const useBloquesWithNichos = (idCementerio: string) => {
   // Convertir bloques con sus nichos y estadísticas reales
   const bloquesWithNichos: BloqueWithNichos[] = useMemo(() => {
     // Primero ordenar bloques por fecha de creación
-    const sortedBloques = [...bloques].sort((a, b) => 
+    const sortedBloques = [...bloques].sort((a, b) =>
       new Date(a.fechaCreacion).getTime() - new Date(b.fechaCreacion).getTime()
     );
 
@@ -49,7 +49,7 @@ export const useBloquesWithNichos = (idCementerio: string) => {
     return sortedBloques
       .map((bloque, index) => {
         const queryResult = bloquesNichosQueries[bloques.indexOf(bloque)];
-        
+
         if (!queryResult.data) {
           return {
             ...bloque,
@@ -61,24 +61,58 @@ export const useBloquesWithNichos = (idCementerio: string) => {
           };
         }
 
-        // Ordenar nichos por fila y columna: primero por fila, luego por columna
+        console.log('[useBloquesWithNichos] ANTES de ordenar - Nichos del backend:', {
+          bloque: bloque.nombre,
+          total: queryResult.data.nichos.length,
+          primerosCinco: (queryResult.data.nichos as NichoEntity[]).slice(0, 5).map(n => ({
+            fila: n.fila,
+            columna: n.columna,
+            fechaCreacion: n.fechaCreacion
+          }))
+        });
+
+        // Ordenar nichos: primero por fecha de creación (más reciente primero),
+        // luego por fila y columna para mantener el orden dentro de cada ampliación
         const nichos = (queryResult.data.nichos as NichoEntity[])
           .sort((a, b) => {
-            if (a.fila !== b.fila) {
-              return a.fila - b.fila;
+            // Primero ordenar por fecha de creación (descendente - más reciente primero)
+            const dateA = new Date(a.fechaCreacion).getTime();
+            const dateB = new Date(b.fechaCreacion).getTime();
+            if (dateA !== dateB) {
+              return dateB - dateA; // Descendente - más nuevos primero
             }
+            // Luego por fila (descendente para que fila mayor esté primero)
+            if (a.fila !== b.fila) {
+              return b.fila - a.fila; // Invertido: filas mayores primero
+            }
+            // Finalmente por columna (ascendente)
             return a.columna - b.columna;
           })
-          .map((nicho) => {
-            // Asignar número global consecutivo
+          .map((nicho, idx) => {
+            // Asignar número global consecutivo después de ordenar
             const nichoWithNumber = {
               ...nicho,
-              numeroGlobal: nichoGlobalCounter
+              numeroGlobal: idx + 1
             };
-            nichoGlobalCounter++;
             return nichoWithNumber;
           });
-        
+
+        console.log('[useBloquesWithNichos] DESPUÉS de ordenar - Nichos ordenados para bloque:', bloque.nombre, {
+          totalNichos: nichos.length,
+          primerosCinco: nichos.slice(0, 5).map(n => ({
+            numeroGlobal: (n as any).numeroGlobal,
+            fila: n.fila,
+            columna: n.columna,
+            fechaCreacion: n.fechaCreacion
+          })),
+          ultimosCinco: nichos.slice(-5).map(n => ({
+            numeroGlobal: (n as any).numeroGlobal,
+            fila: n.fila,
+            columna: n.columna,
+            fechaCreacion: n.fechaCreacion
+          }))
+        });
+
         const disponibles = nichos.filter(n => n.estadoVenta === 'Disponible' || !n.estadoVenta).length;
         const reservados = nichos.filter(n => n.estadoVenta === 'Reservado').length;
         const vendidos = nichos.filter(n => n.estadoVenta === 'Vendido').length;
@@ -98,10 +132,10 @@ export const useBloquesWithNichos = (idCementerio: string) => {
   // Cuando hay un bloque seleccionado y se cargaron los nichos, crear el objeto completo
   const selectedBloque: BloqueWithNichos | null = useMemo(() => {
     if (!selectedBloqueId) return null;
-    
+
     // Si ya tenemos los datos del bloque en bloquesWithNichos, usarlos
     const bloqueFromList = bloquesWithNichos.find(b => b.idBloque === selectedBloqueId);
-    
+
     // Si tenemos datos frescos del query individual, usarlos
     if (bloqueWithNichosData) {
       // Calcular el offset de numeración global para este bloque
@@ -111,19 +145,39 @@ export const useBloquesWithNichos = (idCementerio: string) => {
         nichoOffset += bloquesWithNichos[i].totalNichos;
       }
 
-      // Ordenar nichos por fila y columna
+      // Ordenar nichos: primero por fecha de creación (más reciente primero),
+      // luego por fila y columna para mantener el orden dentro de cada ampliación
       const nichos = (bloqueWithNichosData.nichos as NichoEntity[])
         .sort((a, b) => {
-          if (a.fila !== b.fila) {
-            return a.fila - b.fila;
+          // Primero ordenar por fecha de creación (descendente - más reciente primero)
+          const dateA = new Date(a.fechaCreacion).getTime();
+          const dateB = new Date(b.fechaCreacion).getTime();
+          if (dateA !== dateB) {
+            return dateB - dateA; // Descendente - más nuevos primero
           }
+          // Luego por fila (descendente para que fila mayor esté primero)
+          if (a.fila !== b.fila) {
+            return b.fila - a.fila; // Invertido: filas mayores primero
+          }
+          // Finalmente por columna (ascendente)
           return a.columna - b.columna;
         })
         .map((nicho, idx) => ({
           ...nicho,
           numeroGlobal: nichoOffset + idx
         }));
-      
+
+      console.log('[useBloquesWithNichos] Nichos del bloque seleccionado ordenados:', {
+        bloqueId: selectedBloqueId,
+        totalNichos: nichos.length,
+        primerosTres: nichos.slice(0, 3).map(n => ({
+          numeroGlobal: (n as any).numeroGlobal,
+          fila: n.fila,
+          columna: n.columna,
+          fechaCreacion: n.fechaCreacion
+        }))
+      });
+
       const disponibles = nichos.filter(n => n.estadoVenta === 'Disponible' || !n.estadoVenta).length;
       const reservados = nichos.filter(n => n.estadoVenta === 'Reservado').length;
       const vendidos = nichos.filter(n => n.estadoVenta === 'Vendido').length;
@@ -141,7 +195,7 @@ export const useBloquesWithNichos = (idCementerio: string) => {
         vendidos
       };
     }
-    
+
     return bloqueFromList || null;
   }, [selectedBloqueId, bloqueWithNichosData, bloquesWithNichos]);
 
