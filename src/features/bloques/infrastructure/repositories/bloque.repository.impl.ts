@@ -44,7 +44,7 @@ export class BloqueRepositoryImpl implements BloqueRepository {
     const { data } = await this.httpClient.get<any>(API_ROUTES.BLOQUES.GET_NICHOS_BY_BLOQUE(idBloque));
     const raw: any = data;
     const response = raw?.data ?? raw;
-    
+
     return {
       bloque: BloqueMapper.toEntity(response.bloque),
       nichos: response.nichos?.map((nicho: any) => NichoMapper.toEntity(nicho)) ?? [],
@@ -75,5 +75,42 @@ export class BloqueRepositoryImpl implements BloqueRepository {
     const raw: any = data;
     const deleted: BloqueModel = raw?.data?.bloque ?? raw?.bloque ?? raw?.data ?? raw;
     return BloqueMapper.toEntity(deleted);
+  }
+
+  async ampliarBloque(idBloque: string, ampliacionData: import("../../domain/entities/ampliar-bloque.entity").AmpliarBloqueEntity): Promise<import("../../domain/entities/ampliar-bloque.entity").AmpliarBloqueResponseEntity> {
+    const formData = new FormData();
+    formData.append('numero_filas', ampliacionData.numeroFilas.toString());
+    formData.append('numero_columnas', ampliacionData.numeroColumnas.toString());
+    formData.append('observacion_ampliacion', ampliacionData.observacionAmpliacion);
+    formData.append('file', ampliacionData.pdfFile);
+
+    console.log('[BloqueRepository] Ampliando bloque:', {
+      idBloque,
+      numero_filas: ampliacionData.numeroFilas,
+      numero_columnas: ampliacionData.numeroColumnas,
+      observacion_length: ampliacionData.observacionAmpliacion.length,
+      pdf_name: ampliacionData.pdfFile.name,
+      pdf_type: ampliacionData.pdfFile.type
+    });
+
+    const { data } = await this.httpClient.post<any>(
+      API_ROUTES.NICHOS.AMPLIAR_BLOQUE(idBloque),
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    console.log('[BloqueRepository] Response received:', data);
+
+    const raw: any = data;
+    // El backend envuelve la respuesta en { success, message, data }
+    const responseData = raw?.data ?? raw;
+
+    console.log('[BloqueRepository] Extracted response data:', responseData);
+
+    return responseData;
   }
 }

@@ -21,7 +21,8 @@ import { CreatePaymentForm } from '@/features/payment';
 import { ReservationActions } from '@/features/nichos/presentation/components/reservation-actions.component';
 import { MausoleumReservationActions } from '@/features/nichos/presentation/components/mausoleum-reservation-actions.component';
 import { EnableNichoForm } from '@/features/nichos/presentation/components/enable-nicho-form.component';
-import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, FileText, ShoppingCart, ArrowLeft, Power } from 'lucide-react';
+import { AmpliarMausoleoModal } from '@/features/bloques/presentation/components/ampliar-mausoleo-modal.component';
+import { Loader2, AlertCircle, Grid3x3, Search, Box, Layers, ChevronLeft, Package, Hash, Eye, FileText, ShoppingCart, ArrowLeft, Power, Plus } from 'lucide-react';
 import clsx from 'clsx';
 
 interface BlocksWithNichesMapProps {
@@ -98,6 +99,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   const [selectedForEnable, setSelectedForEnable] = useState<string | null>(null);
   const [mausoleumDialogOpen, setMausoleumDialogOpen] = useState<boolean>(false);
   const [mausoleumActionsOpen, setMausoleumActionsOpen] = useState<boolean>(false);
+  const [ampliarMausoleoOpen, setAmpliarMausoleoOpen] = useState<boolean>(false);
   const prevStatisticsRef = useRef<string>('');
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const innerGridRef = useRef<HTMLDivElement | null>(null);
@@ -109,7 +111,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
     }
 
     const searchLower = searchTerm.toLowerCase().trim();
-    return bloques.filter(bloque => 
+    return bloques.filter(bloque =>
       bloque.nombre.toLowerCase().includes(searchLower) ||
       bloque.numero?.toString().includes(searchLower) ||
       bloque.descripcion?.toLowerCase().includes(searchLower)
@@ -144,14 +146,14 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   // Calcular el siguiente nicho disponible para venta en orden
   const nextAvailableNichoForSale = useMemo(() => {
     if (!selectedBloque) return null;
-    
+
     // Ordenar nichos por fecha de creación (el más antiguo primero)
     const sortedNichos = [...selectedBloque.nichos].sort((a, b) => {
       const dateA = new Date(a.fechaCreacion).getTime();
       const dateB = new Date(b.fechaCreacion).getTime();
       return dateA - dateB;
     });
-    
+
     // Encontrar el primer nicho disponible
     const firstAvailable = sortedNichos.find(n => n.estadoVenta === 'Disponible' || !n.estadoVenta);
     return firstAvailable?.idNicho || null;
@@ -260,7 +262,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
   if (selectedBloque) {
 
     const nicheSize = getNicheSize(selectedBloque.numeroColumnas || 1);
-      const isSelectedBloqueMausoleo = ((selectedBloque.tipoBloque ?? '').toString().trim().toLowerCase() === 'mausoleo');
+    const isSelectedBloqueMausoleo = ((selectedBloque.tipoBloque ?? '').toString().trim().toLowerCase() === 'mausoleo');
     return (
       <div className="space-y-6">
         <Card>
@@ -284,9 +286,9 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   <CardDescription>
                     {selectedBloque.totalNichos} nicho{selectedBloque.totalNichos !== 1 ? 's' : ''} en este bloque
                   </CardDescription>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Tipo: <span className="font-medium text-foreground">{(selectedBloque.tipoBloque ?? '—').toString()}</span>
-                      </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Tipo: <span className="font-medium text-foreground">{(selectedBloque.tipoBloque ?? '—').toString()}</span>
+                  </div>
                 </div>
               </div>
 
@@ -341,6 +343,16 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
               </div>
               {isSelectedBloqueMausoleo && (
                 <div className="flex items-center gap-2">
+                  {/* Botón Ampliar Mausoleo - siempre visible para mausoleos */}
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => setAmpliarMausoleoOpen(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Ampliar Mausoleo
+                  </Button>
+
                   {/* Mostrar "Reservar Mausoleo" sólo si no hay reservas ni ventas en el bloque */}
                   {selectedBloque.reservados === 0 && selectedBloque.vendidos === 0 && (
                     <Button
@@ -408,11 +420,11 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   </Badge>
                 </div>
 
-                    {selectedBloque.disponibles > 0 && !isSelectedBloqueMausoleo && (
+                {selectedBloque.disponibles > 0 && !isSelectedBloqueMausoleo && (
                   <Alert className="bg-yellow-50 border-yellow-200">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                     <AlertDescription className="text-yellow-800">
-                      <strong>Venta en orden:</strong> Solo puedes vender el siguiente nicho disponible (marcado con 
+                      <strong>Venta en orden:</strong> Solo puedes vender el siguiente nicho disponible (marcado con
                       <span className="inline-flex items-center mx-1">
                         <span className="inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
                       </span>
@@ -434,145 +446,179 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                         width: `${selectedBloque.numeroColumnas * nicheSize + (selectedBloque.numeroColumnas - 1) * 12}px`,
                       }}
                     >
-                  <TooltipProvider>
-                    {selectedBloque.nichos.map((niche) => {
-                      const colorStatus = getNicheColorByEstado(niche);
-                      const isNextForSale = !isSelectedBloqueMausoleo && nextAvailableNichoForSale === niche.idNicho;
-                      const isDisabled = niche.estadoVenta === 'Deshabilitado';
-                      const nichoNumber = (niche as any).numeroGlobal || niche.columna;
-                      return (
-                        <Tooltip key={niche.idNicho}>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => !isDisabled && handleNicheClick(niche.idNicho!)}
-                              disabled={isDisabled || isSelectedBloqueMausoleo}
-                              style={{ width: nicheSize, height: nicheSize }}
-                              className={clsx(
-                                'relative rounded-md font-semibold text-white',
-                                'transition-all duration-200 ease-in-out',
-                                !isDisabled && 'hover:scale-105 hover:shadow-lg hover:z-10',
-                                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-                                colorStatus.color,
-                                !isDisabled && colorStatus.hover,
-                                !isDisabled && `focus-visible:${colorStatus.ring}`,
-                                isNextForSale && 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse',
-                                isDisabled && 'cursor-not-allowed opacity-60',
-                                isSelectedBloqueMausoleo && 'cursor-not-allowed opacity-80'
-                              )}
-                            >
-                              {isNextForSale && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-                                </span>
-                              )}
-                              <span className={clsx('inline-block', nicheSize <= 32 ? 'text-[10px]' : 'text-xs')}>{nichoNumber}</span>
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            className={clsx(
-                              "max-w-sm p-0 overflow-hidden border-2",
-                              colorStatus.badgeVariant === 'default' && 'border-emerald-500/20',
-                              colorStatus.badgeVariant === 'secondary' && 'border-amber-500/20',
-                              colorStatus.badgeVariant === 'destructive' && 'border-rose-500/20'
-                            )}
-                          >
-                            <div className={clsx(
-                              "px-4 py-2",
-                              colorStatus.badgeVariant === 'default' && 'bg-emerald-500/10',
-                              colorStatus.badgeVariant === 'secondary' && 'bg-amber-500/10',
-                              colorStatus.badgeVariant === 'destructive' && 'bg-rose-500/10'
-                            )}>
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="font-bold text-base text-foreground">Nicho {nichoNumber}</p>
-                                <Badge
-                                  variant={colorStatus.badgeVariant}
+                      <TooltipProvider>
+                        {/* Reverse array to show newest rows at bottom */}
+                        {[...selectedBloque.nichos].reverse().map((niche) => {
+                          const colorStatus = getNicheColorByEstado(niche);
+                          const isNextForSale = !isSelectedBloqueMausoleo && nextAvailableNichoForSale === niche.idNicho;
+                          const isDisabled = niche.estadoVenta === 'Deshabilitado';
+                          const nichoNumber = (niche as any).numeroGlobal || niche.columna;
+                          return (
+                            <Tooltip key={niche.idNicho}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => !isDisabled && handleNicheClick(niche.idNicho!)}
+                                  disabled={isDisabled || isSelectedBloqueMausoleo}
+                                  style={{ width: nicheSize, height: nicheSize }}
                                   className={clsx(
-                                    'font-semibold',
-                                    colorStatus.badgeVariant === 'default' && 'bg-emerald-600 text-white hover:bg-emerald-700',
-                                    colorStatus.badgeVariant === 'secondary' && 'bg-amber-600 text-white hover:bg-amber-700',
-                                    colorStatus.badgeVariant === 'destructive' && 'bg-rose-600 text-white hover:bg-rose-700'
+                                    'relative rounded-md font-semibold text-white',
+                                    'transition-all duration-200 ease-in-out',
+                                    !isDisabled && 'hover:scale-105 hover:shadow-lg hover:z-10',
+                                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                                    colorStatus.color,
+                                    !isDisabled && colorStatus.hover,
+                                    !isDisabled && `focus-visible:${colorStatus.ring}`,
+                                    isNextForSale && 'ring-2 ring-yellow-400 ring-offset-2 animate-pulse',
+                                    isDisabled && 'cursor-not-allowed opacity-60',
+                                    isSelectedBloqueMausoleo && 'cursor-not-allowed opacity-80'
                                   )}
                                 >
-                                  {colorStatus.label}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            <div className="p-4 space-y-3 bg-card">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="p-1.5 rounded bg-muted">
-                                    <Hash className="w-3.5 h-3.5 text-muted-foreground" />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Fila</p>
-                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.fila}</p>
+                                  {isNextForSale && (
+                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                                    </span>
+                                  )}
+                                  <span className={clsx('inline-block', nicheSize <= 32 ? 'text-[10px]' : 'text-xs')}>{nichoNumber}</span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className={clsx(
+                                  "max-w-sm p-0 overflow-hidden border-2",
+                                  colorStatus.badgeVariant === 'default' && 'border-emerald-500/20',
+                                  colorStatus.badgeVariant === 'secondary' && 'border-amber-500/20',
+                                  colorStatus.badgeVariant === 'destructive' && 'border-rose-500/20'
+                                )}
+                              >
+                                <div className={clsx(
+                                  "px-4 py-2",
+                                  colorStatus.badgeVariant === 'default' && 'bg-emerald-500/10',
+                                  colorStatus.badgeVariant === 'secondary' && 'bg-amber-500/10',
+                                  colorStatus.badgeVariant === 'destructive' && 'bg-rose-500/10'
+                                )}>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="font-bold text-base text-foreground">Nicho {nichoNumber}</p>
+                                    <Badge
+                                      variant={colorStatus.badgeVariant}
+                                      className={clsx(
+                                        'font-semibold',
+                                        colorStatus.badgeVariant === 'default' && 'bg-emerald-600 text-white hover:bg-emerald-700',
+                                        colorStatus.badgeVariant === 'secondary' && 'bg-amber-600 text-white hover:bg-amber-700',
+                                        colorStatus.badgeVariant === 'destructive' && 'bg-rose-600 text-white hover:bg-rose-700'
+                                      )}
+                                    >
+                                      {colorStatus.label}
+                                    </Badge>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                  <div className="p-1.5 rounded bg-muted">
-                                    <Hash className="w-3.5 h-3.5 text-muted-foreground" />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Columna</p>
-                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.columna}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 col-span-2">
-                                  <div className="p-1.5 rounded bg-muted">
-                                    <Package className="w-3.5 h-3.5 text-muted-foreground" />
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Tipo</p>
-                                    <p className="text-sm font-semibold text-foreground leading-none">{niche.tipo}</p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="border-t pt-3">
-                                <HuecoTooltip nicho={niche} />
-                              </div>
-
-                              <div className="flex gap-2 pt-2 border-t flex-col">
-                                {(niche.estadoVenta === 'Disponible' || !niche.estadoVenta) && (
-                                  <>
-                                    {isSelectedBloqueMausoleo ? (
-                                      <div className="text-center text-sm text-muted-foreground">
-                                        <p>Este nicho forma parte de un mausoleo. Las ventas se realizan por el bloque completo.</p>
-                                        <div className="pt-2">
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="w-full text-black"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNicheClick(niche.idNicho!); }}
-                                          >
-                                            Detalles
-                                          </Button>
-                                        </div>
+                                <div className="p-4 space-y-3 bg-card">
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 rounded bg-muted">
+                                        <Hash className="w-3.5 h-3.5 text-muted-foreground" />
                                       </div>
-                                    ) : (
+                                      <div>
+                                        <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Fila</p>
+                                        <p className="text-sm font-semibold text-foreground leading-none">{niche.fila}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <div className="p-1.5 rounded bg-muted">
+                                        <Hash className="w-3.5 h-3.5 text-muted-foreground" />
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Columna</p>
+                                        <p className="text-sm font-semibold text-foreground leading-none">{niche.columna}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 col-span-2">
+                                      <div className="p-1.5 rounded bg-muted">
+                                        <Package className="w-3.5 h-3.5 text-muted-foreground" />
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] text-muted-foreground leading-none mb-0.5">Tipo</p>
+                                        <p className="text-sm font-semibold text-foreground leading-none">{niche.tipo}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t pt-3">
+                                    <HuecoTooltip nicho={niche} />
+                                  </div>
+
+                                  <div className="flex gap-2 pt-2 border-t flex-col">
+                                    {(niche.estadoVenta === 'Disponible' || !niche.estadoVenta) && (
                                       <>
-                                        {nextAvailableNichoForSale !== niche.idNicho && (
-                                          <p className="text-[10px] text-amber-600 text-center">
-                                            ⚠️ Debe venderse en orden
-                                          </p>
+                                        {isSelectedBloqueMausoleo ? (
+                                          <div className="text-center text-sm text-muted-foreground">
+                                            <p>Este nicho forma parte de un mausoleo. Las ventas se realizan por el bloque completo.</p>
+                                            <div className="pt-2">
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="w-full text-black"
+                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNicheClick(niche.idNicho!); }}
+                                              >
+                                                Detalles
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            {nextAvailableNichoForSale !== niche.idNicho && (
+                                              <p className="text-[10px] text-amber-600 text-center">
+                                                ⚠️ Debe venderse en orden
+                                              </p>
+                                            )}
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                className="flex-1"
+                                                disabled={nextAvailableNichoForSale !== niche.idNicho}
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  openSellDialog(niche);
+                                                }}
+                                              >
+                                                Vender
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="flex-1 text-black"
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  handleNicheClick(niche.idNicho!);
+                                                }}
+                                              >
+                                                Detalles
+                                              </Button>
+                                            </div>
+                                          </>
                                         )}
+                                      </>
+                                    )}
+                                    {niche.estadoVenta === 'Reservado' && (
+                                      !isSelectedBloqueMausoleo ? (
                                         <div className="flex gap-2">
                                           <Button
                                             size="sm"
+                                            variant="secondary"
                                             className="flex-1"
-                                            disabled={nextAvailableNichoForSale !== niche.idNicho}
                                             onClick={(e) => {
                                               e.preventDefault();
                                               e.stopPropagation();
-                                              openSellDialog(niche);
+                                              setReservationNichoId(niche.idNicho!);
+                                              setViewReservationOpen(true);
                                             }}
                                           >
-                                            Vender
+                                            Ver Reserva
                                           </Button>
                                           <Button
                                             size="sm"
@@ -587,30 +633,27 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                             Detalles
                                           </Button>
                                         </div>
-                                      </>
+                                      ) : (
+                                        <div className="text-center text-sm text-muted-foreground">
+                                          <p>Este nicho forma parte de un mausoleo. Las gestiones de reserva se realizan por el bloque completo.</p>
+                                          <div className="pt-2">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="w-full text-black"
+                                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNicheClick(niche.idNicho!); }}
+                                            >
+                                              Detalles
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )
                                     )}
-                                  </>
-                                )}
-                                {niche.estadoVenta === 'Reservado' && (
-                                  !isSelectedBloqueMausoleo ? (
-                                    <div className="flex gap-2">
-                                      <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        className="flex-1"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setReservationNichoId(niche.idNicho!);
-                                          setViewReservationOpen(true);
-                                        }}
-                                      >
-                                        Ver Reserva
-                                      </Button>
+                                    {niche.estadoVenta === 'Vendido' && (
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        className="flex-1 text-black"
+                                        className="w-full text-black"
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
@@ -619,58 +662,28 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                       >
                                         Detalles
                                       </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="text-center text-sm text-muted-foreground">
-                                      <p>Este nicho forma parte de un mausoleo. Las gestiones de reserva se realizan por el bloque completo.</p>
-                                      <div className="pt-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="w-full text-black"
-                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNicheClick(niche.idNicho!); }}
-                                        >
-                                          Detalles
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )
-                                )}
-                                {niche.estadoVenta === 'Vendido' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="w-full text-black"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleNicheClick(niche.idNicho!);
-                                    }}
-                                  >
-                                    Detalles
-                                  </Button>
-                                )}
-                                {niche.estadoVenta === 'Deshabilitado' && (
-                                  <Button
-                                    size="sm"
-                                    className="w-full gap-2"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      openEnableDialog(niche.idNicho!);
-                                    }}
-                                  >
-                                    <Power className="w-4 h-4" />
-                                    Habilitar
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </TooltipProvider>
+                                    )}
+                                    {niche.estadoVenta === 'Deshabilitado' && (
+                                      <Button
+                                        size="sm"
+                                        className="w-full gap-2"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          openEnableDialog(niche.idNicho!);
+                                        }}
+                                      >
+                                        <Power className="w-4 h-4" />
+                                        Habilitar
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
@@ -763,6 +776,21 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
             />
           </DialogContent>
         </Dialog>
+
+        {/* Modal Ampliar Mausoleo */}
+        {ampliarMausoleoOpen && console.log('[BlocksWithNichesMap] Opening AmpliarMausoleoModal with:', {
+          bloqueId: selectedBloque.idBloque,
+          numeroColumnas: selectedBloque.numeroColumnas,
+          nombreBloque: selectedBloque.nombre,
+          selectedBloqueData: selectedBloque
+        })}
+        <AmpliarMausoleoModal
+          open={ampliarMausoleoOpen}
+          onOpenChange={setAmpliarMausoleoOpen}
+          bloqueId={selectedBloque.idBloque}
+          numeroColumnas={selectedBloque.numeroColumnas}
+          nombreBloque={selectedBloque.nombre}
+        />
       </div>
     );
   }
@@ -796,7 +824,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                   className="pl-10"
                 />
               </div>
-              
+
             </div>
           </div>
         </CardHeader>
@@ -816,7 +844,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              
+
               <TooltipProvider>
                 {bloquesNormales.length > 0 && (
                   <>
@@ -878,7 +906,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                   variant={colorStatus.badgeVariant}
                                   className={clsx(
                                     'font-semibold',
-                                    bloque.estado === 'Activo' 
+                                    bloque.estado === 'Activo'
                                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                                       : 'bg-gray-600 text-white hover:bg-gray-700'
                                   )}
@@ -1038,7 +1066,7 @@ export const BlocksWithNichesMap: React.FC<BlocksWithNichesMapProps> = ({ cemete
                                   variant={colorStatus.badgeVariant}
                                   className={clsx(
                                     'font-semibold',
-                                    bloque.estado === 'Activo' 
+                                    bloque.estado === 'Activo'
                                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                                       : 'bg-gray-600 text-white hover:bg-gray-700'
                                   )}

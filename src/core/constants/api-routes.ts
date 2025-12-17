@@ -34,6 +34,7 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.BLOQUES,
     UPDATE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
+    //AMPLIAR_BLOQUE: (id: string) => `${AR_KEYS.BLOQUES}/${id}/ampliar-bloque`,
   },
   NICHOS: {
     LIST: AR_KEYS.NICHOS,
@@ -45,6 +46,7 @@ export const API_ROUTES = {
     UPDATE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
     ENABLE: (id: string) => `${AR_KEYS.NICHOS}/${id}/habilitar`,
+    AMPLIAR_BLOQUE: (id: string) => `${AR_KEYS.NICHOS}/mausoleo/${id}/ampliar`,
   },
   PERSONS: {
     LIST: AR_KEYS.PERSON,
@@ -55,15 +57,15 @@ export const API_ROUTES = {
     SEARCH: (query?: string, vivos?: boolean) => {
       const baseUrl = `${AR_KEYS.PERSON}/search`;
       const params = new URLSearchParams();
-      
+
       if (query) {
         params.append('query', query);
       }
-      
+
       if (vivos !== undefined) {
         params.append('vivos', vivos.toString());
       }
-      
+
       return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
     },
   },
