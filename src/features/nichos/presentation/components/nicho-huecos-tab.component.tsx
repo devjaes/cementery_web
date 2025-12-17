@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { CardContent } from "@/shared/components/ui/card";
 import { NichoHuecosList } from "../../../huecos/presentation/components/nicho-huecos-list.component";
 
 interface NichoHuecosTabProps {
@@ -6,15 +6,17 @@ interface NichoHuecosTabProps {
 }
 
 export function NichoHuecosTab({ nichoId }: NichoHuecosTabProps) {
-
+  if (!nichoId) {
     return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Huecos del Nicho</CardTitle>
-      </CardHeader>
       <CardContent>
-        <NichoHuecosList nichoId={nichoId} />
+        <p className="text-muted-foreground">Selecciona un nicho para ver sus huecos.</p>
       </CardContent>
-    </Card>
+    );
+  }
+
+  return (
+    <CardContent>
+      <NichoHuecosList nichoId={nichoId} />
+    </CardContent>
   );
-} 
+}

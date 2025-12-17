@@ -128,7 +128,6 @@ export function NichoHuecosList({ nichoId }: NichoHuecosListProps) {
   <Plus className="w-4 h-4" />
   {isCreating ? "Creando..." : getCreateButtonMessage()}
 </Button> */}
-
       </div>
       <div className="overflow-x-auto">
         <Table>
