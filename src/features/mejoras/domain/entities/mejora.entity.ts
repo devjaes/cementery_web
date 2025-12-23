@@ -3,6 +3,7 @@ import { PersonEntity } from "@/features/person/domain/entities/person.entity";
 
 export interface MejoraEntity {
   idMejora: string;
+  fechaCreacion?: string;
   fechaSolicitud: string;
   codigoAutorizacion?: string;
 
@@ -49,8 +50,17 @@ export interface MejoraEntity {
   escombreraMunicipal?: string;
   direccionEntidad?: string;
 
-  // Archivos (nombres/ids retornados por API)
-  archivos?: Array<{ id: string; nombre: string; tipo: string }>;
+  // Documentos PDF asociados
+  documentos?: MejoraDocumento[];
+}
+
+export interface MejoraDocumento {
+  filename: string;
+  originalName: string;
+  url: string;
+  uploadedAt: string;
+  contentType: string;
+  size: number;
 }
 
 export interface CreateMejoraEntity {

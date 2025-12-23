@@ -8,12 +8,11 @@ export interface NichoModel {
   id_nicho?: string;
   id_cementerio?: CementeryModel;
   id_bloque?: string;
-  sector: string;
-  fila: string;
-  numero: string;
+  fila: number;
+  columna: number;
   tipo: string;
   estado: string;
-  estadoVenta: 'Disponible' | 'Reservado' | 'Vendido';
+  estadoVenta: 'Disponible' | 'Reservado' | 'Vendido' | 'Deshabilitado';
   num_huecos: number;
   fecha_construccion: string;
   observaciones?: string;
@@ -39,9 +38,6 @@ export interface SearchFallecidosModel {
 
 export interface CreateNichoModel {
   id_cementerio: string;
-  sector: string;
-  fila: string;
-  numero: string;
   tipo: string;
   fecha_construccion: string;
   observaciones?: string;
@@ -50,9 +46,6 @@ export interface CreateNichoModel {
 
 export interface UpdateNichoModel {
   id_nicho: string;
-  sector?: string;
-  fila?: string;
-  numero?: string;
   tipo?: string;
   fecha_construccion?: string;
   observaciones?: string;

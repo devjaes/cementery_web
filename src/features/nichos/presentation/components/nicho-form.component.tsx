@@ -27,7 +27,6 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
 
   const tipo = useWatch({ control: methods.control, name: "tipo" });
 
-  // 🔥 Detectar si estamos editando
   const isEditMode = Boolean(nicho);
 
   useEffect(() => {
@@ -51,13 +50,8 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
       <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <RHFCementerySelect name="idCementerio" label="Cementerio" />
-          <RHFInput name="sector" label="Sector" />
-          <RHFInput name="fila" label="Fila" />
-          <RHFInput name="numero" label="Número" />
           <RHFSelect name="tipo" label="Tipo" options={tipoOptions} placeholder="Selecciona el tipo de nicho" />
           <RHFDatePickerCalendar name="fechaConstruccion" label="Fecha de adquisición" />
-
-          {/* 🔒 Ahora sí: bloquear numHuecos al editar */}
           <RHFInput
             name="numHuecos"
             label="Número de Huecos"
@@ -65,13 +59,21 @@ export function NichoForm({ nicho, onSuccess }: NichoFormProps) {
             disabled={isEditMode || isFixedOne}
           />
 
-          <RHFInput name="observaciones" label="Observaciones" />
+          <RHFInput
+            name="observaciones"
+            label="Observaciones"
+            textArea={true}
+            required={false}
+          />
         </div>
         <div className="flex justify-end pt-2">
           <Button
             type="submit"
             size="lg"
-            className={clsx("px-8", isPending && "opacity-50 cursor-not-allowed")}
+            className={clsx(
+              "px-8",
+              isPending && "opacity-50 cursor-not-allowed"
+            )}
             disabled={isPending}
           >
             {isPending ? "Guardando..." : "Guardar"}

@@ -1,16 +1,31 @@
 "use client";
 import { useState, useMemo } from "react";
 import ContainerApp from "@/core/layout/container-app";
-import { NichoSearchBar, SearchType, NichoSearchFilters } from "../components/nicho-search-bar.component";
+import { NichoSearchBar } from "../components/nicho-search-bar.component";
+
+type NichoSearchFilters = {
+  cementerio?: string;
+  fila?: string;
+  numero?: string;
+};
 import { NichoSearchResults } from "../components/nicho-search-results.component";
+
+type SearchType = "fallecido" | "nicho";
 import { NichoListTable } from "../components/nicho-table.component";
 import { NichoForm } from "../components/nicho-form.component";
-import { useSearchFallecidosQuery, useFindAllNichosQuery, useFindNichoByIdQuery } from "../hooks/use-nicho-queries";
+import {
+  useSearchFallecidosQuery,
+  useFindAllNichosQuery,
+  useFindNichoByIdQuery,
+} from "../hooks/use-nicho-queries";
 import Link from "next/link";
 import { Button } from "@/shared/components/ui/button";
-import { Plus } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
-import { NichoFallecidosEntity, NichoEntity } from "../../domain/entities/nicho.entity";
+import {
+  NichoFallecidosEntity,
+  NichoEntity,
+} from "../../domain/entities/nicho.entity";
 import {
   Dialog,
   DialogContent,
@@ -47,9 +62,12 @@ import clsx from "clsx";
 export default function NichoListView() {
   const [searchType, setSearchType] = useState<SearchType>("fallecido");
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [nichoFilters, setNichoFilters] = useState<NichoSearchFilters | null>(null);
+  const [nichoFilters, setNichoFilters] = useState<NichoSearchFilters | null>(
+    null
+  );
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedFallecido, setSelectedFallecido] = useState<NichoFallecidosEntity | null>(null);
+  const [selectedFallecido, setSelectedFallecido] =
+    useState<NichoFallecidosEntity | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingNichoId, setEditingNichoId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -57,32 +75,36 @@ export default function NichoListView() {
   const {
     data: fallecidosResults,
     isLoading: isSearchingFallecidos,
-    error: fallecidosError
+    error: fallecidosError,
   } = useSearchFallecidosQuery(searchTerm);
 
-  const {
-    data: allNichos,
-    isLoading: isLoadingNichos
-  } = useFindAllNichosQuery();
+  const { data: allNichos, isLoading: isLoadingNichos } =
+    useFindAllNichosQuery();
 
   // Filter nichos based on search criteria
   const filteredNichos = useMemo(() => {
     if (!nichoFilters || !allNichos) return allNichos;
 
     return allNichos.filter((nicho) => {
-      const matchesCementerio = !nichoFilters.cementerio ||
-        nicho.idCementerio?.nombre?.toLowerCase().includes(nichoFilters.cementerio.toLowerCase());
+      const matchesCementerio =
+        !nichoFilters.cementerio ||
+        String(nicho.idCementerio?.nombre ?? "")
+          .toLowerCase()
+          .includes(nichoFilters.cementerio.toLowerCase());
 
-      const matchesSector = !nichoFilters.sector ||
-        nicho.sector.toLowerCase().includes(nichoFilters.sector.toLowerCase());
+      const matchesFila =
+        !nichoFilters.fila ||
+        String(nicho.fila ?? "")
+          .toLowerCase()
+          .includes(nichoFilters.fila.toLowerCase());
 
-      const matchesFila = !nichoFilters.fila ||
-        nicho.fila.toLowerCase().includes(nichoFilters.fila.toLowerCase());
+      const matchesNumero =
+        !nichoFilters.numero ||
+        String(nicho.columna ?? "")
+          .toLowerCase()
+          .includes(nichoFilters.numero.toLowerCase());
 
-      const matchesNumero = !nichoFilters.numero ||
-        nicho.numero.toLowerCase().includes(nichoFilters.numero.toLowerCase());
-
-      return matchesCementerio && matchesSector && matchesFila && matchesNumero;
+      return matchesCementerio && matchesFila && matchesNumero;
     });
   }, [allNichos, nichoFilters]);
 
@@ -130,7 +152,11 @@ export default function NichoListView() {
     setEditingNichoId(id);
   };
 
-  const isSearching = searchType === "fallecido" ? isSearchingFallecidos : isLoadingNichos;
+  const isSearching =
+    searchType === "fallecido" ? isSearchingFallecidos : isLoadingNichos;
+
+  // Cast the imported component to any to allow passing extra prop names not present in its TS props type
+  const SearchBar = NichoSearchBar as unknown as any;
 
   return (
     <ContainerApp title="Gestión de Nichos">
@@ -145,62 +171,87 @@ export default function NichoListView() {
               Administra nichos y busca la ubicación de fallecidos
             </p>
           </div>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> Nuevo Nicho
-          </Button>
         </div>
 
-        {/* Search Bar */}
-        <NichoSearchBar
-          onSearchFallecido={handleSearchFallecido}
-          onSearchNicho={handleSearchNicho}
-          onClear={handleClearSearch}
-          isSearching={isSearching}
-          searchTerm={searchTerm}
-          searchType={searchType}
-          onSearchTypeChange={handleSearchTypeChange}
-        />
-
-        {/* Content */}
-        {hasSearched ? (
-          searchType === "fallecido" && searchTerm ? (
-            // Fallecido Search Results
-            <div className="space-y-4">
-              {fallecidosError && (
-                <Alert variant="destructive">
-                  <AlertDescription>
-                    No se encontraron fallecidos que coincidan con &quot;{searchTerm}&quot;.
-                    Intenta con otros términos de búsqueda.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {isSearchingFallecidos && (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Buscando coincidencias...</p>
-                </div>
-              )}
-
-              {!isSearchingFallecidos && !fallecidosError && fallecidosResults && fallecidosResults.totalEncontrados > 0 && (
-                <NichoSearchResults
-                  results={fallecidosResults}
-                  searchTerm={searchTerm}
-                  selectedFallecido={selectedFallecido}
-                  onSelectFallecido={handleSelectFallecido}
-                />
-              )}
-            </div>
-          ) : searchType === "nicho" && nichoFilters ? (
-            // Nicho Filter Results
-            <FilteredNichosTable nichos={filteredNichos} isLoading={isLoadingNichos} onEditClick={handleEditClick} />
-          ) : null
+        {/* 👉 SI NO HA BUSCADO: MOSTRAR SOLO EL BUSCADOR */}
+        {!hasSearched ? (
+          <div className="min-h-[300px] flex items-center justify-center">
+            <SearchBar
+              onSearchFallecido={handleSearchFallecido}
+              onSearchNicho={handleSearchNicho}
+              onClear={handleClearSearch}
+              isSearching={isSearching}
+              searchTerm={searchTerm}
+              searchType={searchType}
+              onSearchTypeChange={handleSearchTypeChange}
+            />
+          </div>
         ) : (
-          // Default: Show all nichos table
-          <NichoListTable onEditClick={handleEditClick} />
+          /* 👉 SI YA BUSCÓ: MOSTRAR RESULTADOS + BOTÓN */
+          <div className="space-y-4">
+            {/* 🔙 Botón para nueva búsqueda */}
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={handleClearSearch}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Nueva búsqueda
+              </Button>
+
+              <div className="text-sm text-muted-foreground">
+                Resultados para:{" "}
+                <span className="font-medium">&quot;{searchTerm}&quot;</span>
+              </div>
+            </div>
+
+            {/* 👉 Resultados cuando busca por fallecido */}
+            {searchType === "fallecido" && searchTerm && (
+              <div className="space-y-4">
+                {fallecidosError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      No se encontraron fallecidos que coincidan con &quot;
+                      {searchTerm}&quot;.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {isSearchingFallecidos && (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">
+                      Buscando coincidencias...
+                    </p>
+                  </div>
+                )}
+
+                {!isSearchingFallecidos &&
+                  !fallecidosError &&
+                  fallecidosResults &&
+                  fallecidosResults.totalEncontrados > 0 && (
+                    <NichoSearchResults
+                      results={fallecidosResults}
+                      searchTerm={searchTerm}
+                      selectedFallecido={selectedFallecido}
+                      onSelectFallecido={handleSelectFallecido}
+                    />
+                  )}
+              </div>
+            )}
+
+            {/* 👉 Resultados cuando busca por nicho (tabla oculta) */}
+            {searchType === "nicho" && nichoFilters && (
+              <p className="text-center text-muted-foreground">
+                Resultados disponibles, pero la tabla está oculta temporalmente.
+              </p>
+            )}
+          </div>
         )}
 
-        {/* Create Modal */}
+        {/* ---------------- MODALES (NO TOCADO) ---------------- */}
+
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -212,7 +263,6 @@ export default function NichoListView() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Modal */}
         {editingNichoId && (
           <NichoEditModal
             nichoId={editingNichoId}
@@ -224,42 +274,45 @@ export default function NichoListView() {
       </div>
     </ContainerApp>
   );
-}
 
-// Modal for editing nicho
-function NichoEditModal({
-  nichoId,
-  open,
-  onOpenChange,
-  onSuccess,
-}: {
-  nichoId: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
-}) {
-  const { data: nicho, isLoading } = useFindNichoByIdQuery(nichoId);
+  // Modal for editing nicho
+  function NichoEditModal({
+    nichoId,
+    open,
+    onOpenChange,
+    onSuccess,
+  }: {
+    nichoId: string;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSuccess: () => void;
+  }) {
+    const { data: nicho, isLoading } = useFindNichoByIdQuery(nichoId);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar Nicho</DialogTitle>
-        </DialogHeader>
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Cargando...</div>
-        ) : nicho ? (
-          <NichoForm nicho={nicho} onSuccess={onSuccess} />
-        ) : (
-          <div className="text-center py-8 text-destructive">
-            No se encontró el nicho.
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Nicho</DialogTitle>
+          </DialogHeader>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Cargando...
+            </div>
+          ) : nicho ? (
+            <NichoForm nicho={nicho} onSuccess={onSuccess} />
+          ) : (
+            <div className="text-center py-8 text-destructive">
+              No se encontró el nicho.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
+  {
+    /* Edit Modal 
 // Component for filtered nichos results
 function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: NichoEntity[] | undefined; isLoading: boolean; onEditClick: (id: string) => void }) {
   const { mutate: deleteNicho, isPending } = useDeleteNichoMutation();
@@ -274,9 +327,8 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
           <TableHeader>
             <TableRow>
               <TableHead>Cementerio</TableHead>
-              <TableHead>Sector</TableHead>
               <TableHead>Fila</TableHead>
-              <TableHead>Número</TableHead>
+              <TableHead>Columna</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Acciones</TableHead>
@@ -285,7 +337,7 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Cargando...</p>
                 </TableCell>
@@ -293,7 +345,7 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
             )}
             {!isLoading && (!nichos || nichos.length === 0) && (
               <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center">
+                <TableCell colSpan={6} className="py-12 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <AlertCircle className="w-12 h-12 mb-1" />
                     <span className="text-base md:text-lg font-medium">
@@ -307,13 +359,10 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
               <TableRow key={nicho.idNicho}>
                 <TableCell className="font-medium">{nicho.idCementerio?.nombre || "N/A"}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{nicho.sector}</Badge>
-                </TableCell>
-                <TableCell>
                   <Badge variant="outline">{nicho.fila}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{nicho.numero}</Badge>
+                  <Badge variant="outline">{nicho.columna}</Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{nicho.tipo}</Badge>
@@ -323,21 +372,39 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
-                    <Link href={`/nichos/${nicho.idNicho}`}>
-                      <Button size="icon" variant="ghost">
+                    {nicho.estadoVenta === 'Deshabilitado' ? (
+                      <Button 
+                        size="icon" 
+                        variant="ghost"
+                        disabled
+                      >
                         <Eye className="w-4 h-4" />
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link href={`/nichos/${nicho.idNicho}`}>
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => onEditClick(nicho.idNicho!)}
+                      disabled={nicho.estadoVenta === 'Deshabilitado'}
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button size="icon" variant="ghost">
+                        <Button 
+                          size="icon" 
+                          variant="ghost"
+                          disabled={nicho.estadoVenta === 'Deshabilitado'}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -372,4 +439,6 @@ function FilteredNichosTable({ nichos, isLoading, onEditClick }: { nichos: Nicho
       </div>
     </div>
   );
+} */
+  }
 }

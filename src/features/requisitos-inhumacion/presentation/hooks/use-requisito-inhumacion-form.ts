@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { RequisitoInhumacionEntity } from "../../domain/entities/requisito-inhumacion.entity";
 import { useForm } from "react-hook-form";
 import {
@@ -16,18 +17,23 @@ import { API_ROUTES } from "@/core/constants/api-routes";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { RequisitoInhumacionRepositoryImpl } from "../../infraestructure/repositories/requisito-inhumacion.repository.impl";
 import { InhumacionRepositoryImpl } from "@/features/inhumaciones/infrastructure/repositories/inhumacion.repository.impl";
+import { PaymentRepositoryImpl } from "@/features/payment/infrastructure/repositories/payment.repository.impl";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
 
 export function useRequisitoInhumacionForm(
   requisitoInhumacion?: RequisitoInhumacionEntity
 ) {
+  const { activeCemetery } = useActiveCemetery();
+
   const router = useRouter();
   const methods = useForm<CreateRequisitoInhumacionDTO>({
     resolver: zodResolver(CreateRequisitoInhumacionSchema),
     defaultValues: requisitoInhumacion
       ? {
-         codigoInhumacion: (requisitoInhumacion as any)?.codigoInhumacion || "",
+          codigoInhumacion:
+            (requisitoInhumacion as any)?.codigoInhumacion || "",
           idCementerio: requisitoInhumacion.idCementerio?.idCementerio,
           pantoneroACargo: requisitoInhumacion.pantoneroACargo,
           metodoSolicitud: requisitoInhumacion.metodoSolicitud,
@@ -66,14 +72,35 @@ export function useRequisitoInhumacionForm(
           observacionAutorizacionMovilizacion:
             requisitoInhumacion.observacionAutorizacionMovilizacion || "",
         }
-      : {},
+      : {
+          idCementerio: activeCemetery?.idCementerio || "",
+        },
   });
+
+  // Keep idCementerio in sync with the global active cemetery selection.
+  // If the form is for creating a new requisito (no existing requisitoInhumacion),
+  // update the form value when the active cemetery changes so the UI reflects
+  // the selector at the top of the app immediately.
+  useEffect(() => {
+    try {
+      if (!requisitoInhumacion) {
+        methods.setValue("idCementerio", activeCemetery?.idCementerio || "", {
+          shouldDirty: false,
+          shouldValidate: false,
+        });
+      }
+    } catch (e) {
+      // ignore setValue errors
+    }
+    // we intentionally depend on id only
+  }, [activeCemetery?.idCementerio, requisitoInhumacion]);
 
   const { mutate: create, isPending: isCreating } =
     useCreateRequisitoInhumacionMutation();
   const { mutate: update, isPending: isUpdating } =
     useUpdateRequisitoInhumacionMutation();
-  const { mutate: downloadRequisitoPdf } = useDownloadRequisitoInhumacionPdfMutation();
+  const { mutate: downloadRequisitoPdf } =
+    useDownloadRequisitoInhumacionPdfMutation();
 
   const http = AxiosClient.getInstance();
 
@@ -125,6 +152,56 @@ export function useRequisitoInhumacionForm(
       return personaResp?.data?.data?.cedula || null;
     } catch {
       return null;
+    }
+  };
+
+  // Decide if we should trigger PDF download: all checklist booleans must be true
+  // and there must be a 'paid' payment with a receipt uploaded for the associated inhumación.
+  const shouldDownloadPdf = async (
+    requisitoId: string,
+    data: CreateRequisitoInhumacionDTO
+  ): Promise<boolean> => {
+    try {
+      // Check checklist booleans from the form data
+      // Note: 'autorizacionDeMovilizacionDelCadaver' is optional and should NOT block
+      // the automatic download flow, so we exclude it from the checklist.
+      const checklistKeys: (keyof CreateRequisitoInhumacionDTO)[] = [
+        "copiaCertificadoDefuncion",
+        "informeEstadisticoINEC",
+        "copiaCedula",
+        "pagoTasaInhumacion",
+        "copiaTituloPropiedadNicho",
+        "oficioDeSolicitud",
+      ];
+
+      const allChecked = checklistKeys.every((k) => Boolean(data[k]));
+      if (!allChecked) return false;
+
+      // Resolve inhumacion id from idFallecido if available
+      const inhumacionId = await resolveInhumacionIdByFallecido(
+        data.idFallecido
+      );
+      if (!inhumacionId) return false;
+
+      // Find payments for this procedure and check for a paid one with receipt
+      const paymentsRepo = PaymentRepositoryImpl.getInstance();
+      const payments = await paymentsRepo.findByProcedure(
+        "burial",
+        inhumacionId as string
+      );
+      if (!payments || payments.length === 0) return false;
+
+      // Consider payment as paid if its status is 'paid' (english) or 'pagado' (spanish), case-insensitive.
+      // For automatic PDF download we only require the payment to be in a paid state; a receipt file is optional.
+      const hasPaid = payments.some((p) => {
+        const s = (p.status || "").toString().toLowerCase();
+        return s === "paid" || s === "pagado";
+      });
+
+      return hasPaid;
+    } catch (e) {
+      console.warn("shouldDownloadPdf check failed:", e);
+      return false;
     }
   };
 
@@ -237,22 +314,50 @@ export function useRequisitoInhumacionForm(
             const requisitoId =
               resultAny?.idRequsitoInhumacion ??
               resultAny?.idRequisitoInhumacion ??
-              resultAny?.id ?? existingId;
+              resultAny?.id ??
+              existingId;
 
-            // Trigger a single download directly here (avoid relying on URL param)
+            // Trigger a single download directly here only if conditions met
             if (requisitoId) {
               try {
-                downloadRequisitoPdf(requisitoId);
+                const should = await shouldDownloadPdf(requisitoId, data);
+                if (should) {
+                  downloadRequisitoPdf(requisitoId);
+                } else {
+                  // Inform user that PDF will be available once checklist and payment are complete
+                  toast.info(
+                    "El PDF estará disponible cuando se completen todos los requisitos y el pago esté confirmado."
+                  );
+                }
               } catch (e) {
-                console.warn("Error triggering download:", e);
+                console.warn("Error checking download conditions:", e);
               }
             }
 
             const cedula = await getCedulaByFallecidoId(data.idFallecido);
-            router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : `/requisitos-inhumacion`);
+            router.push(
+              cedula
+                ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}`
+                : `/requisitos-inhumacion`
+            );
           },
           onError: (error) => {
-            console.error("Error en actualización:", error);
+            // Log useful Axios error details to aid debugging
+            try {
+              const e: any = error;
+              console.error("Error en actualización:", {
+                message: e?.message,
+                status: e?.response?.status,
+                response: e?.response?.data,
+                config: e?.config,
+              });
+            } catch (logErr) {
+              console.error(
+                "Error en actualización (logging failed):",
+                error,
+                logErr
+              );
+            }
           },
         }
       );
@@ -280,7 +385,10 @@ export function useRequisitoInhumacionForm(
               API_ROUTES.PERSONS.GET_BY_ID(data.idSolicitante)
             );
             const p = personResp?.data?.data;
-            if (p) solicitanteName = `${p.nombres || ""} ${p.apellidos || ""}`.trim();
+            if (p)
+              solicitanteName = `${p.nombres || ""} ${
+                p.apellidos || ""
+              }`.trim();
           } catch (e) {
             console.warn("No se pudo obtener solicitante:", e);
           }
@@ -307,7 +415,10 @@ export function useRequisitoInhumacionForm(
               codigoInhumacion: data.codigoInhumacion,
             } as any;
 
-            console.log("Creando inhumación previa al requisito:", inhumPayload);
+            console.log(
+              "Creando inhumación previa al requisito:",
+              inhumPayload
+            );
             await inhumRepo.create(inhumPayload);
             toast.success("Inhumación creada correctamente");
           } catch (e) {
@@ -344,31 +455,61 @@ export function useRequisitoInhumacionForm(
             data.idFallecido
           );
 
-          // Trigger download once (if we have an id)
           if (requisitoId) {
             try {
-              downloadRequisitoPdf(requisitoId);
+              const should = await shouldDownloadPdf(requisitoId, data);
+              if (should) {
+                downloadRequisitoPdf(requisitoId);
+              } else {
+                toast.info(
+                  "El PDF estará disponible cuando se completen todos los requisitos y el pago esté confirmado."
+                );
+              }
             } catch (e) {
-              console.warn("Error triggering download after create:", e);
+              console.warn(
+                "Error checking download conditions after create:",
+                e
+              );
             }
           }
 
           const cedula = await getCedulaByFallecidoId(data.idFallecido);
-          router.push(cedula ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}` : "/requisitos-inhumacion");
+          router.push(
+            cedula
+              ? `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}`
+              : "/requisitos-inhumacion"
+          );
         },
         onError: async (error) => {
-          console.error("Error en creación:", error);
+          // Provide richer debugging output when creation fails
+          try {
+            const e: any = error;
+            console.error("Error en creación:", {
+              message: e?.message,
+              status: e?.response?.status,
+              response: e?.response?.data,
+              config: e?.config,
+            });
+          } catch (logErr) {
+            console.error("Error en creación (logging failed):", error, logErr);
+          }
           // If backend reports that the requisito already exists, attempt to locate it and attach the document
           try {
             const axiosErr = error as AxiosError;
             const status = axiosErr?.response?.status;
-            const message = (axiosErr?.response?.data as any)?.message || axiosErr?.message || "";
+            const message =
+              (axiosErr?.response?.data as any)?.message ||
+              axiosErr?.message ||
+              "";
 
             const alreadyExists =
-              status === 409 || /existe|already exists|ya existe/i.test(String(message));
+              status === 409 ||
+              /existe|already exists|ya existe/i.test(String(message));
 
             if (alreadyExists) {
-              toast.warning("Ya existe un requisito para esta inhumación. Intentando localizar el requisito existente...");
+              toast.warning(
+                "Ya existe un requisito para esta inhumación. Intentando localizar el requisito existente..."
+              );
 
               // Try to resolve via cedula
               const cedula = await getCedulaByFallecidoId(data.idFallecido);
@@ -383,23 +524,40 @@ export function useRequisitoInhumacionForm(
                     .find((r: any) => {
                       // match by id_fallecido or by hueco/nicho if provided
                       if (!r) return false;
-                      const sameFallecido = (r.id_fallecido?.id_persona || r.idFallecido?.id_persona) === data.idFallecido;
+                      const sameFallecido =
+                        (r.id_fallecido?.id_persona ||
+                          r.idFallecido?.id_persona) === data.idFallecido;
                       return sameFallecido;
                     });
 
-                  const existingId = found?.id_requsitoInhumacion || found?.idRequsitoInhumacion || found?.idRequisitoInhumacion || found?.id;
+                  const existingId =
+                    found?.id_requsitoInhumacion ||
+                    found?.idRequsitoInhumacion ||
+                    found?.idRequisitoInhumacion ||
+                    found?.id;
                   if (existingId) {
-                    toast.success("Se encontró requisito existente. Subiendo documento y abriendo registro...");
+                    toast.success(
+                      "Se encontró requisito existente. Subiendo documento y abriendo registro..."
+                    );
                     // upload document if provided
                     if (selectedDocument) {
                       try {
-                        await uploadSolicitudFirmadaIfNeeded(selectedDocument, existingId, data.idFallecido);
+                        await uploadSolicitudFirmadaIfNeeded(
+                          selectedDocument,
+                          existingId,
+                          data.idFallecido
+                        );
                       } catch (e) {
-                        console.warn("Fallo al subir documento al requisito existente:", e);
+                        console.warn(
+                          "Fallo al subir documento al requisito existente:",
+                          e
+                        );
                       }
                     }
                     // Navigate to the list filtered by cedula
-                    router.push(`/requisitos-inhumacion?q=${encodeURIComponent(cedula)}`);
+                    router.push(
+                      `/requisitos-inhumacion?q=${encodeURIComponent(cedula)}`
+                    );
                     return;
                   }
                 } catch (e) {
@@ -408,7 +566,9 @@ export function useRequisitoInhumacionForm(
               }
 
               // If we couldn't find it, show info to user
-              toast.error("No se pudo localizar el requisito existente automáticamente. Por favor revisa en la lista.");
+              toast.error(
+                "No se pudo localizar el requisito existente automáticamente. Por favor revisa en la lista."
+              );
             }
           } catch (e) {
             console.warn("Error handling create onError fallback:", e);

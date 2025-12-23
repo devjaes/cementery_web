@@ -2,6 +2,7 @@ export type ProcedureType =
   | "burial"
   | "exhumation"
   | "niche_sale"
+  | "mausoleum_sale"
   | "tomb_improvement"
   | "hole_extension";
 
@@ -35,6 +36,12 @@ export interface CreatePaymentEntity {
   buyerName: string;
   buyerDirection?: string;
   observations?: string;
+  // Campos adicionales para la generación del PDF
+  causa?: string;
+  procedureTitle?: string;
+  ubicacion?: string;
+  fallecidoNombre?: string;
+  concepto?: string;
 }
 
 export interface UpdatePaymentEntity {

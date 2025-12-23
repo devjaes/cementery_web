@@ -7,6 +7,7 @@ const AR_KEYS = {
   PERSON: "personas",
   HUECOS: "huecos-nichos",
   INHUMACIONES: "inhumaciones",
+  EXHUMACIONES: "exhumaciones",
   REQUISITOS_INHUMACION: "requisitos-inhumacion",
   MEJORAS: "mejoras",
   PAYMENTS: "payments",
@@ -33,6 +34,8 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.BLOQUES,
     UPDATE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.BLOQUES}/${id}`,
+    // Endpoint correcto según documentación del backend
+    AMPLIAR_BLOQUE: (id: string) => `/nichos/mausoleo/${id}/ampliar`,
   },
   NICHOS: {
     LIST: AR_KEYS.NICHOS,
@@ -43,6 +46,13 @@ export const API_ROUTES = {
     CREATE: AR_KEYS.NICHOS,
     UPDATE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.NICHOS}/${id}`,
+    ENABLE: (id: string) => `${AR_KEYS.NICHOS}/${id}/habilitar`,
+    AMPLIAR_BLOQUE: (id: string) => `${AR_KEYS.NICHOS}/mausoleo/${id}/ampliar`,
+    // Endpoints de ampliaciones
+    GET_AMPLIACIONES: (idBloque: string) => `${AR_KEYS.NICHOS}/ampliaciones/${idBloque}`,
+    GET_AMPLIACION_NICHO: (idNicho: string) => `${AR_KEYS.NICHOS}/${idNicho}/ampliacion`,
+    UPDATE_AMPLIACION_NICHO: (idNicho: string) => `${AR_KEYS.NICHOS}/ampliacion/${idNicho}`,
+    GET_PDF_AMPLIACION: (idNicho: string) => `${AR_KEYS.NICHOS}/ampliacion/${idNicho}/pdf`,
   },
   PERSONS: {
     LIST: AR_KEYS.PERSON,
@@ -53,15 +63,15 @@ export const API_ROUTES = {
     SEARCH: (query?: string, vivos?: boolean) => {
       const baseUrl = `${AR_KEYS.PERSON}/search`;
       const params = new URLSearchParams();
-      
+
       if (query) {
         params.append('query', query);
       }
-      
+
       if (vivos !== undefined) {
         params.append('vivos', vivos.toString());
       }
-      
+
       return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
     },
   },
@@ -115,6 +125,17 @@ export const API_ROUTES = {
     SEARCH_FALLECIDOS: (busqueda: string) =>
       `${AR_KEYS.REQUISITOS_INHUMACION}/fallecidos/${busqueda}`,
   },
+  EXHUMACIONES: {
+    LIST: AR_KEYS.EXHUMACIONES,
+    GET_BY_ID: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}`,
+    CREATE: AR_KEYS.EXHUMACIONES,
+    UPDATE: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}`,
+    DELETE: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}`,
+    UPLOAD_COMPROBANTE: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}/comprobante`,
+    UPLOAD_FILES: (id: string) => `${AR_KEYS.EXHUMACIONES}/${id}/archivos`,
+    BY_INHUMACION: (inhumacionId: string) => `${AR_KEYS.EXHUMACIONES}?inhumacion_id=${inhumacionId}`,
+    BY_NICHO: (nichoId: string) => `${AR_KEYS.EXHUMACIONES}?nicho_original_id=${nichoId}`,
+  },
   MEJORAS: {
     LIST: AR_KEYS.MEJORAS,
     GET_BY_ID: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
@@ -122,9 +143,11 @@ export const API_ROUTES = {
     UPDATE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     DELETE: (id: string) => `${AR_KEYS.MEJORAS}/${id}`,
     UPLOAD_FILE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/files`,
-  DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
+    DELETE_FILE: (id: string, filename: string) => `${AR_KEYS.MEJORAS}/${id}/files/${encodeURIComponent(filename)}`,
+    DOWNLOAD_PDF: (id: string) => `${AR_KEYS.MEJORAS}/${id}/formulario`,
     SEARCH: (query: string) => `${AR_KEYS.MEJORAS}/search/${encodeURIComponent(query)}`,
     APPROVE: (id: string) => `${AR_KEYS.MEJORAS}/${id}/aprobar`,
+    REJECT: (id: string) => `${AR_KEYS.MEJORAS}/${id}/negar`,
   },
   PAYMENTS: {
     LIST: AR_KEYS.PAYMENTS,

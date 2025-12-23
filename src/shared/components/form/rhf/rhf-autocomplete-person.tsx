@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { useDebounce } from "@/shared/hooks/use-debounce";
-import { useFindPersonByIdQuery, useSearchPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
+import { useFindPersonByIdQuery, useSearchPersonsQuery, useFindAllPersonsQuery } from "@/features/person/presentation/hooks/use-person-queries";
+import { useSearchRequisitoInhumacionFallecidosQuery, useFindAllRequisitosInhumacionQuery } from "@/features/requisitos-inhumacion/presentation/hooks/use-requisito-inhumacion-queries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { PropietarioNichoRepositoryImpl } from "@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl";
 import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/shared/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -14,24 +16,205 @@ interface RHFAutocompletePersonProps {
   placeholder?: string;
   disabled?: boolean;
   vivos?: boolean; // true para personas vivas, false para fallecidas, undefined para todas
+  onlyNotInhumed?: boolean; // cuando es fallecido, mostrar solo los fallecidos que NO están inhumados
+  cementerioId?: string; // optional filter: show only persons who are propietarios in this cementerio
 }
 
-export default function RHFAutocompletePerson({ name, label, placeholder, disabled, vivos }: RHFAutocompletePersonProps) {
+export default function RHFAutocompletePerson({ name, label, placeholder, disabled, vivos, onlyNotInhumed, cementerioId }: RHFAutocompletePersonProps) {
   const { control, watch } = useFormContext();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const { data: persons, isLoading } = useSearchPersonsQuery(debouncedSearch, vivos);
+  const debouncedSearch = useDebounce(search, 300);
+  // Consultas separadas para vivos y fallecidos sin inhumación
+  const { data: personsVivos, isLoading: isLoadingVivos } = useSearchPersonsQuery(debouncedSearch, true);
+  const { data: personsFallecidos, isLoading: isLoadingFallecidos } = useSearchPersonsQuery(debouncedSearch, false);
+  // fallback list of all persons
+  const allPersonsQuery = useFindAllPersonsQuery();
+  const allPersons = allPersonsQuery.data ?? [];
+  const isLoadingAllPersons = allPersonsQuery.isLoading;
+
+  // requisitos queries to determine which persons already have a requisito/codigo
+  const searchRequisitosQuery = useSearchRequisitoInhumacionFallecidosQuery(debouncedSearch);
+  const allRequisitosQuery = useFindAllRequisitosInhumacionQuery();
+
   const selectedValue = watch(name) as string | undefined;
   const selectedId = typeof selectedValue === "string" ? selectedValue : "";
   const { data: selectedPersonById } = useFindPersonByIdQuery(selectedId);
+  const [allowedPersonIds, setAllowedPersonIds] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAllowed = async () => {
+      if (!cementerioId) {
+        setAllowedPersonIds(null);
+        return;
+      }
+      try {
+        const repo = PropietarioNichoRepositoryImpl.getInstance();
+        const all = await repo.findAll();
+        if (cancelled) return;
+        const ids = new Set<string>();
+        for (const p of all) {
+          const nicho = (p as any)?.idNicho;
+          const persona = (p as any)?.idPersona || (p as any)?.id_persona || (p as any)?.idPersona?.id_persona;
+          const nichoCementerioId = nicho?.idCementerio?.idCementerio || nicho?.idCementerio;
+          if (nichoCementerioId && persona && String(nichoCementerioId) === String(cementerioId)) {
+            ids.add(String(persona?.id_persona || persona));
+          }
+        }
+        setAllowedPersonIds(ids);
+      } catch (e) {
+        console.warn("Error loading propietarios for cementerio filter:", e);
+        setAllowedPersonIds(new Set());
+      }
+    };
+
+    loadAllowed();
+    return () => { cancelled = true; };
+  }, [cementerioId]);
+
+  // Refetch helpful queries when popover opens to ensure fresh data
+  useEffect(() => {
+    if (open) {
+      try {
+        if (typeof allPersonsQuery?.refetch === 'function') allPersonsQuery.refetch();
+      } catch (e) {}
+      try {
+        // Only refetch requisitos search when we have a minimum query length
+        const q = (debouncedSearch || "").trim();
+        if (q.length >= 2 && typeof searchRequisitosQuery?.refetch === 'function') {
+          searchRequisitosQuery.refetch();
+        }
+      } catch (e) {}
+    }
+  }, [open]);
 
   return (
     <Controller
       name={name}
       control={control}
       render={({ field }) => {
-        const selectedPerson = persons?.find(p => p.id_persona === field.value) ?? selectedPersonById;
+        // Build the available persons list according to the requested filtering mode
+        const q = (debouncedSearch || "").trim();
+        // Unir personas vivas y fallecidas sin inhumación
+        let availablePersons: any[] = [];
+        if (onlyNotInhumed) {
+          // Si hay búsqueda, usar las consultas específicas
+          if (q.length >= 2) {
+            const vivos = personsVivos || [];
+            const fallecidosSinInhumacion = (personsFallecidos || []).filter((p) => p.fallecido && !p.fecha_inhumacion);
+            availablePersons = [...vivos, ...fallecidosSinInhumacion];
+          } else {
+            // Sin búsqueda, usar allPersons y filtrar
+            const vivos = (allPersons || []).filter((p) => p.fallecido === false);
+            const fallecidosSinInhumacion = (allPersons || []).filter((p) => p.fallecido && !p.fecha_inhumacion);
+            availablePersons = [...vivos, ...fallecidosSinInhumacion];
+          }
+        } else {
+          if (q.length >= 2) {
+            availablePersons = personsVivos || personsFallecidos || [];
+          } else {
+            availablePersons = allPersons || [];
+          }
+        }
+
+        // Debug: log relevant data to help troubleshooting
+        try {
+          // eslint-disable-next-line no-console
+          console.log('RHFAutocompletePerson debug:', {
+            name,
+            vivos,
+            onlyNotInhumed,
+            open,
+            search,
+            debouncedSearch: q,
+            personsVivosCount: (personsVivos || []).length,
+            personsFallecidosCount: (personsFallecidos || []).length,
+            allPersonsCount: (allPersons || []).length,
+            availablePersonsBeforeFilter: availablePersons.length,
+            availablePersonsSample: availablePersons.slice(0, 3).map(p => ({ id: p.id_persona, nombre: p.nombres, fallecido: p.fallecido, fecha_inhumacion: p.fecha_inhumacion })),
+            requisitosSearch: (searchRequisitosQuery?.data as any) ?? null,
+            allRequisitosCount: (allRequisitosQuery?.data || []).length,
+          });
+        } catch (e) {}
+
+        if (onlyNotInhumed) {
+          // Excluir personas fallecidas con requisitos (solo fallecidos, las vivas no se filtran)
+          const requisitoPersonIds = new Set<string>();
+          if (q.length >= 2) {
+            const sr = searchRequisitosQuery?.data as any;
+            if (sr && Array.isArray(sr.fallecidos)) {
+              sr.fallecidos.forEach((f: any) => {
+                const pid = f?.fallecido?.id_persona;
+                const requisitos = f?.requisitos ?? [];
+                if (pid && requisitos.length > 0) requisitoPersonIds.add(pid);
+              });
+            }
+          } else {
+            // fallback: build set from all requisitos
+            const allReqs = allRequisitosQuery?.data ?? [];
+            if (Array.isArray(allReqs) && allReqs.length > 0) {
+              allReqs.forEach((r: any) => {
+                const pid = r?.idFallecido?.id_persona ?? r?.idFallecido;
+                if (pid) requisitoPersonIds.add(pid);
+              });
+            }
+          }
+          // Solo excluir fallecidos con requisitos, mantener todas las personas vivas
+          availablePersons = availablePersons.filter((p) => {
+            // Si es persona viva, siempre incluirla
+            if (p.fallecido === false) return true;
+            // Si es fallecido, solo incluirlo si NO tiene requisito
+            return !requisitoPersonIds.has(p.id_persona);
+          });
+          
+          console.log('After requisitos filter:', {
+            availablePersonsCount: availablePersons.length,
+            requisitoPersonIdsCount: requisitoPersonIds.size,
+            sample: availablePersons.slice(0, 5).map(p => ({ nombre: p.nombres, fallecido: p.fallecido, fecha_inhumacion: p.fecha_inhumacion }))
+          });
+        }
+
+        // If after applying strict filters we have no results, as a pragmatic fallback
+        // include deceased persons that do NOT appear in requisitos (ignore fecha_inhumacion)
+        // This helps when the backend has fecha_inhumacion populated but no requisito record.
+        try {
+          if (onlyNotInhumed && (!availablePersons || availablePersons.length === 0)) {
+            const fallbackPool = (personsFallecidos && personsFallecidos.length > 0) ? personsFallecidos : (allPersons && allPersons.length > 0 ? allPersons : []);
+            // Build requisitos set from search or all requisitos
+            const requisitoPersonIdsFallback = new Set<string>();
+            const sr = searchRequisitosQuery?.data as any;
+            if (sr && Array.isArray(sr.fallecidos)) {
+              sr.fallecidos.forEach((f: any) => {
+                const pid = f?.fallecido?.id_persona;
+                if (pid) requisitoPersonIdsFallback.add(pid);
+              });
+            } else {
+              const allReqs = allRequisitosQuery?.data ?? [];
+              if (Array.isArray(allReqs)) {
+                allReqs.forEach((r: any) => {
+                  const pid = r?.idFallecido?.id_persona ?? r?.idFallecido;
+                  if (pid) requisitoPersonIdsFallback.add(pid);
+                });
+              }
+            }
+
+            const fallbackResults = (fallbackPool || []).filter((p: any) => p.fallecido && !requisitoPersonIdsFallback.has(p.id_persona));
+            availablePersons = fallbackResults;
+          }
+        } catch (e) {
+          // ignore any fallback errors
+        }
+
+        // Apply cemetery-owner filter if active: if allowedPersonIds is non-null we restrict to those ids
+        if (allowedPersonIds !== null) {
+          availablePersons = (availablePersons || []).filter((p: any) => allowedPersonIds.has(p.id_persona));
+        }
+
+        const selectedPerson = availablePersons?.find(p => p.id_persona === field.value) ?? selectedPersonById;
+        const loading = onlyNotInhumed
+          ? (q.length >= 2 ? (isLoadingVivos || isLoadingFallecidos) : isLoadingAllPersons)
+          : (isLoadingVivos || isLoadingFallecidos);
         return (
           <div className="w-full">
             {label && <label className="block text-sm font-medium mb-1">{label}</label>}
@@ -44,8 +227,8 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
                   className="w-full justify-between"
                   disabled={disabled}
                 >
-                  {selectedPerson 
-                    ? `${selectedPerson.nombres} ${selectedPerson.apellidos} (${selectedPerson.cedula})`
+                  {selectedPerson
+                    ? [selectedPerson.nombres, selectedPerson.apellidos].filter(Boolean).join(" ") + ` (${selectedPerson.cedula})`
                     : placeholder || "Seleccionar persona..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -58,30 +241,33 @@ export default function RHFAutocompletePerson({ name, label, placeholder, disabl
                     onValueChange={setSearch}
                   />
                   <CommandList>
-                    {isLoading ? (
+                    {loading ? (
                       <div className="p-2 text-center text-muted-foreground">Cargando...</div>
                     ) : (
                       <>
-                        {persons && persons.length > 0 ? (
-                          persons.map(person => (
-                            <CommandItem
-                              key={person.id_persona}
-                              value={`${person.nombres} ${person.apellidos} ${person.cedula}`}
-                              onSelect={() => {
-                                field.onChange(person.id_persona);
-                                setSearch("");
-                                setOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  field.value === person.id_persona ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {person.nombres} {person.apellidos} ({person.cedula})
-                            </CommandItem>
-                          ))
+                        {availablePersons && availablePersons.length > 0 ? (
+                          availablePersons.map(person => {
+                            const fullName = [person.nombres, person.apellidos].filter(Boolean).join(" ");
+                            return (
+                              <CommandItem
+                                key={person.id_persona}
+                                value={`${fullName} ${person.cedula}`}
+                                onSelect={() => {
+                                  field.onChange(person.id_persona);
+                                  setSearch("");
+                                  setOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === person.id_persona ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {fullName} ({person.cedula})
+                              </CommandItem>
+                            );
+                          })
                         ) : (
                           <CommandEmpty>No se encontraron personas</CommandEmpty>
                         )}

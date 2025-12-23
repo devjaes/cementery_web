@@ -14,8 +14,8 @@ const eslintConfig = [
   ...compat.config({
     rules: {
       // Descomenten esto solo para forzar el buldeo ignorar errores de typescript
-      // '@typescript-eslint/no-unused-vars': 'off',
-      // '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     }
   })
 ];

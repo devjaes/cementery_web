@@ -2,44 +2,23 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
-import { Search, X, MapPin, User } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/components/ui/tabs";
-
-export type SearchType = "nicho" | "fallecido";
-
-export interface NichoSearchFilters {
-	cementerio?: string;
-	sector?: string;
-	fila?: string;
-	numero?: string;
-}
+import { Search, X, User } from "lucide-react";
+import { Card, CardContent } from "@/shared/components/ui/card";
 
 interface NichoSearchBarProps {
 	onSearchFallecido: (busqueda: string) => void;
-	onSearchNicho: (filters: NichoSearchFilters) => void;
 	onClear: () => void;
 	isSearching: boolean;
 	searchTerm: string;
-	searchType: SearchType;
-	onSearchTypeChange: (type: SearchType) => void;
 }
 
 export function NichoSearchBar({
 	onSearchFallecido,
-	onSearchNicho,
 	onClear,
 	isSearching,
 	searchTerm,
-	searchType,
-	onSearchTypeChange,
 }: NichoSearchBarProps) {
 	const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
-	const [nichoFilters, setNichoFilters] = useState<NichoSearchFilters>({
-		cementerio: "",
-		sector: "",
-		fila: "",
-		numero: "",
-	});
 
 	useEffect(() => {
 		setLocalSearchTerm(searchTerm);
@@ -52,131 +31,87 @@ export function NichoSearchBar({
 		}
 	};
 
-	const handleNichoSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		const hasFilters = Object.values(nichoFilters).some(value => value && value.trim().length > 0);
-		if (hasFilters) {
-			onSearchNicho(nichoFilters);
-		}
-	};
-
 	const handleClear = () => {
 		setLocalSearchTerm("");
-		setNichoFilters({
-			cementerio: "",
-			sector: "",
-			fila: "",
-			numero: "",
-		});
 		onClear();
 	};
 
-	const hasNichoFilters = Object.values(nichoFilters).some(value => value && value.trim().length > 0);
-
 	return (
-		<div className="bg-card border rounded-lg p-4">
-			<Tabs value={searchType} onValueChange={(value) => onSearchTypeChange(value as SearchType)}>
-				<TabsList className="grid w-full grid-cols-2 mb-4">
-					<TabsTrigger value="nicho" className="gap-2">
-						<MapPin className="w-4 h-4" />
-						Buscar por Nicho
-					</TabsTrigger>
-					<TabsTrigger value="fallecido" className="gap-2">
-						<User className="w-4 h-4" />
-						Buscar por Fallecido
-					</TabsTrigger>
-				</TabsList>
+  <Card className="w-full max-w-2xl mx-auto">
+    <CardContent className="p-8">
+      
+      {/* ICONO Y TÍTULO */}
+      <div className="text-center mb-6">
+        <div className="flex justify-center mb-4">
+          <div className="p-3 bg-purple-100 rounded-full">
+            <User className="w-8 h-8 text-purple-600" />
+          </div>
+        </div>
 
-				<TabsContent value="nicho" className="space-y-4">
-					<form onSubmit={handleNichoSubmit} className="space-y-4">
-						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-							<Input
-								type="text"
-								placeholder="Cementerio..."
-								value={nichoFilters.cementerio}
-								onChange={(e) => setNichoFilters({ ...nichoFilters, cementerio: e.target.value })}
-							/>
-							<Input
-								type="text"
-								placeholder="Sector..."
-								value={nichoFilters.sector}
-								onChange={(e) => setNichoFilters({ ...nichoFilters, sector: e.target.value })}
-							/>
-							<Input
-								type="text"
-								placeholder="Fila..."
-								value={nichoFilters.fila}
-								onChange={(e) => setNichoFilters({ ...nichoFilters, fila: e.target.value })}
-							/>
-							<Input
-								type="text"
-								placeholder="Número..."
-								value={nichoFilters.numero}
-								onChange={(e) => setNichoFilters({ ...nichoFilters, numero: e.target.value })}
-							/>
-						</div>
-						<div className="flex items-center gap-3">
-							<Button
-								type="submit"
-								disabled={!hasNichoFilters || isSearching}
-								className="gap-2"
-							>
-								<Search className="w-4 h-4" />
-								{isSearching ? "Buscando..." : "Buscar Nichos"}
-							</Button>
-							{hasNichoFilters && (
-								<Button type="button" variant="outline" onClick={handleClear} className="gap-2">
-									<X className="w-4 h-4" />
-									Limpiar
-								</Button>
-							)}
-						</div>
-					</form>
-					<p className="text-xs text-muted-foreground">
-						Filtra nichos por cementerio, sector, fila o número. Puedes usar uno o varios criterios.
-					</p>
-				</TabsContent>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Búsqueda de Nichos
+        </h2>
+        <p className="text-gray-600">
+          Busca por fallecido (cédula o nombre)
+        </p>
+      </div>
 
-				<TabsContent value="fallecido">
-					<form onSubmit={handleFallecidoSubmit} className="space-y-4">
-						<div className="flex items-center gap-3">
-							<div className="relative flex-1">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-								<Input
-									type="text"
-									placeholder="Buscar por cédula, nombres o apellidos..."
-									value={localSearchTerm}
-									onChange={(e) => setLocalSearchTerm(e.target.value)}
-									className="pl-10 pr-10"
-								/>
-								{localSearchTerm && (
-									<Button
-										type="button"
-										variant="ghost"
-										size="icon"
-										className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7"
-										onClick={handleClear}
-									>
-										<X className="w-4 h-4" />
-									</Button>
-								)}
-							</div>
-							<Button
-								type="submit"
-								disabled={localSearchTerm.trim().length < 2 || isSearching}
-								className="gap-2"
-							>
-								<Search className="w-4 h-4" />
-								{isSearching ? "Buscando..." : "Buscar"}
-							</Button>
-						</div>
-						<p className="text-xs text-muted-foreground">
-							Busca fallecidos por cédula, nombres o apellidos para ver su ubicación (mínimo 2 caracteres)
-						</p>
-					</form>
-				</TabsContent>
-			</Tabs>
-		</div>
-	);
-}
+      {/* FORMULARIO */}
+      <form onSubmit={handleFallecidoSubmit} className="space-y-4">
 
+        {/* INPUT CON ICONO */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+
+          <Input
+            type="text"
+            placeholder="Buscar por cédula, nombres o apellidos..."
+            value={localSearchTerm}
+            onChange={(e) => setLocalSearchTerm(e.target.value)}
+            className="pl-10 h-12 text-lg"
+          />
+
+          {/* BOTÓN DE LIMPIAR */}
+          {localSearchTerm && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8"
+              onClick={handleClear}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          )}
+        </div>
+
+        {/* BOTÓN BUSCAR */}
+        <Button
+          type="submit"
+          className="w-full h-12 text-lg gap-2"
+          disabled={localSearchTerm.trim().length < 2 || isSearching}
+        >
+          <Search className="w-5 h-5" />
+          {isSearching ? "Buscando..." : "Buscar"}
+        </Button>
+      </form>
+
+      {/* BLOQUE DE AYUDA */}
+      <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0">
+            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+          </div>
+          <div className="text-sm text-purple-800">
+            <p className="font-medium mb-1">¿Cómo funciona?</p>
+            <ul className="space-y-1">
+              <li>• <strong>Por fallecido:</strong> busca por nombre o cédula.</li>
+              <li>• <strong>Mínimo 2 caracteres</strong> para comenzar la búsqueda.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </CardContent>
+  </Card>
+);}

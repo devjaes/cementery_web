@@ -11,11 +11,171 @@ import {
   SearchFallecidosRequisitoInhumacionModel,
 } from "@/features/requisitos-inhumacion/infraestructure/models/requisito-inhumacion.model";
 import { SearchFallecidosRequisitoInhumacionMapper } from "@/features/requisitos-inhumacion/infraestructure/mappers/requisito-inhumacion-fallecido.mapper";
-import { MejoraSearchAllResultsEntity, PropietarioNichoSearchResult } from "../../domain/entities/mejora-search.entity";
+import { MejoraSearchAllResultsEntity, PropietarioNichoSearchResult, PropietarioNichoConBloqueEntity, MejoraFallecidoInfo } from "../../domain/entities/mejora-search.entity";
 import { PersonModel } from "@/features/person/infraestrcture/models/person.model";
 import { PersonMapper } from "@/features/person/infraestrcture/mappers/person.mapper";
 import { PropietarioNichoModel } from "@/features/propietarios-nichos/infrastructure/models/propietario-nicho.model";
-import { PropietarioNichoMapper } from "@/features/propietarios-nichos/infrastructure/mappers/propietario-nicho.mapper";
+
+// Interfaz para el hueco con información del fallecido
+interface HuecoModelConFallecido {
+  id_detalle_hueco: string;
+  num_hueco: number;
+  estado: string;
+  id_fallecido?: {
+    id_persona: string;
+    cedula?: string | null;
+    nombres?: string;
+    apellidos?: string;
+    fecha_defuncion?: string | null;
+    fecha_inhumacion?: string | null;
+  } | null;
+}
+
+// Interfaz para inhumación con información del fallecido
+interface InhumacionModelConFallecido {
+  id_inhumacion: string;
+  id_fallecido?: {
+    id_persona: string;
+    cedula?: string | null;
+    nombres?: string;
+    apellidos?: string;
+    fecha_defuncion?: string | null;
+    fecha_inhumacion?: string | null;
+  } | null;
+  fecha_inhumacion?: string;
+  estado?: string;
+}
+
+// Interfaz extendida para el modelo de nicho con bloque completo (solo para mejoras)
+interface NichoModelConBloque {
+  id_nicho?: string;
+  id_cementerio?: {
+    id_cementerio?: string;
+    nombre?: string;
+  };
+  id_bloque?: {
+    id_bloque: string;
+    nombre: string;
+    descripcion?: string | null;
+    numero?: number | null;
+  } | string;
+  fila: number;
+  columna: number;
+  tipo: string;
+  sector?: string | null;
+  numero?: string | null;
+  estado: string;
+  estadoVenta: string;
+  num_huecos: number;
+  fecha_construccion: string;
+  observaciones?: string;
+  fecha_creacion: string;
+  fecha_actualizacion: string | null;
+  huecos?: HuecoModelConFallecido[];
+  inhumaciones?: InhumacionModelConFallecido[];
+}
+
+// Función para extraer fallecidos del nicho
+function extractFallecidosFromNicho(model: NichoModelConBloque): MejoraFallecidoInfo[] {
+  const fallecidosMap = new Map<string, MejoraFallecidoInfo>();
+
+  // Extraer fallecidos de los huecos
+  if (model.huecos) {
+    for (const hueco of model.huecos) {
+      if (hueco.id_fallecido) {
+        fallecidosMap.set(hueco.id_fallecido.id_persona, {
+          idPersona: hueco.id_fallecido.id_persona,
+          cedula: hueco.id_fallecido.cedula,
+          nombres: hueco.id_fallecido.nombres,
+          apellidos: hueco.id_fallecido.apellidos,
+          fechaDefuncion: hueco.id_fallecido.fecha_defuncion,
+          fechaInhumacion: hueco.id_fallecido.fecha_inhumacion,
+        });
+      }
+    }
+  }
+
+  // Extraer fallecidos de las inhumaciones
+  if (model.inhumaciones) {
+    for (const inhumacion of model.inhumaciones) {
+      if (inhumacion.id_fallecido) {
+        fallecidosMap.set(inhumacion.id_fallecido.id_persona, {
+          idPersona: inhumacion.id_fallecido.id_persona,
+          cedula: inhumacion.id_fallecido.cedula,
+          nombres: inhumacion.id_fallecido.nombres,
+          apellidos: inhumacion.id_fallecido.apellidos,
+          fechaDefuncion: inhumacion.id_fallecido.fecha_defuncion,
+          fechaInhumacion: inhumacion.id_fallecido.fecha_inhumacion,
+        });
+      }
+    }
+  }
+
+  return Array.from(fallecidosMap.values());
+}
+
+// Mapper interno para convertir nicho con bloque a entidad de mejoras
+function mapNichoConBloqueToEntity(model: NichoModelConBloque): PropietarioNichoConBloqueEntity["idNicho"] {
+  const bloque = model.id_bloque && typeof model.id_bloque === 'object' 
+    ? {
+        idBloque: model.id_bloque.id_bloque,
+        nombre: model.id_bloque.nombre,
+        descripcion: model.id_bloque.descripcion,
+        numero: model.id_bloque.numero,
+      }
+    : undefined;
+
+  const fallecidos = extractFallecidosFromNicho(model);
+
+  return {
+    idNicho: model.id_nicho,
+    fila: model.fila,
+    columna: model.columna,
+    tipo: model.tipo,
+    sector: model.sector,
+    numero: model.numero,
+    bloque,
+    idCementerio: model.id_cementerio ? {
+      idCementerio: model.id_cementerio.id_cementerio,
+      nombre: model.id_cementerio.nombre,
+    } : undefined,
+    fallecidos: fallecidos.length > 0 ? fallecidos : undefined,
+  };
+}
+
+// Mapper interno para convertir propietario con nicho enriquecido
+function mapPropietarioConBloqueToEntity(model: PropietarioNichoModel & { id_nicho: NichoModelConBloque }): PropietarioNichoConBloqueEntity {
+  return {
+    idPropietarioNicho: model.id_propietario_nicho,
+    idPersona: model.id_persona ? {
+      idPersona: model.id_persona.id_persona,
+      cedula: model.id_persona.cedula,
+      nombres: model.id_persona.nombres,
+      apellidos: model.id_persona.apellidos,
+      fechaNacimiento: model.id_persona.fecha_nacimiento,
+      fechaDefuncion: model.id_persona.fecha_defuncion,
+      fechaInhumacion: model.id_persona.fecha_inhumacion,
+      lugarDefuncion: model.id_persona.lugar_defuncion,
+      causaDefuncion: model.id_persona.causa_defuncion,
+      direccion: model.id_persona.direccion,
+      telefono: model.id_persona.telefono,
+      correo: model.id_persona.correo,
+      nacionalidad: model.id_persona.nacionalidad,
+      fallecido: model.id_persona.fallecido,
+      fechaCreacion: model.id_persona.fecha_creacion,
+      fechaActualizacion: model.id_persona.fecha_actualizacion,
+    } : undefined,
+    idNicho: mapNichoConBloqueToEntity(model.id_nicho),
+    fechaAdquisicion: model.fecha_adquisicion,
+    tipoDocumento: model.tipo_documento,
+    numeroDocumento: model.numero_documento,
+    activo: model.activo,
+    razon: model.razon,
+    fechaCreacion: model.fecha_creacion,
+    fechaActualizacion: model.fecha_actualizacion,
+    tipo: model.tipo,
+  };
+}
 
 export class MejoraRepositoryImpl implements MejoraRepository {
   private httpClient: AxiosClient;
@@ -95,6 +255,12 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     return MejoraMapper.toEntity(updated);
   }
 
+  async reject(id: string, payload: { negadoPorId: string }): Promise<MejoraEntity> {
+    const { data } = await this.httpClient.patch<MejoraModel>(API_ROUTES.MEJORAS.REJECT(id), payload);
+    const updated = this.unwrapResponse<MejoraModel>(data);
+    return MejoraMapper.toEntity(updated);
+  }
+
   async delete(id: string): Promise<void> {
     await this.httpClient.delete(API_ROUTES.MEJORAS.DELETE(id));
   }
@@ -105,6 +271,10 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     await this.httpClient.post(API_ROUTES.MEJORAS.UPLOAD_FILE(id), form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+  }
+
+  async deleteFile(id: string, filename: string): Promise<void> {
+    await this.httpClient.delete(API_ROUTES.MEJORAS.DELETE_FILE(id, filename));
   }
 
   async downloadPdf(id: string): Promise<{ blob: Blob; filename?: string; contentType?: string }> {
@@ -232,6 +402,7 @@ export class MejoraRepositoryImpl implements MejoraRepository {
             throw error;
           });
 
+
           const nichosPayload = this.unwrapResponse<PropietarioNichoModel[]>(nichosData);
           const nichos = Array.isArray(nichosPayload) ? nichosPayload : [];
 
@@ -240,9 +411,34 @@ export class MejoraRepositoryImpl implements MejoraRepository {
             return null;
           }
 
+          // 4.1 Enriquecer cada nicho con información completa (incluyendo bloque)
+          const nichosEnriquecidos = await Promise.all(
+            nichos.map(async (propNicho) => {
+              // Si el nicho ya tiene información del bloque como objeto, no hacer fetch adicional
+              if (propNicho.id_nicho?.id_nicho && 
+                  (!propNicho.id_nicho.id_bloque || typeof propNicho.id_nicho.id_bloque === 'string')) {
+                try {
+                  const { data: nichoCompleto } = await this.httpClient.get<NichoModelConBloque>(
+                    API_ROUTES.NICHOS.GET_BY_ID(propNicho.id_nicho.id_nicho)
+                  );
+                  const nichoPayload = this.unwrapResponse<NichoModelConBloque>(nichoCompleto);
+                  // Reemplazar el nicho con la información completa
+                  return {
+                    ...propNicho,
+                    id_nicho: nichoPayload,
+                  };
+                } catch {
+                  // Si falla, devolver el propietario original
+                  return propNicho;
+                }
+              }
+              return propNicho;
+            })
+          );
+
           return {
             propietario: PersonMapper.toEntity(persona),
-            nichos: nichos.map(PropietarioNichoMapper.toEntity),
+            nichos: nichosEnriquecidos.map((n) => mapPropietarioConBloqueToEntity(n as PropietarioNichoModel & { id_nicho: NichoModelConBloque })),
           };
         } catch {
           // No registrar error en consola, es esperado que algunas personas no tengan nichos
@@ -277,5 +473,3 @@ export class MejoraRepositoryImpl implements MejoraRepository {
     }
   }
 }
-
-

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import AxiosClient from "@/core/infrastructure/axios-client";
+import { API_ROUTES } from "@/core/constants/api-routes";
 import { useFormContext, Controller, useWatch } from "react-hook-form";
 import { useFindHuecosByCementerioQuery } from "@/features/huecos/presentation/hooks/use-hueco-queries";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
@@ -6,6 +8,7 @@ import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { PropietarioNichoRepositoryImpl } from "@/features/propietarios-nichos/infrastructure/repositories/propietario-nicho.repository.impl";
 
 interface RHFAutocompleteHuecoNichoProps {
     name: string;
@@ -13,6 +16,7 @@ interface RHFAutocompleteHuecoNichoProps {
     placeholder?: string;
     disabled?: boolean;
     isAvailable?: boolean;
+    ownerPersonId?: string;
 }
 
 export default function RHFAutocompleteHuecoNicho({
@@ -21,20 +25,119 @@ export default function RHFAutocompleteHuecoNicho({
     placeholder,
     disabled,
     isAvailable,
+    ownerPersonId,
 }: RHFAutocompleteHuecoNichoProps) {
-    const { control } = useFormContext();
+    const { control, setValue } = useFormContext();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const idCementerio = useWatch({ name: "idCementerio" });
 
+    // Map of bloqueId -> nombre (fallback when hueco/nicho doesn't include bloque name)
+    const [blockMap, setBlockMap] = useState<Record<string, string>>({});
+
+    // Load bloques for the selected cementerio so we can resolve names client-side
+    useEffect(() => {
+        let cancelled = false;
+        if (!idCementerio) {
+            setBlockMap({});
+            return;
+        }
+        (async () => {
+            try {
+                const http = AxiosClient.getInstance();
+                const resp = await http.get<any>(API_ROUTES.BLOQUES.GET_BY_CEMENTERIO(idCementerio));
+                const bloques = resp?.data?.data || resp?.data || [];
+                if (cancelled) return;
+                const map: Record<string, string> = {};
+                (bloques || []).forEach((b: any) => {
+                    const id = b?.idBloque || b?.id_bloque || b?.id || b?.id_bloque;
+                    const nombre = b?.nombre || b?.nombreBloque || b?.nombre_bloque || String(b?.numero) || id;
+                    if (id) map[String(id)] = nombre;
+                });
+                setBlockMap(map);
+            } catch (err) {
+                console.warn('No se pudieron cargar bloques para cementerio', idCementerio, err);
+                setBlockMap({});
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [idCementerio]);
+
     const { data: huecosNichos, isLoading } = useFindHuecosByCementerioQuery(idCementerio);
+    const [allowedNichoIds, setAllowedNichoIds] = useState<string[] | null>(null);
+
+    // When an owner is provided, resolve the nichos that belong to that person
+    useEffect(() => {
+        let cancelled = false;
+        if (!ownerPersonId) {
+            setAllowedNichoIds(null);
+            return;
+        }
+        (async () => {
+            try {
+                // Resolve cedula for the selected person id, because backend endpoint
+                // expects cedula for propietario lookups (por-persona/:cedula)
+                const http = AxiosClient.getInstance();
+                const personaResp = await http.get<any>(API_ROUTES.PERSONS.GET_BY_ID(ownerPersonId));
+                const cedula: string | undefined = personaResp?.data?.data?.cedula;
+                if (!cedula) {
+                    setAllowedNichoIds([]);
+                    return;
+                }
+
+                const propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByPersonaCedula(cedula);
+                if (cancelled) return;
+                const nichoIds = (propietarios || []).map((p: any) => p.idNicho?.idNicho).filter(Boolean);
+                setAllowedNichoIds(nichoIds);
+            } catch (err) {
+                console.warn("No se pudieron resolver propietarios para persona:", err);
+                setAllowedNichoIds([]);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [ownerPersonId]);
 
     // Filtrar por texto de búsqueda
-    const filtered = (huecosNichos ?? []).filter(h => isAvailable ? h.estado === "Disponible" : true).filter(h =>
-        `${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`
-            .toLowerCase()
-            .includes(search.toLowerCase())
-    )
+    const isAvailableState = (s: any) => String(s || "").toLowerCase() === "disponible";
+    // Do not expose any huecos until an owner (solicitante) is selected
+    const baseList = ownerPersonId ? (huecosNichos ?? []).filter(h => isAvailable ? isAvailableState(h.estado) : true) : [];
+
+    const filtered = baseList
+            .filter(h => {
+                // If an owner (solicitante) is provided, only include nichos that belong to that owner
+                if (ownerPersonId) {
+                    // If we have allowedNichoIds loaded, use them
+                    if (Array.isArray(allowedNichoIds)) {
+                        const id = h.idNicho?.idNicho;
+                        return !!id && allowedNichoIds.includes(id);
+                    }
+
+                    // Otherwise, try to detect ownership from embedded propietarios on the nicho (if present)
+                    const propietarios = h.idNicho?.propietarios || h.idNicho?.propietariosNicho || [];
+                    if (Array.isArray(propietarios) && propietarios.length > 0) {
+                        return propietarios.some((p: any) => {
+                            const pid = p?.idPersona?.id_persona || p?.idPersona?.idPersona || p?.idPersona?.id || p?.id_persona || p?.idPersona;
+                            return String(pid) === String(ownerPersonId);
+                        });
+                    }
+
+                    // If we neither have allowedNichoIds nor embedded propietarios, avoid returning all items — treat as not-owned until allowedNichoIds loads
+                    return false;
+                }
+
+                // No owner filter -> include all
+                return true;
+            })
+            .filter(h => {
+                const bloqueName = (h as any)?.bloque?.nombre || h.idNicho?.idBloque?.nombre || h.idNicho?.id_bloque?.nombre || h.idNicho?.bloqueNombre || blockMap[String(h.idNicho?.idBloque || h.idNicho?.id_bloque)] || h.idNicho?.idBloque || h.idNicho?.id_bloque || "";
+                return `${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""} ${String(bloqueName)}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase());
+            })
 
     return (
         <Controller
@@ -46,30 +149,40 @@ export default function RHFAutocompleteHuecoNicho({
                     <div className="w-full">
                         {label && <label className="block text-sm font-medium mb-1">{label}</label>}
                         <Popover open={open} onOpenChange={setOpen}>
-                            <PopoverTrigger asChild>
+                                <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
                                     role="combobox"
                                     aria-expanded={open}
                                     className="w-full justify-between"
-                                    disabled={disabled || isLoading || !idCementerio}
+                                        disabled={disabled || isLoading || !idCementerio || !ownerPersonId}
                                 >
-                                    {selected ? (
+                                            {selected ? (
                                         <span className="font-normal">
-                                            {`Sector: ${selected.idNicho?.sector} - Fila: ${selected.idNicho?.fila} - Número: ${selected.idNicho?.numero} - Hueco: ${selected.numHueco} - Tipo: ${selected.idNicho?.tipo}`}
+                                            {(() => {
+                                                const bloqueName = (selected as any)?.bloque?.nombre ||
+                                                    selected.idNicho?.idBloque?.nombre ||
+                                                    selected.idNicho?.id_bloque?.nombre ||
+                                                    selected.idNicho?.bloqueNombre ||
+                                                    (selected.idNicho ? blockMap[String(selected.idNicho?.idBloque || selected.idNicho?.id_bloque)] : undefined) ||
+                                                    selected.idNicho?.idBloque ||
+                                                    selected.idNicho?.id_bloque ||
+                                                    "-";
+                                                return `Bloque: ${bloqueName} - Fila: ${selected.idNicho?.fila ?? "-"} - Columna: ${selected.idNicho?.columna ?? "-"} - Hueco: ${selected.numHueco} - Tipo: ${selected.idNicho?.tipo ?? "-"}`;
+                                            })()}
                                         </span>
                                     ) : (
                                         <span className="text-gray-400 font-normal">
-                                            {placeholder || "Selecciona un hueco"}
+                                            {!ownerPersonId ? "Selecciona un solicitante primero" : (placeholder || "Selecciona un hueco")}
                                         </span>
                                     )}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
+                                <PopoverContent className="w-full p-0">
                                 <Command shouldFilter={false}>
-                                    <CommandInput
-                                        placeholder="Buscar sector, fila, número, tipo..."
+                                        <CommandInput
+                                        placeholder={ownerPersonId ? "Buscar fila, columna, hueco, tipo..." : "Selecciona un solicitante primero"}
                                         value={search}
                                         onValueChange={setSearch}
                                     />
@@ -82,12 +195,49 @@ export default function RHFAutocompleteHuecoNicho({
                                                     filtered.map(h => (
                                                         <CommandItem
                                                             key={h.idDetalleHueco}
-                                                            value={`${h.idNicho?.sector} ${h.idNicho?.fila} ${h.idNicho?.numero} ${h.numHueco} ${h.idNicho?.tipo}`}
-                                                            onSelect={() => {
-                                                                field.onChange(h.idDetalleHueco);
-                                                                setSearch("");
-                                                                setOpen(false);
-                                                            }}
+                                                            value={`${h.idNicho?.fila ?? ""} ${h.idNicho?.columna ?? ""} ${h.numHueco ?? ""} ${h.idNicho?.tipo ?? ""}`}
+                                                            onSelect={async () => {
+                                                                    field.onChange(h.idDetalleHueco);
+                                                                    // Intentar obtener el propietario del nicho (si existe) desde el propio objeto
+                                                                    let propietarios = h.idNicho?.propietarios;
+                                                                    // Si no vienen propietarios embebidos, consultar al repositorio por idNicho
+                                                                    if ((!propietarios || propietarios.length === 0) && h.idNicho?.idNicho) {
+                                                                        try {
+                                                                            propietarios = await PropietarioNichoRepositoryImpl.getInstance().findByNicho(h.idNicho.idNicho);
+                                                                        } catch (err) {
+                                                                            propietarios = [];
+                                                                            console.warn("No se pudieron obtener propietarios del nicho:", err);
+                                                                        }
+                                                                    }
+
+                                                                    const propietario = propietarios && propietarios.length > 0
+                                                                        ? propietarios.find((p: any) => p.activo) ?? propietarios[0]
+                                                                        : undefined;
+
+                                                                    const ownerName = propietario?.idPersona
+                                                                        ? [propietario.idPersona.nombres ?? propietario.idPersona.nombres, propietario.idPersona.apellidos ?? propietario.idPersona.apellidos].filter(Boolean).join(" ")
+                                                                        : "";
+
+                                                                    // Rellenar el campo nombreAdministradorNicho en el formulario
+                                                                    try {
+                                                                        setValue("nombreAdministradorNicho", ownerName, { shouldValidate: true, shouldDirty: true });
+                                                                    } catch (e) {
+                                                                        // En caso de que el formulario no tenga ese campo, no interrumpir
+                                                                    }
+
+                                                                    // También rellenar el solicitante (`idSolicitante`) con el id de la persona propietaria
+                                                                    try {
+                                                                        const ownerPersonId = propietario?.idPersona?.id_persona || propietario?.idPersona?.id_persona;
+                                                                        if (ownerPersonId) {
+                                                                            setValue("idSolicitante", ownerPersonId, { shouldValidate: true, shouldDirty: true });
+                                                                        }
+                                                                    } catch (e) {
+                                                                        // No bloquear si falla
+                                                                    }
+
+                                                                    setSearch("");
+                                                                    setOpen(false);
+                                                                }}
                                                         >
                                                             <Check
                                                                 className={cn(
@@ -96,12 +246,22 @@ export default function RHFAutocompleteHuecoNicho({
                                                                 )}
                                                             />
                                                             <span className="font-normal">
-                                                                Sector: {h.idNicho?.sector} - Fila: {h.idNicho?.fila} - Número: {h.idNicho?.numero} - Hueco: {h.numHueco} - Tipo: {h.idNicho?.tipo}
+                                                                    {(() => {
+                                                                    const bloqueName = (h as any)?.bloque?.nombre ||
+                                                                        h.idNicho?.idBloque?.nombre ||
+                                                                        h.idNicho?.id_bloque?.nombre ||
+                                                                        h.idNicho?.bloqueNombre ||
+                                                                        (h.idNicho ? blockMap[String(h.idNicho?.idBloque || h.idNicho?.id_bloque)] : undefined) ||
+                                                                        h.idNicho?.idBloque ||
+                                                                        h.idNicho?.id_bloque ||
+                                                                        "-";
+                                                                    return `Bloque: ${bloqueName} - Fila: ${h.idNicho?.fila ?? "-"} - Columna: ${h.idNicho?.columna ?? "-"} - Hueco: ${h.numHueco} - Tipo: ${h.idNicho?.tipo ?? "-"}`;
+                                                                })()}
                                                             </span>
                                                         </CommandItem>
                                                     ))
                                                 ) : (
-                                                    <CommandEmpty>No se encontraron huecos</CommandEmpty>
+                                                    <CommandEmpty>{ownerPersonId ? "No se encontraron huecos" : "Selecciona un solicitante para ver huecos"}</CommandEmpty>
                                                 )}
                                             </>
                                         )}

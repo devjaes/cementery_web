@@ -23,6 +23,7 @@ export const useCreatePayment = () => {
       queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.all() });
     },
     onError: (error: Error) => {
+      console.log("Error creating payment:", error);
       toast.error("Error al generar el pago", {
         description: error.message,
       });
@@ -97,17 +98,30 @@ export const useUploadReceipt = () => {
         queryKey: PAYMENT_QUERY_KEYS.byId(payment.paymentId),
       });
       toast.success("Comprobante subido y pago confirmado exitosamente");
+      // Force-set the validatedBy on the payment using the server confirm endpoint
+      // This ensures the value the user provided (or the fallback from requisito) is persisted
+      try {
+        const repository = (await import("../../infrastructure/repositories/payment.repository.impl")).PaymentRepositoryImpl.getInstance();
+        await repository.confirmPayment(payment.paymentId, variables.validatedBy);
+        // invalidate again to pick up updated validatedBy
+        queryClient.invalidateQueries({ queryKey: PAYMENT_QUERY_KEYS.byId(payment.paymentId) });
+      } catch (err) {
+        console.warn("Could not force-confirm payment with provided validatedBy:", err);
+      }
 
       // Si el pago corresponde a una venta de nicho, intentar confirmar la venta
       try {
-        if (payment.procedureType === "niche_sale") {
-          const axiosClient = AxiosClient.getInstance();
-          const nichoSalesRepository = new NichoSalesRepository({
-            post: axiosClient.post.bind(axiosClient),
-            patch: axiosClient.patch.bind(axiosClient),
-          });
+        const axiosClient = AxiosClient.getInstance();
+        const nichoSalesRepository = new NichoSalesRepository({
+          post: axiosClient.post.bind(axiosClient),
+          patch: axiosClient.patch.bind(axiosClient),
+          delete: axiosClient.delete.bind(axiosClient),
+        });
 
+
+        if (payment.procedureType === "niche_sale") {
           // llamar al endpoint de confirmar venta para que el backend marque el nicho como VENDIDO
+          // No reenviamos el archivo aquí porque ya fue subido en el endpoint de payments.
           await nichoSalesRepository.confirmarVenta({
             idPago: payment.paymentId,
             validadoPor: variables.validatedBy,
@@ -116,6 +130,20 @@ export const useUploadReceipt = () => {
           // invalidar queries de nichos para refrescar estado
           queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
           toast.success("Nicho marcado como VENDIDO");
+        }
+
+        // Si el pago corresponde a una venta de mausoleo, intentar confirmar la venta de mausoleo
+
+        if (payment.procedureType === "mausoleum_sale") {
+          // Confirmar venta de mausoleo. El comprobante ya fue subido al endpoint de payments,
+          // por lo que enviamos sólo idPago y validadoPor.
+          await nichoSalesRepository.confirmarVentaMausoleo({
+            idPago: payment.paymentId,
+            validadoPor: variables.validatedBy,
+          });
+
+          queryClient.invalidateQueries({ queryKey: NICHO_QUERY_KEYS.all() });
+          toast.success("Mausoleo marcado como VENDIDO");
         }
       } catch (err: any) {
         // Si el backend indica que ya está confirmado, tratamos como no bloqueante.

@@ -8,7 +8,7 @@ Este módulo proporciona una interfaz visual interactiva para visualizar y gesti
 - **Vista de bloques**: Muestra todos los bloques del cementerio seleccionado en una cuadrícula visual
 - **Navegación por bloques**: Click en cualquier bloque para ver sus nichos específicos
 - **Buscador de bloques**: Permite buscar bloques por nombre, número o descripción
-- **Asociación automática**: Los nichos se agrupan automáticamente en bloques según su sector
+-- **Asociación automática**: Los nichos se agrupan automáticamente en bloques según su bloque (relación `idBloque`)
 
 ### 📊 Información Detallada de Bloques
 Cada tarjeta de bloque muestra:
@@ -115,7 +115,7 @@ Hook personalizado para gestionar el estado del cementerio seleccionado.
 Hook principal que combina bloques y nichos:
 - Obtiene los bloques del cementerio
 - Obtiene todos los nichos del cementerio
-- Asocia automáticamente nichos a bloques por sector
+- Asocia automáticamente nichos a bloques por bloque (por `idBloque`)
 - Calcula estadísticas por bloque
 - Maneja la selección/deselección de bloques
 
@@ -139,14 +139,16 @@ Hook para obtener los nichos con información de huecos.
 
 ## Lógica de Asociación Bloque-Nicho
 
-Los nichos se asocian automáticamente a bloques mediante la comparación del campo `sector` del nicho con el `nombre` o `numero` del bloque:
+Los nichos se asocian automáticamente a bloques mediante su relación con el bloque (`idBloque`) o, si no existe relación directa, mediante la comparación del identificador del bloque con datos del nicho:
 
 ```typescript
-// Ejemplo de asociación
+// Ejemplo de asociación preferente por id
 const bloqueNichos = niches.filter((nicho) => {
+  if (nicho.idBloque) return String(nicho.idBloque) === String(bloque.idBloque);
   const bloqueIdentifier = bloque.numero?.toString() || bloque.nombre;
-  return nicho.sector.toLowerCase().includes(bloqueIdentifier.toLowerCase()) ||
-         bloqueIdentifier.toLowerCase().includes(nicho.sector.toLowerCase());
+  // Fallback a comparación por texto si no existe idBloque
+  return (nicho.bloqueNombre || "").toLowerCase().includes(bloqueIdentifier.toLowerCase()) ||
+         bloqueIdentifier.toLowerCase().includes((nicho.bloqueNombre || "").toLowerCase());
 });
 ```
 
@@ -206,16 +208,17 @@ export default function MapListView() {
 - [ ] Gestión de bloques directamente desde el mapa
 - [ ] Drag and drop para reorganizar nichos entre bloques
 
-## Notas Técnicas
+
+### Notas Técnicas
 
 ### Asociación Automática
-La asociación entre bloques y nichos se realiza de forma automática mediante comparación de texto entre:
+La asociación entre bloques y nichos se realiza preferentemente por la relación `idBloque` del nicho. Si el nicho no tiene `idBloque` asociado, se puede realizar una comparación textual entre:
 - El `numero` o `nombre` del bloque
-- El campo `sector` del nicho
+- Un campo textual del nicho que identifique el bloque (`bloqueNombre`)
 
 Esta estrategia funciona bien cuando:
-- Los sectores de los nichos corresponden a nombres/números de bloques
-- Se mantiene una nomenclatura consistente
+- Los nichos están asociados a bloques mediante `idBloque`
+- O, en su defecto, se mantiene una nomenclatura consistente para emparejar por texto
 
 ### Performance
 - Los datos se cargan una sola vez mediante React Query

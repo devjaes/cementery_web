@@ -10,6 +10,7 @@ import {
   useUpdateNichoMutation,
 } from "./use-nicho-mutations";
 import { useRouter } from "next/navigation";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
 
 interface UseNichoFormOptions {
   nicho?: NichoEntity;
@@ -18,20 +19,21 @@ interface UseNichoFormOptions {
 
 export function useNichoForm({ nicho, onSuccess }: UseNichoFormOptions = {}) {
   const router = useRouter();
+  const { activeCemetery } = useActiveCemetery();
+
   const methods = useForm<CreateNichoDTO>({
     resolver: zodResolver(CreateNichoSchema),
     defaultValues: nicho
       ? {
           idCementerio: nicho.idCementerio?.idCementerio,
-          sector: nicho.sector,
-          fila: nicho.fila,
-          numero: nicho.numero,
           tipo: nicho.tipo as CreateNichoDTO["tipo"],
           fechaConstruccion: nicho.fechaConstruccion,
           observaciones: nicho.observaciones,
           numHuecos: nicho.numHuecos,
         }
-      : {},
+      : {
+          idCementerio: activeCemetery?.idCementerio || undefined,
+        },
   });
   const { mutate: create, isPending: isCreating } = useCreateNichoMutation();
   const { mutate: update, isPending: isUpdating } = useUpdateNichoMutation();

@@ -9,7 +9,9 @@ import {
   BoxIcon,
   UsersRound,
   FileText,
+  RotateCcw,
   Hammer,
+  ClipboardList,
 } from "lucide-react";
 
 import {
@@ -24,13 +26,9 @@ import {
 import { NavUser } from "./nav-user";
 import { NavMain } from "./nav-main";
 import Link from "next/link";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -57,6 +55,12 @@ const data = {
       isActive: (pathname: string) => pathname.startsWith("/nichos"),
     },
     {
+      title: "Mejoras",
+      url: "/mejoras",
+      icon: Hammer,
+      isActive: (pathname: string) => pathname.startsWith("/mejoras"),
+    },
+    {
       title: "Mapa",
       url: "/map",
       icon: ListIcon,
@@ -70,15 +74,38 @@ const data = {
         pathname.startsWith("/requisitos-inhumaciones"),
     },
     {
-      title: "Mejoras en Tumbas",
-      url: "/mejoras",
-      icon: Hammer,
-      isActive: (pathname: string) => pathname.startsWith("/mejoras"),
+      title: "Exhumaciones",
+      url: "/exhumaciones",
+      icon: RotateCcw,
+      isActive: (pathname: string) => pathname.startsWith("/exhumaciones"),
+    },
+    {
+      title: "Reportes",
+      url: "/reports",
+      icon: ClipboardList,
+      isActive: (pathname: string) => pathname.startsWith("/reports"),
     },
   ],
 };
 
+import { CemeterySwitcher } from "@/features/cementery/presentation/components/cemetery-switcher.component";
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useCurrentUser();
+
+  // Create formatted user object for NavUser
+  const formattedUser = user
+    ? {
+      name: `${user.nombre} ${user.apellido}`,
+      email: user.email || user.cedula, // Use email if exists, otherwise cedula
+      avatar: "", // Empty avatar by default
+    }
+    : {
+      name: "Usuario",
+      email: "Sin sesión",
+      avatar: "",
+    };
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -97,12 +124,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <div className="mt-2 px-2">
+          <CemeterySwitcher />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={formattedUser} />
       </SidebarFooter>
     </Sidebar>
   );

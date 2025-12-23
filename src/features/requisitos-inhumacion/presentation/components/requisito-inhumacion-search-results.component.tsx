@@ -46,10 +46,14 @@ import {
   RequisitoInhumacionFallecidosEntity,
   SearchFallecidosRequisitoInhumacionEntity,
 } from "../../domain/entities/requisito-inhumacion.entity";
+import { useActiveCemetery } from "@/features/cementery/presentation/hooks/use-active-cemetery";
+import { useFindBloquesByCementeryQuery } from "@/features/bloques/presentation/hooks/use-bloques-queries";
 import {
   useDeleteRequisitoInhumacionMutation,
   useDownloadRequisitoInhumacionPdfMutation,
 } from "../hooks/use-requisito-inhumacion-mutation";
+import { useEffect, useState } from "react";
+import { PaymentRepositoryImpl } from "@/features/payment/infrastructure/repositories/payment.repository.impl";
 
 interface RequisitoInhumacionSearchResultsProps {
   results: SearchFallecidosRequisitoInhumacionEntity;
@@ -105,52 +109,103 @@ export function RequisitoInhumacionSearchResults({
     return undefined;
   };
 
-  const isRequisitoRealizado = (r: unknown): boolean => {
+  const [paidMap, setPaidMap] = useState<Record<string, boolean>>({});
+
+  // Helper to read boolean-like fields tolerantly (camelCase / snake_case / string/number)
+  const readBool = (obj: any, keyCamel: string) => {
+    if (!obj) return false;
+    const keySnake = keyCamel.replace(/[A-Z]/g, (m: string) => `_${m.toLowerCase()}`);
+
+    const candidates = [keyCamel, keySnake, keyCamel.charAt(0).toUpperCase() + keyCamel.slice(1)];
+
+    for (const k of candidates) {
+      if (k in obj) {
+        const val = obj[k];
+        if (typeof val === "boolean") return val;
+        if (typeof val === "string") {
+          const low = val.toLowerCase();
+          if (low === "true" || low === "1") return true;
+          if (low === "false" || low === "0") return false;
+        }
+        if (typeof val === "number") return val === 1;
+      }
+    }
+
+    // Try nested inhumacion: obj.inhumacion[key]
     try {
-      const reqAny = r as any;
-
-      const readBool = (obj: any, keyCamel: string) => {
-        if (!obj) return false;
-        const keySnake = keyCamel.replace(/[A-Z]/g, (m: string) => `_${m.toLowerCase()}`);
-
-        const candidates = [keyCamel, keySnake, keyCamel.charAt(0).toUpperCase() + keyCamel.slice(1)];
-
+      const inh = obj.inhumacion;
+      if (inh) {
         for (const k of candidates) {
-          if (k in obj) {
-            const val = obj[k];
-            if (typeof val === "boolean") return val;
-            if (typeof val === "string") {
-              const low = val.toLowerCase();
+          if (k in inh) {
+            const v = inh[k];
+            if (typeof v === "boolean") return v;
+            if (typeof v === "string") {
+              const low = v.toLowerCase();
               if (low === "true" || low === "1") return true;
               if (low === "false" || low === "0") return false;
             }
-            if (typeof val === "number") return val === 1;
+            if (typeof v === "number") return v === 1;
           }
         }
+      }
+    } catch {}
 
-        // Try nested inhumacion: obj.inhumacion[key]
-        try {
-          const inh = obj.inhumacion;
-          if (inh) {
-            for (const k of candidates) {
-              if (k in inh) {
-                const v = inh[k];
-                if (typeof v === "boolean") return v;
-                if (typeof v === "string") {
-                  const low = v.toLowerCase();
-                  if (low === "true" || low === "1") return true;
-                  if (low === "false" || low === "0") return false;
-                }
-                if (typeof v === "number") return v === 1;
+    return false;
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const repo = PaymentRepositoryImpl.getInstance();
+
+    const loadPaidStates = async () => {
+      try {
+        const requisitosList = ((): any[] => {
+          try {
+            // results may be nested; flatten requisitos from results
+            const all: any[] = [];
+            for (const f of results.fallecidos || []) {
+              for (const r of f.requisitos || []) {
+                all.push(r);
               }
             }
+            return all;
+          } catch {
+            return [];
           }
-        } catch {
-          // ignore
-        }
+        })();
 
-        return false;
-      };
+        const uniqueIds = Array.from(new Set(requisitosList.map((rq) => {
+          // derive procedure id: prefer inhumacion id then requisito id
+          return (rq?.inhumacion?.id_inhumacion) || rq?.idRequsitoInhumacion || rq?.idRequisitoInhumacion || rq?.id;
+        }).filter(Boolean)));
+
+        const map: Record<string, boolean> = {};
+        await Promise.all(uniqueIds.map(async (id) => {
+          try {
+            const payments = await repo.findByProcedure("burial", id);
+            const hasPaid = Array.isArray(payments) && payments.some(p => {
+              const s = (p.status || "").toString().toLowerCase();
+              return s === "paid" || s === "pagado";
+            });
+            map[id] = hasPaid;
+          } catch (e) {
+            map[id] = false;
+          }
+        }));
+
+        if (!cancelled) setPaidMap(map);
+      } catch (e) {
+        console.warn("Error loading payment states for requisitos:", e);
+      }
+    };
+
+    loadPaidStates();
+    return () => { cancelled = true; };
+  }, [results]);
+
+  const isRequisitoRealizado = (r: unknown): boolean => {
+    try {
+      const reqAny = r as any;
 
       // Required fields (explicit): these must be true. Note: we intentionally DO NOT include autorizacionDeMovilizacionDelCadaver
       const requiredKeys = [
@@ -162,9 +217,47 @@ export function RequisitoInhumacionSearchResults({
         "oficioDeSolicitud",
       ];
 
-      return requiredKeys.every((k) => readBool(reqAny, k));
+      const checklistOk = requiredKeys.every((k) => readBool(reqAny, k));
+
+      // Determine procedure id for looking up payments
+      const procedureId = reqAny?.inhumacion?.id_inhumacion || reqAny?.idRequsitoInhumacion || reqAny?.idRequisitoInhumacion || reqAny?.id;
+
+      const paymentPaid = procedureId ? Boolean(paidMap[procedureId]) : false;
+
+      // The requisito is considered 'Realizado' only when checklist OK AND a paid payment exists
+      return checklistOk && paymentPaid;
     } catch (e) {
       console.warn("isRequisitoRealizado error:", e);
+      return false;
+    }
+  };
+
+  // Load bloques map for current cemetery (used to display bloque name when available)
+  const { activeCemetery } = useActiveCemetery();
+  const bloquesQuery = useFindBloquesByCementeryQuery(activeCemetery?.idCementerio || "");
+  const blockMap: Record<string, string> = {};
+  if (bloquesQuery.data) {
+    bloquesQuery.data.forEach((b: any) => {
+      const id = b?.idBloque || b?.id_bloque || b?.id || String(b?.id);
+      const nombre = b?.nombre || b?.nombreBloque || b?.nombre_bloque || String(b?.numero) || id;
+      blockMap[String(id)] = nombre;
+    });
+  }
+
+  // New helper: evaluates only the six document fields (ignores autorizacionDeMovilizacionDelCadaver)
+  const isChecklistComplete = (r: unknown): boolean => {
+    try {
+      const reqAny = r as any;
+      const requiredKeys = [
+        "copiaCertificadoDefuncion",
+        "informeEstadisticoINEC",
+        "copiaCedula",
+        "pagoTasaInhumacion",
+        "copiaTituloPropiedadNicho",
+        "oficioDeSolicitud",
+      ];
+      return requiredKeys.every((k) => readBool(reqAny, k));
+    } catch {
       return false;
     }
   };
@@ -303,8 +396,11 @@ export function RequisitoInhumacionSearchResults({
                         </span>
                       </TableHead>
                       <TableHead>
-                        <span className="flex items-center gap-1">Estado</span>
+                        <span className="flex items-center gap-1">
+                          Estado (Docs)
+                        </span>
                       </TableHead>
+                      
                       <TableHead>
                         <span className="flex items-center gap-1">
                           Acciones
@@ -329,8 +425,12 @@ export function RequisitoInhumacionSearchResults({
                         </TableCell>
                         <TableCell>
                           {requisito.idHuecoNicho
-                            ? `${requisito.idHuecoNicho.idNicho?.sector} - Fila: ${requisito.idHuecoNicho.idNicho?.fila} 
-                    - Número: ${requisito.idHuecoNicho.idNicho?.numero} - Hueco: ${requisito.idHuecoNicho.numHueco}`
+                            ? `Bloque: ${(
+                                (requisito as any)?.idHuecoNicho?.idNicho?.bloque?.nombre ||
+                                blockMap[String(requisito.idHuecoNicho.idNicho?.idBloque || (requisito as any)?.idHuecoNicho?.idNicho?.id_bloque)] ||
+                                requisito.idHuecoNicho.idNicho?.idBloque ||
+                                "-"
+                              )} - Fila: ${requisito.idHuecoNicho.idNicho?.fila ?? "-"} - Columna: ${requisito.idHuecoNicho.idNicho?.columna ?? "-"} - Hueco: ${requisito.idHuecoNicho.numHueco}`
                             : "Sin nicho"}
                         </TableCell>
                         <TableCell>
@@ -345,16 +445,17 @@ export function RequisitoInhumacionSearchResults({
                         </TableCell>
                         <TableCell>{requisito.horaInhumacion}</TableCell>
                         <TableCell>
-                          {isRequisitoRealizado(requisito) ? (
-                            <span className="text-green-700 bg-green-100 px-2 py-0.5 rounded-md text-sm">
+                          {isChecklistComplete(requisito) ? (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
                               Realizado
                             </span>
                           ) : (
-                            <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md text-sm">
+                            <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
                               Pendiente
                             </span>
                           )}
                         </TableCell>
+                        
                         <TableCell>
                           <div className="flex gap-2">
                             <Link
@@ -447,9 +548,9 @@ export function RequisitoInhumacionSearchResults({
           </CardHeader>
           <CardContent>
             <p className="text-green-700">
-              Se encontró el requisito de{" "}
+              Se encontró el requisito de{' '}
               <span className="font-medium">
-                {fallecido.nombres} {fallecido.apellidos}
+                {[fallecido.nombres, fallecido.apellidos].filter(Boolean).join(' ')}{' '}
               </span>
               que coincide con &quot;{searchTerm}&quot;.
             </p>
@@ -567,8 +668,9 @@ export function RequisitoInhumacionSearchResults({
                 </span>
               </TableHead>
               <TableHead>
-                <span className="flex items-center gap-1">Estado</span>
+                <span className="flex items-center gap-1">Estado (Docs)</span>
               </TableHead>
+              
               <TableHead>
                 <span className="flex items-center gap-1">Acciones</span>
               </TableHead>
@@ -590,10 +692,14 @@ export function RequisitoInhumacionSearchResults({
                   {requisito.idCementerio?.nombre ?? "Sin cementerio"}
                 </TableCell>
                 <TableCell>
-                  {requisito.idHuecoNicho ?
-                    `${requisito.idHuecoNicho.idNicho?.sector} - Fila: ${requisito.idHuecoNicho.idNicho?.fila} 
-                    - Número: ${requisito.idHuecoNicho.idNicho?.numero} - Hueco: ${requisito.idHuecoNicho.numHueco}`
-                  : "Sin nicho"}
+                  {requisito.idHuecoNicho
+                    ? `Bloque: ${(
+                        (requisito as any)?.idHuecoNicho?.idNicho?.bloque?.nombre ||
+                        blockMap[String(requisito.idHuecoNicho.idNicho?.idBloque || (requisito as any)?.idHuecoNicho?.idNicho?.id_bloque)] ||
+                        requisito.idHuecoNicho.idNicho?.idBloque ||
+                        "-"
+                      )} - Fila: ${requisito.idHuecoNicho.idNicho?.fila ?? "-"} - Columna: ${requisito.idHuecoNicho.idNicho?.columna ?? "-"} - Hueco: ${requisito.idHuecoNicho.numHueco}`
+                    : "Sin nicho"}
                 </TableCell>
                 <TableCell>
                   {requisito.idFallecido
@@ -605,16 +711,17 @@ export function RequisitoInhumacionSearchResults({
                 </TableCell>
                 <TableCell>{requisito.horaInhumacion}</TableCell>
                 <TableCell>
-                  {isRequisitoRealizado(requisito) ? (
-                    <span className="text-green-700 bg-green-100 px-2 py-0.5 rounded-md text-sm">
+                  {isChecklistComplete(requisito) ? (
+                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
                       Realizado
                     </span>
                   ) : (
-                    <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md text-sm">
+                    <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
                       Pendiente
                     </span>
                   )}
                 </TableCell>
+                
                 <TableCell>
                   <div className="flex gap-2">
                     <Link

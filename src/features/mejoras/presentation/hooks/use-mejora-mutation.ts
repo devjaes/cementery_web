@@ -46,6 +46,26 @@ export const useApproveMejoraMutation = () => {
   });
 };
 
+export const useRejectMejoraMutation = () => {
+  const qc = useQueryClient();
+  return useMutation<MejoraEntity, Error, { id: string; negadoPorId: string }>({
+    mutationFn: ({ id, negadoPorId }) =>
+      MejoraRepositoryImpl.getInstance().reject(id, { negadoPorId }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEYS.all() });
+      qc.invalidateQueries({ queryKey: KEYS.byId(variables.id) });
+      toast.success("Mejora negada", {
+        description: "La solicitud cambió su estado a Negado.",
+      });
+    },
+    onError: (error) => {
+      toast.error("No se pudo negar la mejora", {
+        description: error.message,
+      });
+    },
+  });
+};
+
 export const useUpdateMejoraMutation = () => {
   const qc = useQueryClient();
   return useMutation<MejoraEntity, Error, { id: string; data: Partial<CreateMejoraEntity> }>({
@@ -58,6 +78,24 @@ export const useUpdateMejoraMutation = () => {
       });
     },
     onError: (e) => toast.error("Error al actualizar la mejora", { description: e.message }),
+  });
+};
+
+export const useDeleteMejoraFileMutation = () => {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { id: string; filename: string }>({
+    mutationFn: ({ id, filename }) => MejoraRepositoryImpl.getInstance().deleteFile(id, filename),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEYS.byId(variables.id) });
+      toast.success("Documento eliminado", {
+        description: "El archivo se eliminó correctamente.",
+      });
+    },
+    onError: (error) => {
+      toast.error("No se pudo eliminar el documento", {
+        description: error.message,
+      });
+    },
   });
 };
 

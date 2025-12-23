@@ -16,6 +16,7 @@ import { useFindNichoByIdQuery } from "@/features/nichos/presentation/hooks/use-
 import { useFindPersonByIdQuery } from "@/features/person/presentation/hooks/use-person-queries";
 import type { NichoEntity } from "@/features/nichos/domain/entities/nicho.entity";
 import type { PersonEntity } from "@/features/person/domain/entities/person.entity";
+import { normalizeDateToISO } from "../helpers/mejora-entity-to-dto.mapper";
 
 const DEFAULT_ENTIDAD = "GADM Santiago de Pillaro";
 
@@ -35,9 +36,8 @@ const buildHuecoDescripcion = (requisito: RequisitoInhumacionEntity) => {
   const nicho = hueco?.idNicho;
   const fragments: string[] = [];
   if (requisito.idCementerio?.nombre) fragments.push(requisito.idCementerio.nombre);
-  if (nicho?.sector) fragments.push(`Sector ${nicho.sector}`);
   if (nicho?.fila) fragments.push(`Fila ${nicho.fila}`);
-  if (nicho?.numero) fragments.push(`Nicho ${nicho.numero}`);
+  if (nicho?.columna) fragments.push(`Columna ${nicho.columna}`);
   if (hueco?.numHueco) fragments.push(`Hueco ${hueco.numHueco}`);
   return fragments.length ? fragments.join(" • ") : undefined;
 };
@@ -46,9 +46,8 @@ const buildCodigoSitio = (requisito: RequisitoInhumacionEntity) => {
   const hueco = requisito.idHuecoNicho;
   const nicho = hueco?.idNicho;
   const segments: string[] = [];
-  if (nicho?.sector) segments.push(`SEC-${nicho.sector}`);
   if (nicho?.fila) segments.push(`FILA-${nicho.fila}`);
-  if (nicho?.numero) segments.push(`NICHO-${nicho.numero}`);
+  if (nicho?.columna) segments.push(`NICHO-${nicho.columna}`);
   if (hueco?.numHueco) segments.push(`HUECO-${hueco.numHueco}`);
   return segments.length ? segments.join("-") : undefined;
 };
@@ -121,10 +120,10 @@ const mapRequisitoToMejoraDefaults = (requisito: RequisitoInhumacionEntity): Par
     solicitanteCorreo: truncate(solicitante?.correo, 100),
     observacionSolicitante: truncate(requisito.observacionSolicitante ?? "Sin observaciones", 200),
     id_fallecido: fallecido?.id_persona ?? undefined,
-    fechaFallecimiento: fallecido?.fecha_defuncion ?? undefined,
+    fechaFallecimiento: normalizeDateToISO(fallecido?.fecha_defuncion),
     propietarioNicho: truncate(propietarioNombre ?? requisito.nombreAdministradorNicho, 200),
     propietarioNombre: truncate(propietarioNombre, 200),
-    propietarioFechaAdquisicion: propietario?.fechaAdquisicion ?? undefined,
+    propietarioFechaAdquisicion: normalizeDateToISO(propietario?.fechaAdquisicion),
   propietarioTipoTenencia: truncate(propietario?.tipo, 50),
     numeroNichos: requisito.idHuecoNicho?.idNicho?.numHuecos ?? undefined,
     lugarNicho: truncate(ubicacion, 100),
@@ -152,6 +151,9 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
   const direccionEntidad = nicho.idCementerio?.direccion ?? undefined;
   
   const propietarioActivo = nicho.propietarios?.find((prop) => prop.activo);
+  
+  // Extraer información del fallecido si existe
+  const fallecidoInfo = extractFallecidoFromNicho(nicho);
 
   const result: Partial<CreateMejoraDTO> = {
     idCementerio: nicho.idCementerio?.idCementerio,
@@ -161,9 +163,13 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
     solicitanteDireccion: truncate(propietario?.direccion, 200),
     solicitanteTelefono: truncate(propietario?.telefono, 30),
     solicitanteCorreo: truncate(propietario?.correo, 100),
+    // Información del fallecido (si existe)
+    id_fallecido: fallecidoInfo?.idPersona,
+    fechaFallecimiento: normalizeDateToISO(fallecidoInfo?.fechaDefuncion),
+    // Información del propietario
     propietarioNicho: truncate(propietarioNombre, 200),
     propietarioNombre: truncate(propietarioNombre, 200),
-    propietarioFechaAdquisicion: propietarioActivo?.fechaAdquisicion ?? undefined,
+    propietarioFechaAdquisicion: normalizeDateToISO(propietarioActivo?.fechaAdquisicion),
     propietarioTipoTenencia: truncate(propietarioActivo?.tipo, 50),
     numeroNichos: nicho.numHuecos ?? undefined,
     lugarNicho: truncate(ubicacion, 100),
@@ -180,18 +186,51 @@ const mapNichoToMejoraDefaults = (nicho: NichoEntity, propietario?: PersonEntity
 const buildNichoDescripcion = (nicho: NichoEntity) => {
   const fragments: string[] = [];
   if (nicho.idCementerio?.nombre) fragments.push(nicho.idCementerio.nombre);
-  if (nicho.sector) fragments.push(`Sector ${nicho.sector}`);
   if (nicho.fila) fragments.push(`Fila ${nicho.fila}`);
-  if (nicho.numero) fragments.push(`Nicho ${nicho.numero}`);
+  if (nicho.columna) fragments.push(`Columna ${nicho.columna}`);
   return fragments.length ? fragments.join(" • ") : undefined;
 };
 
 const buildNichoCodigoSitio = (nicho: NichoEntity) => {
   const segments: string[] = [];
-  if (nicho.sector) segments.push(`SEC-${nicho.sector}`);
   if (nicho.fila) segments.push(`FILA-${nicho.fila}`);
-  if (nicho.numero) segments.push(`NICHO-${nicho.numero}`);
+  if (nicho.columna) segments.push(`NICHO-${nicho.columna}`);
   return segments.length ? segments.join("-") : undefined;
+};
+
+/**
+ * Extrae el primer fallecido del nicho (desde huecos o inhumaciones)
+ */
+const extractFallecidoFromNicho = (nicho: NichoEntity): { idPersona?: string; fechaDefuncion?: string; fechaInhumacion?: string } | undefined => {
+  // Buscar en huecos
+  if (nicho.huecos && nicho.huecos.length > 0) {
+    for (const hueco of nicho.huecos) {
+      if (hueco.idFallecido) {
+        return {
+          idPersona: hueco.idFallecido.id_persona,
+          fechaDefuncion: hueco.idFallecido.fecha_defuncion ?? undefined,
+          fechaInhumacion: hueco.idFallecido.fecha_inhumacion ?? undefined,
+        };
+      }
+    }
+  }
+
+  // Buscar en inhumaciones (el API devuelve id_fallecido como objeto)
+  if (nicho.inhumaciones && nicho.inhumaciones.length > 0) {
+    for (const inhumacion of nicho.inhumaciones) {
+      // El API puede devolver id_fallecido como objeto con id_persona
+      const fallecido = inhumacion.id_fallecido;
+      if (fallecido && typeof fallecido === 'object') {
+        return {
+          idPersona: fallecido.id_persona,
+          fechaDefuncion: fallecido.fecha_defuncion ?? undefined,
+          fechaInhumacion: fallecido.fecha_inhumacion ?? inhumacion.fecha_inhumacion ?? undefined,
+        };
+      }
+    }
+  }
+
+  return undefined;
 };
 
 export default function MejoraCreateView() {

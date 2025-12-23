@@ -20,9 +20,8 @@ export class NichoMapper {
         ? CementeryMapper.toEntity(model.id_cementerio)
         : undefined,
       idBloque: model.id_bloque ? model.id_bloque : undefined,
-      sector: model.sector,
       fila: model.fila,
-      numero: model.numero,
+      columna: model.columna,
       tipo: model.tipo,
       estado: model.estado,
       estadoVenta: model.estadoVenta,
@@ -44,12 +43,9 @@ export class NichoMapper {
   static toModel(entity: CreateNichoEntity): CreateNichoModel {
     return {
       id_cementerio: entity.idCementerio,
-      sector: entity.sector,
-      fila: entity.fila,
-      numero: entity.numero,
       tipo: entity.tipo,
       fecha_construccion: entity.fechaConstruccion,
-      observaciones: entity.observaciones,
+      observaciones: entity.observaciones ?? undefined,
       num_huecos: entity.numHuecos,
     };
   }
@@ -57,12 +53,9 @@ export class NichoMapper {
   static toUpdateModel(entity: UpdateNichoEntity): UpdateNichoModel {
     return {
       id_nicho: entity.idNicho,
-      sector: entity.sector,
-      fila: entity.fila,
-      numero: entity.numero,
       tipo: entity.tipo,
       fecha_construccion: entity.fechaConstruccion,
-      observaciones: entity.observaciones,
+      observaciones: entity.observaciones ?? undefined,
       num_huecos: entity.numHuecos,
     };
   }

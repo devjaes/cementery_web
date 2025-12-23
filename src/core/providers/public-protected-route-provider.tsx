@@ -1,27 +1,39 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useAuthStore } from "@/features/auth/presentation/context/auth.store";
 
 export default function PublicProtectedRoute({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
   const router = useRouter();
-  const isLoading = status === "loading";
 
   useEffect(() => {
-    if (!isLoading && session) {
+    // Esperar a que el store esté hidratado antes de redirigir
+    if (!isHydrated) return;
+
+    if (isAuthenticated) {
       router.push("/main");
     }
-  }, [isLoading, session, router]);
+  }, [isAuthenticated, isHydrated, router]);
 
-  if (isLoading) {
-    return <div>Cargando...</div>;
+  // Mostrar loading mientras se hidrata el estado
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
-  return session ? null : children;
+  if (isAuthenticated) {
+    return null;
+  }
+
+  return <>{children}</>;
 }

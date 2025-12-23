@@ -22,7 +22,7 @@ export default function RHFNichoSelect({
     .filter((n) => n.idNicho !== undefined)
     .map((n) => ({
       value: n.idNicho as string,
-      label: `${n.sector} - Fila: ${n.fila} - Número: ${n.numero} - Tipo: ${n.tipo}`,
+      label: `Fila: ${n.fila ?? "-"} - Columna: ${n.columna ?? "-"} - Tipo: ${n.tipo ?? "-"}`,
     }));
 
   return (

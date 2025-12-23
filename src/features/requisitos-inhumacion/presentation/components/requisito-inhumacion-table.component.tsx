@@ -145,8 +145,7 @@ export function RequisitoInhumacionListTable() {
                 </TableCell>
                 <TableCell>
                   {requisito.idHuecoNicho ?
-                    `${requisito.idHuecoNicho.idNicho?.sector} - Fila: ${requisito.idHuecoNicho.idNicho?.fila} 
-                    - Número: ${requisito.idHuecoNicho.idNicho?.numero} - Hueco: ${requisito.idHuecoNicho.numHueco}`
+                    `Fila: ${requisito.idHuecoNicho.idNicho?.fila ?? "-"} - Columna: ${requisito.idHuecoNicho.idNicho?.columna ?? "-"} - Hueco: ${requisito.idHuecoNicho.numHueco}`
                   : "Sin nicho"}
                 </TableCell>
                 <TableCell>

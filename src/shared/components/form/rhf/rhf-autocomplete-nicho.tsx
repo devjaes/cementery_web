@@ -27,7 +27,7 @@ export default function RHFAutocompleteNicho({
 
   // Filtrar por texto de búsqueda
   const filtered = (nichos ?? []).filter(n =>
-    `${n.sector} ${n.fila} ${n.numero} ${n.tipo}`
+    `${n.fila ?? ""} ${n.columna ?? ""} ${n.tipo ?? ""}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -52,7 +52,7 @@ export default function RHFAutocompleteNicho({
                 >
                   {selected ? (
                     <span className="font-normal">
-                      {`${selected.sector} - Fila: ${selected.fila} - Número: ${selected.numero} - Tipo: ${selected.tipo}`}
+                      {`Fila: ${selected.fila ?? "-"} - Columna: ${selected.columna ?? "-"} - Tipo: ${selected.tipo ?? "-"}`}
                     </span>
                   ) : (
                     <span className="text-gray-400 font-normal">
@@ -65,7 +65,7 @@ export default function RHFAutocompleteNicho({
               <PopoverContent className="w-full p-0">
                 <Command shouldFilter={false}>
                   <CommandInput
-                    placeholder="Buscar sector, fila, número, tipo..."
+                    placeholder="Buscar fila, columna, tipo..."
                     value={search}
                     onValueChange={setSearch}
                   />
@@ -78,7 +78,7 @@ export default function RHFAutocompleteNicho({
                           filtered.map(n => (
                             <CommandItem
                               key={n.idNicho}
-                              value={`${n.sector} ${n.fila} ${n.numero} ${n.tipo}`}
+                              value={`${n.fila ?? ""} ${n.columna ?? ""} ${n.tipo ?? ""}`}
                               onSelect={() => {
                                 field.onChange(n.idNicho);
                                 setSearch("");
@@ -92,7 +92,7 @@ export default function RHFAutocompleteNicho({
                                 )}
                               />
                               <span className="font-normal">
-                                {n.sector} - Fila: {n.fila} - Número: {n.numero} - Tipo: {n.tipo}
+                                Fila: {n.fila ?? "-"} - Columna: {n.columna ?? "-"} - Tipo: {n.tipo ?? "-"}
                               </span>
                             </CommandItem>
                           ))

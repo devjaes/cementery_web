@@ -11,6 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { NichoInfoCard } from "../components/nicho-info-card.component";
 import { NichoHuecosTab } from "../components/nicho-huecos-tab.component";
 import { NichoPropietariosTab } from "../components/nicho-propietarios-tab.component";
+import { NichoAmpliacionInfo } from "../components/nicho-ampliacion-info.component";
 import { PropietarioPanel } from "../components/propietario-panel.component";
 import { ReservationActions } from "../components/reservation-actions.component";
 
@@ -33,10 +34,11 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
     const payment = searchParams.get('paymentId');
 
     if (openPropietarios === 'true') {
+      // Ir a la pestaña de propietarios pero NO abrir automáticamente el panel de "Agregar Nuevo Propietario"
       setActiveTab("propietarios");
       setBuyerPersonId(personId || undefined);
       setPaymentId(payment || undefined);
-      setIsPropietarioPanelOpen(true);
+      setIsPropietarioPanelOpen(false);
     }
   }, [searchParams]);
 
@@ -52,7 +54,8 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
     setActiveTab("propietarios");
     setBuyerPersonId(personId);
     setPaymentId(payId);
-    setIsPropietarioPanelOpen(true);
+    // No abrir el panel automáticamente; el usuario podrá añadir propietario manualmente si lo desea
+    setIsPropietarioPanelOpen(false);
   };
 
   if (isLoading) {
@@ -86,7 +89,7 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
   }
 
   return (
-    <ContainerApp title={`Nicho ${nicho.sector}-${nicho.fila}-${nicho.numero}`}>
+    <ContainerApp title={`Nicho Fila ${nicho.fila} - Columna ${nicho.columna}`}>
       <div className={"relative flex transition-all duration-300 " + (isPropietarioPanelOpen ? "pr-[420px]" : "pr-0")}>
         <div className="flex-1 min-w-0 space-y-6">
           {/* Back Button */}
@@ -110,9 +113,10 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="huecos">Huecos</TabsTrigger>
               <TabsTrigger value="propietarios">Propietarios</TabsTrigger>
+              <TabsTrigger value="ampliaciones">Ampliaciones</TabsTrigger>
             </TabsList>
             <TabsContent value="huecos" className="mt-0">
               <NichoHuecosTab nichoId={nichoId} />
@@ -122,6 +126,9 @@ export default function NichoDetailView({ nichoId }: NichoDetailViewProps) {
                 nichoId={nichoId}
                 onOpenPanel={() => setIsPropietarioPanelOpen(true)}
               />
+            </TabsContent>
+            <TabsContent value="ampliaciones" className="mt-0">
+              <NichoAmpliacionInfo nichoId={nichoId} />
             </TabsContent>
           </Tabs>
         </div>

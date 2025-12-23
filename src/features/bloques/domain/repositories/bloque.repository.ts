@@ -1,4 +1,5 @@
 import { BloqueEntity, BloqueCreateEntity, BloqueUpdateEntity, BloqueWithNichosEntity } from "../entities/bloque.entity";
+import { AmpliarBloqueEntity, AmpliarBloqueResponseEntity } from "../entities/ampliar-bloque.entity";
 
 export interface BloqueRepository {
   findAll(): Promise<BloqueEntity[]>;
@@ -8,4 +9,5 @@ export interface BloqueRepository {
   create(bloque: BloqueCreateEntity): Promise<BloqueEntity>;
   update(bloque: BloqueUpdateEntity): Promise<BloqueEntity>;
   delete(id: string): Promise<BloqueEntity>;
+  ampliarBloque(idBloque: string, data: AmpliarBloqueEntity): Promise<AmpliarBloqueResponseEntity>;
 }

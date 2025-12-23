@@ -18,20 +18,22 @@ import { ArrowLeft, Check, Loader2, Edit } from "lucide-react";
 import Link from "next/link";
 import { useFindMejoraByIdQuery } from "../hooks/use-mejora-queries";
 import { useApproveMejoraMutation } from "../hooks/use-mejora-mutation";
-
-const DEFAULT_APPROVER_ID = "11657f06-85d6-42bb-84f6-7e3ffe06965d";
+import { useAuthStore } from "@/features/auth/presentation/context/auth.store";
+const DOCUMENT_BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "").replace(/\/$/, "");
+const buildDocumentUrl = (relative: string) => (relative ? `${DOCUMENT_BASE_URL}${relative}` : relative);
 
 export default function MejoraDetailView({ id }: { id: string }) {
   const router = useRouter();
   const { data, isLoading } = useFindMejoraByIdQuery(id);
   const approveMutation = useApproveMejoraMutation();
+  const { user } = useAuthStore();
 
   const isApproving = approveMutation.isPending;
   const canApprove = !!data && data.estado === "Solicitado";
 
   const handleApprove = () => {
-    if (!data) return;
-    approveMutation.mutate({ id: data.idMejora, aprobadoPorId: DEFAULT_APPROVER_ID });
+    if (!data || !user?.id_user) return;
+    approveMutation.mutate({ id: data.idMejora, aprobadoPorId: user.id_user });
   };
 
   if (isLoading) return <ContainerApp title="Detalle de Mejora"><div className="py-8">Cargando...</div></ContainerApp>;
@@ -101,6 +103,53 @@ export default function MejoraDetailView({ id }: { id: string }) {
         <p><strong>Tipo de servicio:</strong> {data.tipoServicio}</p>
         <p><strong>Solicitante:</strong> {data.solicitante?.nombres} {data.solicitante?.apellidos}</p>
         <p><strong>Fecha solicitud:</strong> {new Date(data.fechaSolicitud).toLocaleDateString()}</p>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <div className="space-y-3 rounded-lg border bg-white p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Documentación de respaldo</p>
+              <p className="text-xs text-muted-foreground">Revisa los PDFs antes de aprobar esta solicitud.</p>
+            </div>
+            {!data.documentos?.length ? (
+              <Badge variant="secondary">Sin documentos</Badge>
+            ) : null}
+          </div>
+          {data.documentos?.length ? (
+            <div className="space-y-4">
+              {data.documentos.map((doc) => (
+                <div key={doc.filename} className="space-y-3 rounded-lg border border-dashed border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{doc.originalName}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(doc.uploadedAt).toLocaleString()}</p>
+                    </div>
+                    <a
+                      href={buildDocumentUrl(doc.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold text-primary underline-offset-2 underline"
+                    >
+                      Abrir en nueva pestaña
+                    </a>
+                  </div>
+                  <div className="overflow-hidden rounded border bg-slate-50">
+                    <iframe
+                      src={buildDocumentUrl(doc.url)}
+                      title={`Vista previa ${doc.originalName}`}
+                      className="h-72 w-full"
+                    >
+                      <p>Tu navegador no puede mostrar el PDF. Usa el enlace para abrirlo.</p>
+                    </iframe>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No se han cargado PDFs para esta mejora.</p>
+          )}
+        </div>
       </div>
     </ContainerApp>
   );
