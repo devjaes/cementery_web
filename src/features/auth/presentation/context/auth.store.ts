@@ -1,6 +1,16 @@
 import { User } from "@/features/users/infraestructure/models/user.model";
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware";
+
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
 
 type AuthStore = {
   user: User | null;
@@ -38,10 +48,12 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: "auth-store",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() =>
+        typeof window !== "undefined" ? localStorage : noopStorage,
+      ),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },
-    }
-  )
+    },
+  ),
 );

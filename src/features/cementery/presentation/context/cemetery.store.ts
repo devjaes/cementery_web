@@ -1,6 +1,12 @@
 import { CementeryEntity } from "../../domain/entities/cementery.entity";
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
 
 type CemeteryStore = {
   activeCemetery: CementeryEntity | null;
@@ -17,7 +23,7 @@ export const useCemeteryStore = create<CemeteryStore>()(
     }),
     {
       name: "cemetery-context",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => (typeof window !== "undefined" ? localStorage : noopStorage)),
     }
   )
 );
