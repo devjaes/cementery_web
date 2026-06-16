@@ -1,4 +1,4 @@
-# Cementerios — Web
+# Cementerios - Web
 
 > Cemetery management system: niche lifecycle (inventory, ownership, inheritance, payments, burial procedures). Frontend.
 
@@ -21,7 +21,7 @@ The system models the niche as a domain object with an explicit state machine (a
 | PDF | jsPDF (receipts) |
 | Language | TypeScript 5 |
 
-Backend pair: [`devjaes/cementery_back`](https://github.com/devjaes/cementery_back) — NestJS 11 + PostgreSQL, with AWS S3 for file storage.
+Backend pair: [`devjaes/cementery_back`](https://github.com/devjaes/cementery_back) - NestJS 11 + PostgreSQL, with AWS S3 for file storage.
 
 ## Highlights
 - Interactive map of blocks and niches with live state coloring
@@ -36,7 +36,7 @@ Backend pair: [`devjaes/cementery_back`](https://github.com/devjaes/cementery_ba
 Requires Node 20.14.0 (`nvm install 20.14.0 && nvm use 20.14.0`) and Yarn.
 
 ```bash
-# 1. Start the backend first — see devjaes/cementery_back
+# 1. Start the backend first - see devjaes/cementery_back
 # 2. Then in this repo:
 cp env.example .env        # set NEXT_PUBLIC_BACKEND_API_URL, AUTH_SECRET, NEXTAUTH_URL
 yarn install
@@ -58,7 +58,7 @@ yarn lint      # next lint
 - Spanish-language UI, mirroring the domain vocabulary used by operators.
 
 ## Team & my role
-- **My role:** Tech Lead — technical direction, sprint ceremonies, scope and backlog prioritization, and integration gatekeeper (every PR merged through me). I worked alongside teammates on both frontend and backend.
+- **My role:** Tech Lead - technical direction, sprint ceremonies, scope and backlog prioritization, and integration gatekeeper (every PR merged through me). I worked alongside teammates on both frontend and backend.
 - **Team:** Cross-functional (frontend, backend, student interns).
 - **Backend repo:** [devjaes/cementery_back](https://github.com/devjaes/cementery_back)
 
