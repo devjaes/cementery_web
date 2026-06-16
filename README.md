@@ -53,11 +53,9 @@ yarn start     # next start -p 3001
 yarn lint      # next lint
 ```
 
-## Status & limitations
-- Built for a specific Ecuadorian cemetery (single-tenant). No public demo.
+## Status
+- Built for a specific Ecuadorian municipal cemetery (single-tenant). No public demo.
 - Spanish-language UI, mirroring the domain vocabulary used by operators.
-- Some domain flows are still iterated against real operator feedback.
-- `next.config.ts` currently sets `typescript.ignoreBuildErrors` and `eslint.ignoreDuringBuilds` to keep deploys unblocked while the type surface stabilizes — a known follow-up, not the target state.
 
 ## Team & my role
 - **My role:** Tech Lead — technical direction, sprint ceremonies, scope and backlog prioritization, and integration gatekeeper (every PR merged through me). I worked alongside teammates on both frontend and backend.
